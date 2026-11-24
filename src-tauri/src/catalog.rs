@@ -52,6 +52,9 @@ pub struct Model {
     pub available: bool,
 }
 
+/// The 翻 option that listens to the audio itself (Live Translate) instead of translating text.
+pub const AUDIO_TRANSLATE: &str = "gemini-live-audio";
+
 pub const MODELS: &[Model] = &[
     // ---------- listening (speech-to-text) ----------
     Model {
@@ -328,6 +331,22 @@ pub const MODELS: &[Model] = &[
         available: true,
     },
     Model {
+        id: "gemini-live-translate-zh",
+        kind: Kind::Llm,
+        provider: "gemini",
+        api_model: "gemini-3.5-live-translate-preview",
+        label: "Gemini 3.5 Live Translate（直接聽聲音翻譯）",
+        transport: AUDIO_TRANSLATE,
+        min_effort: "",
+        price: Price::PerMinute { usd: 0.0368 },
+        price_note: "官方估算，按聆聽的分鐘計（含譯文語音輸出）；另加回覆與摘要用的 Gemini 3.5 Flash-Lite",
+        speed: "邊說邊翻，不等「聽」的句子結束",
+        strength: "直接聽原音翻譯，「聽」可以選任何辨識（本機、OpenAI、Gemini）；英文字幕仍來自「聽」",
+        caution: "預覽版；只吃聲音：回覆視窗、即時摘要和 Windows 即時輔助字幕改用 Gemini 3.5 Flash-Lite；和「聽」各付一份音訊費；中文和英文字幕來自兩個服務，偶爾會對到相鄰的句子",
+        needs: "Gemini API key",
+        available: true,
+    },
+    Model {
         id: "local-llm",
         kind: Kind::Llm,
         provider: "local",
@@ -397,6 +416,9 @@ mod tests {
         let batch = find("gemini-transcribe").unwrap();
         assert!((cost(batch, 3600.0, 0, 0, 0) - 0.30).abs() < 1e-9);
         let interp = find("gemini-live-translate").unwrap();
+        let follow = find("gemini-live-translate-zh").unwrap();
+        assert!(follow.kind == Kind::Llm && follow.transport == AUDIO_TRANSLATE);
+        assert!(find(crate::llm::FALLBACK_ID).is_some_and(|m| m.available && m.kind == Kind::Llm && m.provider == "gemini"));
         assert!((cost(interp, 3600.0, 0, 0, 0) - 2.208).abs() < 1e-9);
         let haiku = find("claude-haiku-5-5").unwrap();
         // 180k input + 30k output ≈ $0.033, the estimate shown to the user

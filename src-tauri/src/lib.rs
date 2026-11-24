@@ -264,6 +264,18 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
         set_status(&app, format!("請先到「設定」填 {} 的 API key", settings::display_name(m.provider)));
         return Ok(false);
     }
+    // Live Translate chosen under 翻: it hears the same audio and brings the captions' Chinese
+    // (unless 聽 is Live Translate itself, which already translates).
+    let follow = match catalog::find(&s.llm_id).filter(|x| x.transport == catalog::AUDIO_TRANSLATE) {
+        Some(lt) if !record_only && m.transport != "gemini-translate" => match settings::get_key(lt.provider) {
+            Some(k) => Some((k, *lt)),
+            None => {
+                set_status(&app, "「翻」選了 Gemini Live Translate：請先到「設定」填 Gemini 的 API key");
+                return Ok(false);
+            }
+        },
+        _ => None,
+    };
     let rate = match m.transport {
         "openai-live" => openai_rt::RATE,
         "gemini-live" | "gemini-translate" => gemini::RATE,
@@ -319,33 +331,11 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
             let a = stt_app.clone();
             let key = key.clone();
             let s = stt_settings.clone();
+            let follow = follow.clone();
             async move {
-                let language = s.stt_language.clone();
-                match m.transport {
-                    "gemini-live" => {
-                        let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: None };
-                        gemini::run(a, key.unwrap_or_default(), opts, rx).await
-                    }
-                    "gemini-translate" => {
-                        let translate = gemini::Translate {
-                            target: "zh-Hant".into(),
-                            instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
-                        };
-                        let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: Some(translate) };
-                        gemini::run(a, key.unwrap_or_default(), opts, rx).await
-                    }
-                    "sherpa" => local_stt::run(a, language, rx).await,
-                    "openai-live" => openai_rt::run(a, m.id.into(), key.unwrap_or_default(), m.api_model.into(), captions::iso639(&language), rx).await,
-                    _ => {
-                        let (api, base_url, model, language) = match m.provider {
-                            "local" => (stt_chunk::Api::OpenAi, s.local_stt_url.clone(), s.local_stt_model.clone(), captions::iso639(&language)),
-                            // Gemini takes the BCP-47 code as Settings stores it (en-US).
-                            "gemini" => (stt_chunk::Api::Gemini, stt_chunk::GEMINI_BASE.to_string(), m.api_model.to_string(), language),
-                            _ => (stt_chunk::Api::OpenAi, "https://api.openai.com/v1".to_string(), m.api_model.to_string(), captions::iso639(&language)),
-                        };
-                        let cfg = stt_chunk::Config { catalog_id: m.id.into(), api, base_url, key, model, language };
-                        stt_chunk::run(a, cfg, rx).await
-                    }
+                match follow {
+                    None => run_stt(a, m, key, s, rx).await,
+                    Some((lt_key, lt)) => run_following(a, rate, m, key, s, lt_key, lt, rx).await,
                 }
             }
         }
@@ -362,6 +352,79 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
         }
     });
     Ok(true)
+}
+
+/// The speech service chosen under 聽, until the audio channel closes.
+async fn run_stt(a: AppHandle, m: catalog::Model, key: Option<String>, s: settings::Settings, rx: mpsc::Receiver<Vec<i16>>) {
+    let language = s.stt_language.clone();
+    match m.transport {
+        "gemini-live" => {
+            let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: None };
+            gemini::run(a, key.unwrap_or_default(), opts, rx).await
+        }
+        "gemini-translate" => {
+            let translate = gemini::Translate {
+                target: gemini::TARGET_ZH_TW.into(),
+                instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
+                following: false,
+            };
+            let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: Some(translate) };
+            gemini::run(a, key.unwrap_or_default(), opts, rx).await
+        }
+        "sherpa" => local_stt::run(a, language, rx).await,
+        "openai-live" => openai_rt::run(a, m.id.into(), key.unwrap_or_default(), m.api_model.into(), captions::iso639(&language), rx).await,
+        _ => {
+            let (api, base_url, model, language) = match m.provider {
+                "local" => (stt_chunk::Api::OpenAi, s.local_stt_url.clone(), s.local_stt_model.clone(), captions::iso639(&language)),
+                // Gemini takes the BCP-47 code as Settings stores it (en-US).
+                "gemini" => (stt_chunk::Api::Gemini, stt_chunk::GEMINI_BASE.to_string(), m.api_model.to_string(), language),
+                _ => (stt_chunk::Api::OpenAi, "https://api.openai.com/v1".to_string(), m.api_model.to_string(), captions::iso639(&language)),
+            };
+            let cfg = stt_chunk::Config { catalog_id: m.id.into(), api, base_url, key, model, language };
+            stt_chunk::run(a, cfg, rx).await
+        }
+    }
+}
+
+/// 聽 with Live Translate (chosen under 翻) hearing the same audio and bringing the Chinese. The
+/// recognizer never waits for Live Translate: a full queue skips a chunk for it, and when the
+/// recognizer ends (or listening stops) Live Translate ends too.
+#[allow(clippy::too_many_arguments)]
+async fn run_following(
+    a: AppHandle,
+    rate: u32,
+    m: catalog::Model,
+    key: Option<String>,
+    s: settings::Settings,
+    lt_key: String,
+    lt: catalog::Model,
+    mut rx: mpsc::Receiver<Vec<i16>>,
+) {
+    let (to_stt, stt_rx) = mpsc::channel::<Vec<i16>>(64);
+    let (to_lt, lt_rx) = mpsc::channel::<Vec<i16>>(256);
+    gemini_translate::follow_on(&a);
+    let forward = async move {
+        let mut to_lt = Some(to_lt);
+        let mut resample = audio::Resample::new(rate, gemini::RATE);
+        while let Some(chunk) = rx.recv().await {
+            if let Some(tx) = &to_lt {
+                if let Err(mpsc::error::TrySendError::Closed(_)) = tx.try_send(resample.process(&chunk)) {
+                    to_lt = None; // Live Translate stopped; captions went back to the text model
+                }
+            }
+            if to_stt.send(chunk).await.is_err() {
+                break;
+            }
+        }
+    };
+    let translate = gemini::Translate {
+        target: gemini::TARGET_ZH_TW.into(),
+        instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
+        following: true,
+    };
+    let opts = gemini::Opts { catalog_id: lt.id.into(), model: lt.api_model.into(), language: String::new(), translate: Some(translate) };
+    tokio::join!(forward, run_stt(a.clone(), m, key, s, stt_rx), gemini::run(a.clone(), lt_key, opts, lt_rx));
+    gemini_translate::follow_off(&a);
 }
 
 /// Quiet for longer than Settings allows: stop as ■ 停止 would, and say why.
@@ -642,6 +705,7 @@ pub fn run() {
         .manage(Mutex::new(usage::Usage::default()))
         .manage(view::ClickThrough::default())
         .manage(captions::Lines::default())
+        .manage(gemini_translate::Following::default())
         .manage(archive::Archive::default())
         .manage(idle::Activity::default())
         .manage(batch::Batches::default())

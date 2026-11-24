@@ -276,6 +276,47 @@ impl Drop for KeepAwake {
     }
 }
 
+/// Mono i16 from one rate to another, chunk by chunk (Live Translate takes 16 kHz while OpenAI's
+/// live transcription is captured at 24 kHz). The same method as Downmix: a box average over about
+/// one output period, then linear interpolation.
+pub struct Resample {
+    step: f64,
+    pos: f64,
+    prev: f32,
+    window: Vec<f32>,
+    win_i: usize,
+    win_sum: f32,
+}
+
+impl Resample {
+    pub fn new(in_rate: u32, out_rate: u32) -> Self {
+        let step = in_rate as f64 / out_rate.max(1) as f64;
+        let win = (step.round() as usize).max(1);
+        Resample { step, pos: 0.0, prev: 0.0, window: vec![0.0; win], win_i: 0, win_sum: 0.0 }
+    }
+
+    pub fn process(&mut self, input: &[i16]) -> Vec<i16> {
+        if self.step == 1.0 {
+            return input.to_vec();
+        }
+        let mut out = Vec::with_capacity((input.len() as f64 / self.step) as usize + 2);
+        for &s in input {
+            let x = s as f32;
+            self.win_sum += x - self.window[self.win_i];
+            self.window[self.win_i] = x;
+            self.win_i = (self.win_i + 1) % self.window.len();
+            let x = self.win_sum / self.window.len() as f32;
+            while self.pos <= 1.0 {
+                out.push((self.prev + (x - self.prev) * self.pos as f32).round().clamp(-32768.0, 32767.0) as i16);
+                self.pos += self.step;
+            }
+            self.pos -= 1.0;
+            self.prev = x;
+        }
+        out
+    }
+}
+
 /// Interleaved frames in, mono i16 chunks at the target rate out. A box average over one input period per
 /// output sample keeps aliasing down well enough for speech; linear interpolation does the rest.
 struct Downmix<L: Fn(f32)> {
@@ -369,6 +410,19 @@ impl<L: Fn(f32)> Downmix<L> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resample_24k_to_16k_keeps_length_and_level() {
+        let mut r = Resample::new(24_000, 16_000);
+        let mut out = Vec::new();
+        for _ in 0..10 {
+            out.extend(r.process(&vec![1000i16; 2400])); // 100 ms at a time
+        }
+        assert!((out.len() as i64 - 16_000).abs() <= 2, "one second in, about one second out: {}", out.len());
+        assert!(out[100..].iter().all(|&s| s == 1000), "a steady level stays steady");
+        let mut same = Resample::new(16_000, 16_000);
+        assert_eq!(same.process(&[1, 2, 3]), vec![1, 2, 3]);
+    }
 
     fn tone(frames: usize, amp: f32) -> Vec<f32> {
         (0..frames)

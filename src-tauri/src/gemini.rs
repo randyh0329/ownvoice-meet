@@ -54,16 +54,27 @@ pub struct Opts {
     pub translate: Option<Translate>,
 }
 
+/// Captions are for a Taiwanese reader: Traditional Chinese as used in Taiwan, stated explicitly
+/// (Google's table lists zh-Hant; zh-TW is the more specific BCP-47 tag for the same script).
+pub const TARGET_ZH_TW: &str = "zh-TW";
+
 pub struct Translate {
-    /// BCP-47, e.g. zh-Hant.
+    /// BCP-47, e.g. zh-TW.
     pub target: String,
     /// System instruction: wording and glossary.
     pub instruction: String,
+    /// Only the Chinese is used, for another recognizer's lines (gemini_translate.rs, following).
+    pub following: bool,
 }
 
 /// Run until the audio channel closes (listening stopped), reconnecting as needed.
 pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Receiver<Vec<i16>>) {
-    let mut handler = if opts.translate.is_some() { Handler::Translate(Interp::default()) } else { Handler::Transcribe(Live::default()) };
+    let following = opts.translate.as_ref().is_some_and(|t| t.following);
+    let mut handler = match &opts.translate {
+        Some(t) if t.following => Handler::Follow,
+        Some(_) => Handler::Translate(Interp::default()),
+        None => Handler::Transcribe(Live::default()),
+    };
     let mut backoff = 1u64;
     loop {
         let res = session(&app, &key, &opts, &mut audio, &mut handler).await;
@@ -72,12 +83,19 @@ pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Recei
         match res {
             Ok(End::AudioClosed) => break,
             Ok(End::Rotate) => backoff = 1,
+            Err(Err2::Fatal(Fatal(msg))) if following => {
+                // Captions go on with the text model.
+                crate::gemini_translate::follow_off(&app);
+                status(&app, format!("Live Translate 拒絕連線：{msg}；字幕改用 {} 翻譯", crate::llm::FALLBACK_LABEL));
+                break;
+            }
             Err(Err2::Fatal(Fatal(msg))) => {
                 status(&app, format!("Gemini 拒絕連線：{msg}（請到設定檢查 key 與模型）"));
                 break;
             }
             Err(Err2::Retry(msg)) => {
-                status(&app, format!("Gemini 連線中斷：{msg}；{backoff} 秒後重試"));
+                let who = if following { "Live Translate" } else { "Gemini" };
+                status(&app, format!("{who} 連線中斷：{msg}；{backoff} 秒後重試"));
                 tokio::time::sleep(Duration::from_secs(backoff)).await;
                 backoff = (backoff * 2).min(30);
             }
@@ -89,6 +107,8 @@ pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Recei
 enum Handler {
     Transcribe(Live),
     Translate(Interp),
+    /// Only the Chinese, for the 聽 recognizer's lines.
+    Follow,
 }
 
 impl Handler {
@@ -105,26 +125,36 @@ impl Handler {
                     interp.translated(t, Instant::now(), &mut sink);
                 }
             }
+            Handler::Follow => {
+                if let Some(t) = v["serverContent"]["outputTranscription"]["text"].as_str() {
+                    crate::gemini_translate::follow_translated(app, t);
+                }
+            }
         }
     }
 
     fn tick(&mut self, app: &AppHandle) {
-        if let Handler::Translate(interp) = self {
-            interp.tick(Instant::now(), &mut CaptionSink(app));
+        match self {
+            Handler::Translate(interp) => interp.tick(Instant::now(), &mut CaptionSink(app)),
+            Handler::Follow => crate::gemini_translate::follow_tick(app),
+            Handler::Transcribe(_) => {}
         }
     }
 
     fn flush(&mut self, app: &AppHandle) {
-        if let Handler::Translate(interp) = self {
-            interp.flush(&mut CaptionSink(app));
+        match self {
+            Handler::Translate(interp) => interp.flush(&mut CaptionSink(app)),
+            Handler::Follow => crate::gemini_translate::follow_flush(app),
+            Handler::Transcribe(_) => {}
         }
     }
 
     /// Nobody is mid-sentence: a good moment to replace the session.
-    fn quiet(&self) -> bool {
+    fn quiet(&self, app: &AppHandle) -> bool {
         match self {
             Handler::Transcribe(live) => live.current.is_none(),
             Handler::Translate(interp) => interp.idle(),
+            Handler::Follow => crate::gemini_translate::follow_idle(app),
         }
     }
 }
@@ -214,7 +244,12 @@ async fn session(app: &AppHandle, key: &str, opts: &Opts, audio: &mut mpsc::Rece
     let log = |t: &str| debug_log(app, t);
     let ws = connect(key, opts, log).await?;
     let (mut tx, mut rx) = ws.split();
-    status(app, if opts.translate.is_some() { "聆聽中（Gemini Live 同步口譯）" } else { "聆聽中（Gemini Live）" });
+    // Following, the recognizer's status stays on screen.
+    match &opts.translate {
+        Some(t) if t.following => {}
+        Some(_) => status(app, "聆聽中（Gemini Live 同步口譯）"),
+        None => status(app, "聆聽中（Gemini Live）"),
+    }
 
     let started = Instant::now();
     let mut last_audio = Instant::now();
@@ -262,7 +297,7 @@ async fn session(app: &AppHandle, key: &str, opts: &Opts, audio: &mut mpsc::Rece
                     usage::add_audio(app, &opts.catalog_id, silence.len() as f64 / RATE as f64);
                 }
                 live.tick(app);
-                let quiet = live.quiet();
+                let quiet = live.quiet(app);
                 if (going_away && quiet) || (started.elapsed() > ROTATE_AT_PAUSE && quiet) || started.elapsed() > ROTATE_ANYWAY {
                     let _ = tx.close().await;
                     return Ok(End::Rotate);
@@ -525,7 +560,7 @@ mod tests {
             catalog_id: "gemini-live-translate".into(),
             model: "gemini-3.5-live-translate-preview".into(),
             language: String::new(),
-            translate: Some(Translate { target: "zh-Hant".into(), instruction: crate::prompts::live_translate_instruction(&[]) }),
+            translate: Some(Translate { target: TARGET_ZH_TW.into(), instruction: crate::prompts::live_translate_instruction(&[]), following: false }),
         }
     }
 
@@ -540,7 +575,7 @@ mod tests {
         let x = setup_message(&translate_opts());
         assert_eq!(x["setup"]["model"], "models/gemini-3.5-live-translate-preview");
         assert_eq!(x["setup"]["generationConfig"]["responseModalities"], json!(["AUDIO"]));
-        assert_eq!(x["setup"]["generationConfig"]["translationConfig"]["targetLanguageCode"], "zh-Hant");
+        assert_eq!(x["setup"]["generationConfig"]["translationConfig"]["targetLanguageCode"], "zh-TW");
         assert_eq!(x["setup"]["generationConfig"]["translationConfig"]["echoTargetLanguage"], false);
         assert_eq!(x["setup"]["inputAudioTranscription"], json!({}));
         assert_eq!(x["setup"]["outputAudioTranscription"], json!({}));

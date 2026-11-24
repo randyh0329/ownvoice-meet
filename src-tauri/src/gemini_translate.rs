@@ -8,13 +8,19 @@
 //     what was said, or once the next line has ended too and the Chinese reads as a whole sentence
 //     of plausible length, or when no Chinese has come for ZH_QUIET after the line ended. A piece
 //     of Chinese that completes one line and starts the next is split at the sentence end.
+// Following another recognizer (Live Translate chosen under 翻): the lines are the recognizer's
+// (captions.rs reports each line opened, ended or dropped) and Live Translate, hearing the same
+// audio, only supplies the Chinese, paired the same way. Chinese that arrives with no line waiting
+// is added to the line just completed when it is that recent (ORPHAN_LATE), else kept for the next
+// line. Should Live Translate stop (a refused connection), captions go back to the text model.
 // Nothing here talks to the network or the screen: a Sink receives the lines, so the pairing is
 // tested on its own (tests below).
 
 use std::collections::VecDeque;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::captions;
 use crate::zh;
@@ -27,6 +33,8 @@ const ZH_QUIET: Duration = Duration::from_millis(3000);
 const SPLIT_CHARS: usize = 120;
 /// A line ends here even without a sentence end.
 const MAX_CHARS: usize = 300;
+/// Chinese this soon after a line's translation completed, with no line waiting, still belongs to it.
+const ORPHAN_LATE: Duration = Duration::from_millis(1500);
 
 /// Where the lines go.
 pub trait Sink {
@@ -54,9 +62,51 @@ pub struct Interp {
     lines: VecDeque<Line>,
     last_in: Option<Instant>,
     last_out: Option<Instant>,
+    /// The lines are another recognizer's (open_line, end_line, remove_line); only Chinese comes here.
+    following: bool,
+    /// Chinese that came with no line waiting for it.
+    orphan: String,
+    /// The line whose translation completed last: id, its Chinese, when.
+    last_done: Option<(u64, String, Instant)>,
 }
 
 impl Interp {
+    /// Pairing for lines another recognizer makes.
+    pub fn following() -> Self {
+        Interp { following: true, ..Default::default() }
+    }
+
+    /// The recognizer opened a line.
+    pub fn open_line(&mut self, id: u64) {
+        let zh = std::mem::take(&mut self.orphan);
+        self.lines.push_back(Line { id, en: String::new(), zh, ended: None });
+    }
+
+    /// The recognizer's line ended with `text`.
+    pub fn end_line(&mut self, id: u64, text: &str, now: Instant, sink: &mut impl Sink) {
+        match self.lines.iter_mut().find(|l| l.id == id) {
+            Some(l) => {
+                l.en = text.to_string();
+                l.ended = Some(now);
+            }
+            None => self.lines.push_back(Line { id, en: text.to_string(), zh: String::new(), ended: Some(now) }),
+        }
+        self.release(now, sink);
+    }
+
+    /// The recognizer dropped a line: Chinese it had goes on to the next.
+    pub fn remove_line(&mut self, id: u64) {
+        let Some(at) = self.lines.iter().position(|l| l.id == id) else { return };
+        let gone = self.lines.remove(at).expect("position is in range");
+        if gone.zh.is_empty() {
+            return;
+        }
+        match self.lines.get_mut(at) {
+            Some(next) => next.zh.insert_str(0, &gone.zh),
+            None => self.orphan.insert_str(0, &gone.zh),
+        }
+    }
+
     /// A piece of what was said.
     pub fn heard(&mut self, piece: &str, now: Instant, sink: &mut impl Sink) {
         if piece.trim().is_empty() {
@@ -87,7 +137,18 @@ impl Interp {
         let mut rest = piece;
         while !rest.is_empty() {
             // A line already complete now that the next one has ended does not take this piece.
-            self.release(sink);
+            self.release(now, sink);
+            if self.lines.is_empty() && self.following {
+                match self.last_done.as_mut().filter(|(_, _, at)| now.duration_since(*at) < ORPHAN_LATE) {
+                    Some((id, zh, at)) => {
+                        zh.push_str(rest);
+                        *at = now;
+                        sink.translated(*id, zh.trim(), true);
+                    }
+                    None => self.orphan.push_str(rest),
+                }
+                return;
+            }
             if self.lines.is_empty() {
                 // Chinese with nothing heard before it: a line of its own.
                 let id = sink.open();
@@ -100,35 +161,47 @@ impl Interp {
             let next_ended = self.lines.get(1).is_some_and(|l| l.ended.is_some());
             let line = self.lines.front_mut().expect("a line was just ensured");
             grow(&mut line.zh, head);
-            let complete = translation_complete(line, next_ended);
-            sink.translated(line.id, line.zh.trim(), complete);
-            if complete {
-                self.lines.pop_front();
+            if translation_complete(line, next_ended) {
+                let line = self.lines.pop_front().expect("front exists");
+                self.complete(line, now, sink);
+            } else {
+                sink.translated(line.id, line.zh.trim(), false);
             }
         }
     }
 
     /// Lines at the front whose translation is complete leave.
-    fn release(&mut self, sink: &mut impl Sink) {
+    fn release(&mut self, now: Instant, sink: &mut impl Sink) {
         while let Some(line) = self.lines.front() {
             let next_ended = self.lines.get(1).is_some_and(|l| l.ended.is_some());
             if !translation_complete(line, next_ended) {
                 break;
             }
             let line = self.lines.pop_front().expect("front exists");
-            sink.translated(line.id, line.zh.trim(), true);
+            self.complete(line, now, sink);
         }
+    }
+
+    /// A line's translation ends as it stands (or, a line of this module's own with nothing on it, goes).
+    fn complete(&mut self, line: Line, now: Instant, sink: &mut impl Sink) {
+        let zh = line.zh.trim().to_string();
+        if !self.following && line.en.trim().is_empty() && zh.is_empty() {
+            sink.drop_line(line.id);
+            return;
+        }
+        sink.translated(line.id, &zh, true);
+        self.last_done = Some((line.id, zh, now));
     }
 
     /// Time passes: pauses end lines and their translations.
     pub fn tick(&mut self, now: Instant, sink: &mut impl Sink) {
-        if let Some(line) = self.lines.back_mut().filter(|l| l.ended.is_none()) {
+        if let Some(line) = self.lines.back_mut().filter(|l| l.ended.is_none() && !self.following) {
             if self.last_in.is_some_and(|t| now.duration_since(t) >= IN_QUIET) {
                 line.ended = Some(now);
                 sink.heard(line.id, line.en.trim(), true);
             }
         }
-        self.release(sink);
+        self.release(now, sink);
         while let Some(line) = self.lines.front() {
             let Some(ended) = line.ended else { break };
             let since = self.last_out.map_or(ended, |o| o.max(ended));
@@ -136,35 +209,33 @@ impl Interp {
                 break;
             }
             let line = self.lines.pop_front().expect("front exists");
-            finish(line, sink);
+            self.complete(line, now, sink);
         }
     }
 
-    /// The session ended: every line ends as it stands.
+    /// The session ended: every line ends as it stands. Following, lines still being spoken stay
+    /// (the next session's Chinese, or the text model, will translate them).
     pub fn flush(&mut self, sink: &mut impl Sink) {
+        let now = Instant::now();
         while let Some(mut line) = self.lines.pop_front() {
             if line.ended.is_none() {
-                line.ended = Some(Instant::now());
+                if self.following {
+                    self.lines.push_front(line);
+                    break;
+                }
+                line.ended = Some(now);
                 if !line.en.trim().is_empty() {
                     sink.heard(line.id, line.en.trim(), true);
                 }
             }
-            finish(line, sink);
+            self.complete(line, now, sink);
         }
+        self.orphan.clear();
     }
 
     /// Nothing is being spoken or translated.
     pub fn idle(&self) -> bool {
         self.lines.is_empty()
-    }
-}
-
-/// A line's translation ends as it stands (or the line goes, when nothing came of it).
-fn finish(line: Line, sink: &mut impl Sink) {
-    if line.en.trim().is_empty() && line.zh.trim().is_empty() {
-        sink.drop_line(line.id);
-    } else {
-        sink.translated(line.id, line.zh.trim(), true);
     }
 }
 
@@ -230,6 +301,88 @@ impl Sink for CaptionSink<'_> {
     }
 }
 
+/// Live Translate following the 聽 recognizer, while it runs (None otherwise).
+#[derive(Default)]
+pub struct Following(Mutex<Option<Interp>>);
+
+fn with_following(app: &AppHandle, f: impl FnOnce(&mut Interp, &mut TranslationSink)) {
+    let state = app.state::<Following>();
+    let Ok(mut g) = state.0.lock() else { return };
+    if let Some(interp) = g.as_mut() {
+        f(interp, &mut TranslationSink(app));
+    }
+}
+
+/// Live Translate starts supplying the captions' Chinese.
+pub fn follow_on(app: &AppHandle) {
+    if let Ok(mut g) = app.state::<Following>().0.lock() {
+        *g = Some(Interp::following());
+    }
+}
+
+/// It stopped: lines already ended keep what they have; later lines go to the text model.
+pub fn follow_off(app: &AppHandle) {
+    let taken = app.state::<Following>().0.lock().ok().and_then(|mut g| g.take());
+    if let Some(mut interp) = taken {
+        interp.flush(&mut TranslationSink(app));
+    }
+}
+
+/// Is Live Translate supplying the captions' Chinese?
+pub fn following(app: &AppHandle) -> bool {
+    app.state::<Following>().0.lock().is_ok_and(|g| g.is_some())
+}
+
+pub fn line_opened(app: &AppHandle, id: u64) {
+    with_following(app, |i, _| i.open_line(id));
+}
+
+pub fn line_ended(app: &AppHandle, id: u64, text: &str) {
+    with_following(app, |i, sink| i.end_line(id, text, Instant::now(), sink));
+}
+
+pub fn line_dropped(app: &AppHandle, id: u64) {
+    with_following(app, |i, _| i.remove_line(id));
+}
+
+/// A piece of Live Translate's Chinese.
+pub fn follow_translated(app: &AppHandle, piece: &str) {
+    with_following(app, |i, sink| i.translated(piece, Instant::now(), sink));
+}
+
+pub fn follow_tick(app: &AppHandle) {
+    with_following(app, |i, sink| i.tick(Instant::now(), sink));
+}
+
+/// A Live Translate session ended (it is replaced): lines that ended keep what they have.
+pub fn follow_flush(app: &AppHandle) {
+    with_following(app, |i, sink| i.flush(sink));
+}
+
+/// Nothing is waiting for Live Translate's Chinese.
+pub fn follow_idle(app: &AppHandle) -> bool {
+    app.state::<Following>().0.lock().map_or(true, |g| g.as_ref().is_none_or(Interp::idle))
+}
+
+/// Chinese onto the recognizer's lines (they show and keep their own text).
+pub struct TranslationSink<'a>(pub &'a AppHandle);
+
+impl Sink for TranslationSink<'_> {
+    /// Never called: following, lines are only opened by the recognizer (and captions::open would
+    /// take the Following lock this runs under).
+    fn open(&mut self) -> u64 {
+        0
+    }
+
+    fn heard(&mut self, _: u64, _: &str, _: bool) {}
+
+    fn translated(&mut self, id: u64, text: &str, done: bool) {
+        captions::set_translation(self.0, id, &zh::to_taiwan(text), done);
+    }
+
+    fn drop_line(&mut self, _: u64) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,7 +406,8 @@ mod tests {
         }
         fn translated(&mut self, id: u64, text: &str, done: bool) {
             let l = &mut self.lines[id as usize];
-            assert!(!l.3, "line {id} translated after its translation was complete");
+            // Late Chinese may extend a complete line, never reopen it.
+            assert!(!l.3 || done, "line {id} reopened after its translation was complete");
             (l.2, l.3) = (text.into(), done);
         }
         fn drop_line(&mut self, id: u64) {
@@ -359,6 +513,65 @@ mod tests {
         assert_eq!(s.lines[0].0, "Hello everyone again");
         i.heard(" again", ms(t0, 300), &mut s);
         assert_eq!(s.lines[0].0, "Hello everyone again again", "a repeated word is a piece, not the text so far");
+    }
+
+    #[test]
+    fn following_another_recognizer_only_the_chinese_comes_from_here() {
+        let (t0, mut s) = (Instant::now(), Screen::default());
+        let mut i = Interp::following();
+        let a = s.open();
+        i.open_line(a);
+        i.translated("歡迎來到", ms(t0, 500), &mut s);
+        i.tick(ms(t0, 3000), &mut s);
+        assert_eq!(s.lines[0], (String::new(), false, "歡迎來到".into(), false), "the recognizer ends lines, not pauses here");
+        i.end_line(a, "Welcome to the panel.", ms(t0, 3100), &mut s);
+        i.translated("座談會。", ms(t0, 3200), &mut s);
+        assert_eq!(s.lines[0], (String::new(), false, "歡迎來到座談會。".into(), true));
+        // Late Chinese with no line waiting joins the line just completed.
+        i.translated("各位好。", ms(t0, 3600), &mut s);
+        assert_eq!(s.lines[0].2, "歡迎來到座談會。各位好。");
+        // Later, it waits for the next line.
+        i.translated("今天", ms(t0, 6000), &mut s);
+        let b = s.open();
+        i.open_line(b);
+        i.translated("談數位典藏。", ms(t0, 6200), &mut s);
+        assert_eq!(s.lines[1].2, "今天談數位典藏。");
+        assert!(!s.lines[1].3, "not before the recognizer ends the line");
+        i.end_line(b, "Today it is digital archives.", ms(t0, 6500), &mut s);
+        assert!(s.lines[1].3);
+        assert!(i.idle());
+    }
+
+    #[test]
+    fn a_dropped_line_hands_its_chinese_on() {
+        let (t0, mut s) = (Instant::now(), Screen::default());
+        let mut i = Interp::following();
+        let (a, b) = (s.open(), s.open());
+        i.open_line(a);
+        i.translated("我們", ms(t0, 100), &mut s);
+        i.open_line(b);
+        i.remove_line(a);
+        i.translated("開始吧。", ms(t0, 200), &mut s);
+        i.end_line(b, "Let's start.", ms(t0, 300), &mut s);
+        assert_eq!(s.lines[1].2, "我們開始吧。");
+        assert!(s.lines[1].3);
+    }
+
+    #[test]
+    fn following_a_session_ending_keeps_lines_still_being_spoken() {
+        let (t0, mut s) = (Instant::now(), Screen::default());
+        let mut i = Interp::following();
+        let (a, b) = (s.open(), s.open());
+        i.open_line(a);
+        i.end_line(a, "First.", ms(t0, 0), &mut s);
+        i.open_line(b);
+        i.flush(&mut s);
+        assert!(s.lines[0].3, "the ended line keeps what it has");
+        assert!(!i.idle(), "the line still being spoken waits for the next session");
+        i.translated("第二句。", ms(t0, 5000), &mut s);
+        i.end_line(b, "Second.", ms(t0, 5100), &mut s);
+        assert_eq!(s.lines[1].2, "第二句。");
+        assert!(s.lines[1].3);
     }
 
     #[test]

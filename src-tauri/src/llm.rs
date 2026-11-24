@@ -36,12 +36,22 @@ pub struct Target {
     pub effort: String,
 }
 
+/// Live Translate (chosen under 翻) takes audio only: text jobs (replies, the summary, captions it
+/// cannot hear) go to this model, on the same Gemini key.
+pub const FALLBACK_ID: &str = "gemini-3.5-flash-lite";
+pub const FALLBACK_LABEL: &str = "Gemini 3.5 Flash-Lite";
+
 pub fn target(s: &Settings) -> Result<Target, String> {
-    let m = catalog::find(&s.llm_id).ok_or_else(|| format!("unknown model {}", s.llm_id))?;
+    let mut m = catalog::find(&s.llm_id).ok_or_else(|| format!("unknown model {}", s.llm_id))?;
+    let mut effort_setting = s.llm_effort.as_str();
+    if m.transport == catalog::AUDIO_TRANSLATE {
+        m = catalog::find(FALLBACK_ID).ok_or("fallback model missing")?;
+        effort_setting = "auto";
+    }
     if !m.available {
         return Err(format!("{} is not available yet", m.label));
     }
-    let effort = if s.llm_effort == "auto" || s.llm_effort.is_empty() { m.min_effort.to_string() } else { s.llm_effort.clone() };
+    let effort = if effort_setting == "auto" || effort_setting.is_empty() { m.min_effort.to_string() } else { effort_setting.to_string() };
     let (url, model, key) = match m.provider {
         "local" => {
             if s.local_llm_model.trim().is_empty() {

@@ -20,6 +20,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::archive;
 use crate::batch;
+use crate::gemini_translate;
 use crate::idle;
 use crate::llm;
 use crate::session::{Segment, Session};
@@ -132,15 +133,20 @@ pub fn open(app: &AppHandle) -> u64 {
         lines.insert(id, Line::new(Instant::now()));
     }
     archive::open_line(app, id);
+    gemini_translate::line_opened(app, id);
     idle::touch(app);
     id
 }
 
-/// The sentence so far (gray). Translated early when it keeps growing.
+/// The sentence so far (gray). Translated early when it keeps growing (unless Live Translate is
+/// supplying the Chinese).
 pub fn interim(app: &AppHandle, id: u64, text: &str) {
     idle::touch(app);
     if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {
         s.set_en(app, id, text, false);
+    }
+    if gemini_translate::following(app) {
+        return;
     }
     let now = Instant::now();
     let req = {
@@ -168,6 +174,13 @@ pub fn finish(app: &AppHandle, id: u64, text: &str) {
     idle::touch(app);
     debug_log(app, &format!("line {id} ended: {text}"));
     let now = Instant::now();
+    // Live Translate, hearing the same audio, brings this line's Chinese.
+    if gemini_translate::following(app) {
+        let opened = app.state::<Lines>().0.lock().ok().and_then(|l| l.get(&id).map(|l| l.opened)).unwrap_or(now);
+        crate::speakers::label_later(app, id, opened, now);
+        gemini_translate::line_ended(app, id, text);
+        return;
+    }
     let (req, opened) = {
         let state = app.state::<Lines>();
         let Ok(mut lines) = state.0.lock() else { return };
@@ -241,6 +254,7 @@ pub fn drop_line(app: &AppHandle, id: u64) {
         s.remove_segment(app, id);
     }
     archive::drop_line(app, id);
+    gemini_translate::line_dropped(app, id);
     forget(app, id);
 }
 
@@ -249,6 +263,7 @@ pub fn fail(app: &AppHandle, id: u64, msg: &str) {
     if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {
         s.upsert_segment(app, Segment { id, en: format!("〔{msg}〕"), is_final: true, ..Default::default() });
     }
+    gemini_translate::line_dropped(app, id);
     forget(app, id);
 }
 

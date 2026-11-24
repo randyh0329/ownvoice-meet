@@ -92,7 +92,7 @@ Get-FileHash .\OwnVoice.Meet_x.y.z_x64-setup.exe -Algorithm SHA256
 | Gemini 3.5 Transcribe Live（即時，約每小時 0.54 美元） | Claude Haiku 5.5、Sonnet 5.5 |
 | OpenAI gpt-live-transcribe（即時，約每小時 1.02 美元） | OpenAI gpt-6-luna、gpt-6.1-sol |
 | OpenAI gpt-4o-mini-transcribe（一句講完才出字，約每小時 0.18 美元） | Gemini 3.5 Flash-Lite、3.8 Flash |
-| Gemini 3.5 Transcribe（一句講完才出字，約每小時 0.30 美元） | |
+| Gemini 3.5 Transcribe（一句講完才出字，約每小時 0.30 美元） | **Gemini 3.5 Live Translate**（預覽版：直接聽原音翻成中文，「聽」可選任何辨識；約每小時 2.2 美元；回覆和摘要改用 Gemini 3.5 Flash-Lite） |
 | Gemini 3.5 Live Translate（同步口譯，預覽版：聽和翻一起做，字幕不經過「翻」的模型；約每小時 2.2 美元） | （回覆和摘要仍用這一欄選的模型） |
 | | **ChatGPT 方案**（gpt-6-luna，不用 API key：按 **Continue with ChatGPT** 登入，用你的 Go／Plus／Pro／Business 方案額度） |
 | 本機辨識（Parakeet＋SenseVoice；免費、在電腦上辨識、不需要 key；第一次下載約 910 MB） | |

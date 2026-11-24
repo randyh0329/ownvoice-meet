@@ -35,7 +35,8 @@ Every option, with list prices and a description in one format (speed, strength,
 | Listening | Gemini 3.5 Transcribe Live, OpenAI gpt-live-transcribe | streaming WebSocket (`gemini.rs`, `openai_rt.rs`) |
 | | OpenAI gpt-4o-mini-transcribe, local Whisper | one WAV per sentence to `/audio/transcriptions` (`stt_chunk.rs`, cut by `vad.rs`) |
 | | Gemini 3.5 Transcribe | one WAV per sentence, inline, to Gemini `/interactions` (`stt_chunk.rs`) |
-| Listening and translating | Gemini 3.5 Live Translate (preview) | streaming WebSocket with `translationConfig` to `zh-Hant` (`gemini.rs`); the transcript and translation streams are paired into caption lines by `gemini_translate.rs`, and the caption translation model is not called |
+| Listening and translating | Gemini 3.5 Live Translate (preview) | streaming WebSocket with `translationConfig` to `zh-TW` (`gemini.rs`); the transcript and translation streams are paired into caption lines by `gemini_translate.rs`, and the caption translation model is not called |
+| Translating from audio | Gemini 3.5 Live Translate chosen under 翻 (preview) | the same audio, resampled to 16 kHz, goes to Live Translate alongside the chosen recognizer (`run_following` in `lib.rs`); only its Chinese is used, paired onto the recognizer's lines (`gemini_translate.rs`, following). Text jobs (replies, summary, Live Captions) use Gemini 3.5 Flash-Lite (`llm::FALLBACK_ID`); a refused Live Translate connection sends captions back to it too |
 | | Windows Live Captions (Windows 11 22H2+, free, on the device; not listed elsewhere) | its caption text read with UI Automation every 25 ms (`live_captions.rs`), cut into sentences (`sentences.rs`) |
 | | Apple SpeechAnalyzer | planned (macOS) |
 | Translation and replies | Claude Haiku 5.5, Sonnet 5.5 | Anthropic Messages API, streaming |
