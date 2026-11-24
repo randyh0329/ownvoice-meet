@@ -323,12 +323,13 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
                     "sherpa" => local_stt::run(a, language, rx).await,
                     "openai-live" => openai_rt::run(a, m.id.into(), key.unwrap_or_default(), m.api_model.into(), captions::iso639(&language), rx).await,
                     _ => {
-                        let (base_url, model) = if m.provider == "local" {
-                            (s.local_stt_url.clone(), s.local_stt_model.clone())
-                        } else {
-                            ("https://api.openai.com/v1".to_string(), m.api_model.to_string())
+                        let (api, base_url, model, language) = match m.provider {
+                            "local" => (stt_chunk::Api::OpenAi, s.local_stt_url.clone(), s.local_stt_model.clone(), captions::iso639(&language)),
+                            // Gemini takes the BCP-47 code as Settings stores it (en-US).
+                            "gemini" => (stt_chunk::Api::Gemini, stt_chunk::GEMINI_BASE.to_string(), m.api_model.to_string(), language),
+                            _ => (stt_chunk::Api::OpenAi, "https://api.openai.com/v1".to_string(), m.api_model.to_string(), captions::iso639(&language)),
                         };
-                        let cfg = stt_chunk::Config { catalog_id: m.id.into(), base_url, key, model, language: captions::iso639(&language) };
+                        let cfg = stt_chunk::Config { catalog_id: m.id.into(), api, base_url, key, model, language };
                         stt_chunk::run(a, cfg, rx).await
                     }
                 }

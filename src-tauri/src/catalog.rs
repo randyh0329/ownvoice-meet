@@ -103,6 +103,22 @@ pub const MODELS: &[Model] = &[
         available: true,
     },
     Model {
+        id: "gemini-transcribe",
+        kind: Kind::Stt,
+        provider: "gemini",
+        api_model: "gemini-3.5-transcribe",
+        label: "Gemini 3.5 Transcribe",
+        transport: "chunked",
+        min_effort: "",
+        price: Price::PerMinute { usd: 0.005 },
+        price_note: "官方估算：音訊輸入 $2 + 文字輸出 $12 / 百萬 token",
+        speed: "切句上傳：一句講完才出字，沒有灰字",
+        strength: "約 Gemini Live 一半的價格；聽得懂 85 種以上語言、中英夾雜",
+        caution: "長句要等停頓（或 12 秒上限）才出字；免費層資料會被 Google 用來改進產品，請用付費層 key",
+        needs: "Gemini API key",
+        available: true,
+    },
+    Model {
         id: "windows-live-captions",
         kind: Kind::Stt,
         provider: "windows",
@@ -362,6 +378,8 @@ mod tests {
     fn costs() {
         let gem = find("gemini-live").unwrap();
         assert!((cost(gem, 3600.0, 0, 0, 0) - 0.54).abs() < 1e-9);
+        let batch = find("gemini-transcribe").unwrap();
+        assert!((cost(batch, 3600.0, 0, 0, 0) - 0.30).abs() < 1e-9);
         let haiku = find("claude-haiku-5-5").unwrap();
         // 180k input + 30k output ≈ $0.033, the estimate shown to the user
         assert!((cost(haiku, 0.0, 180_000, 0, 30_000) - 0.033).abs() < 1e-9);

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-use crate::stt_chunk::{self, Config};
+use crate::stt_chunk::{self, Api, Config};
 use crate::vad;
 
 /// Post half a second of silence to `<base>/audio/transcriptions`. Silence should come back as an
@@ -16,7 +16,7 @@ pub async fn check_stt(client: &reqwest::Client, base: &str, model: &str, key: O
     if base.is_empty() {
         return Err("請先填伺服器網址".into());
     }
-    let cfg = Config { catalog_id: "local-whisper".into(), base_url: base.into(), key, model: model.trim().into(), language: "en".into() };
+    let cfg = Config { catalog_id: "local-whisper".into(), api: Api::OpenAi, base_url: base.into(), key, model: model.trim().into(), language: "en".into() };
     let wav = vad::wav(&vec![0i16; stt_chunk::RATE as usize / 2], stt_chunk::RATE);
     let t0 = Instant::now();
     stt_chunk::transcribe(client, &format!("{base}/audio/transcriptions"), &cfg, wav).await?;

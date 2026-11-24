@@ -34,6 +34,7 @@ Every option, with list prices and a description in one format (speed, strength,
 |---|---|---|
 | Listening | Gemini 3.5 Transcribe Live, OpenAI gpt-live-transcribe | streaming WebSocket (`gemini.rs`, `openai_rt.rs`) |
 | | OpenAI gpt-4o-mini-transcribe, local Whisper | one WAV per sentence to `/audio/transcriptions` (`stt_chunk.rs`, cut by `vad.rs`) |
+| | Gemini 3.5 Transcribe | one WAV per sentence, inline, to Gemini `/interactions` (`stt_chunk.rs`) |
 | | Windows Live Captions (Windows 11 22H2+, free, on the device; not listed elsewhere) | its caption text read with UI Automation every 25 ms (`live_captions.rs`), cut into sentences (`sentences.rs`) |
 | | Apple SpeechAnalyzer | planned (macOS) |
 | Translation and replies | Claude Haiku 5.5, Sonnet 5.5 | Anthropic Messages API, streaming |
@@ -46,7 +47,7 @@ Keys are the user's own (bring your own key), stored in the OS keychain and neve
 
 ## Captions and early translation
 
-Every listening option goes through `captions.rs`: a line opens, its gray text updates, and when the sentence ends it turns white and is translated (streaming). A sentence that keeps growing for 4 s without ending is translated as it stands, at most every 2 s, so long unbroken speech shows Chinese before the speaker pauses; the final translation replaces it once it has caught up. A translation that finishes cancels older ones still running for the same line, and an older one never overwrites a newer one. The sentence-by-sentence options (gpt-4o-mini-transcribe, local Whisper) have no gray text, so they only get the final translation.
+Every listening option goes through `captions.rs`: a line opens, its gray text updates, and when the sentence ends it turns white and is translated (streaming). A sentence that keeps growing for 4 s without ending is translated as it stands, at most every 2 s, so long unbroken speech shows Chinese before the speaker pauses; the final translation replaces it once it has caught up. A translation that finishes cancels older ones still running for the same line, and an older one never overwrites a newer one. The sentence-by-sentence options (gpt-4o-mini-transcribe, Gemini 3.5 Transcribe, local Whisper) have no gray text, so they only get the final translation.
 
 Windows Live Captions shows one rolling block of text rather than separate results, and keeps revising it: the word being recognised ends with a provisional period, and periods in the middle come and go for a few seconds. `sentences.rs` finds its place by words (ignoring case and punctuation) and finishes a sentence only when its end has stayed put for 1.5 s with more words after it, or the text has been quiet for 1.5 s (3 s without a sentence end). A recording of real Live Captions output (`src-tauri/testdata/live-captions-en-trace.json`) is replayed in the tests: four whole sentences, no repeats.
 
