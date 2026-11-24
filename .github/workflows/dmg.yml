@@ -14,7 +14,9 @@ permissions:
 
 jobs:
   dmg:
-    runs-on: macos-latest
+    # Intel: GitHub has queued macOS arm64 jobs for 15+ minutes and dropped them (capacity). The
+    # universal build cross-compiles the arm64 half, so an Intel runner makes the same .dmg.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
