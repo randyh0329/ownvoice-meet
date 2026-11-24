@@ -13,6 +13,7 @@ mod catalog;
 mod chatgpt;
 mod demo;
 mod gemini;
+mod gemini_translate;
 mod gloss;
 mod idle;
 mod live_captions;
@@ -265,7 +266,7 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
     }
     let rate = match m.transport {
         "openai-live" => openai_rt::RATE,
-        "gemini-live" => gemini::RATE,
+        "gemini-live" | "gemini-translate" => gemini::RATE,
         _ => stt_chunk::RATE,
     };
     let device_hint = match &source {
@@ -273,7 +274,9 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
         audio::Source::Mic { .. } => "預設麥克風".to_string(),
         audio::Source::Loopback => "預設喇叭".to_string(),
     };
-    let about = archive::describe(&s, &device_hint, m.label, if record_only { "（不翻譯）" } else { translator });
+    // Live Translate translates the captions itself.
+    let translated_by = if record_only { "（不翻譯）" } else if m.transport == "gemini-translate" { m.label } else { translator };
+    let about = archive::describe(&s, &device_hint, m.label, translated_by);
     let (dir, tap) = match archive::begin(&app, &s, about, rate, true, record_only)? {
         Some((dir, tap)) => (Some(dir), tap),
         None => (None, None),
@@ -319,7 +322,18 @@ fn set_listening(app: AppHandle, listener: State<'_, Mutex<Listener>>, on: bool)
             async move {
                 let language = s.stt_language.clone();
                 match m.transport {
-                    "gemini-live" => gemini::run(a, key.unwrap_or_default(), m.api_model.into(), language, rx).await,
+                    "gemini-live" => {
+                        let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: None };
+                        gemini::run(a, key.unwrap_or_default(), opts, rx).await
+                    }
+                    "gemini-translate" => {
+                        let translate = gemini::Translate {
+                            target: "zh-Hant".into(),
+                            instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
+                        };
+                        let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: Some(translate) };
+                        gemini::run(a, key.unwrap_or_default(), opts, rx).await
+                    }
                     "sherpa" => local_stt::run(a, language, rx).await,
                     "openai-live" => openai_rt::run(a, m.id.into(), key.unwrap_or_default(), m.api_model.into(), captions::iso639(&language), rx).await,
                     _ => {

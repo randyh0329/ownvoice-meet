@@ -179,6 +179,45 @@ pub fn finish(app: &AppHandle, id: u64, text: &str) {
     spawn_translate(app.clone(), id, text.to_string(), req.0, req.1, false);
 }
 
+/// What was said so far on a line whose translation comes with the speech (Live Translate): gray,
+/// and never sent to the translation model.
+pub fn show_heard(app: &AppHandle, id: u64, text: &str) {
+    idle::touch(app);
+    if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {
+        s.set_en(app, id, text, false);
+    }
+}
+
+/// The line's final text when its translation comes with the speech: everything `finish` does
+/// except asking the translation model.
+pub fn finish_heard(app: &AppHandle, id: u64, text: &str) {
+    let text = text.trim();
+    let shown = if text.is_empty() { "…" } else { text };
+    if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {
+        s.set_en(app, id, shown, true);
+    }
+    archive::set_en(app, id, text);
+    batch::line_finished(app, id, text);
+    idle::touch(app);
+    debug_log(app, &format!("line {id} ended: {text}"));
+    let now = Instant::now();
+    let opened = app.state::<Lines>().0.lock().ok().and_then(|l| l.get(&id).map(|l| l.opened)).unwrap_or(now);
+    crate::speakers::label_later(app, id, opened, now);
+}
+
+/// A line's translation, as it came with the speech; `done` when it is complete.
+pub fn set_translation(app: &AppHandle, id: u64, zh: &str, done: bool) {
+    if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {
+        s.set_zh(app, id, zh);
+    }
+    if done {
+        archive::set_zh(app, id, zh);
+        batch::line_translated(app, id, zh);
+        debug_log(app, &format!("line {id} translated: {zh}"));
+        forget(app, id);
+    }
+}
+
 /// Who said line `id` (speakers.rs): shown on the line, kept in the transcript and the summary.
 pub fn set_speaker(app: &AppHandle, id: u64, who: usize, name: &str) {
     if let Ok(mut s) = app.state::<Mutex<Session>>().lock() {

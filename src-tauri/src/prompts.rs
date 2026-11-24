@@ -9,6 +9,21 @@ The utterance comes from speech recognition: it may contain recognition errors o
 When a word looks misrecognized, silently use the most plausible reading; keep an unknown name as heard. Never comment on the recognition or on your translation.
 Your entire output is shown as a subtitle: output only the Chinese translation, with no quotes, labels or notes.";
 
+/// Live Translate's system instruction (gemini_translate.rs): only wording, register and terms,
+/// since Google ignores instructions that go beyond translating into the target language.
+pub fn live_translate_instruction(glossary: &[(String, String)]) -> String {
+    let mut text = String::from(
+        "Translate for a Taiwanese participant following a meeting. Use Traditional Chinese as used in Taiwan (臺灣繁體中文), with Taiwan vocabulary: 軟體, 網路, 影片, 資料, 品質, 專案, 伺服器, 程式, not their Mainland forms. Natural, concise meeting register. Keep names, product names and acronyms as spoken.",
+    );
+    if !glossary.is_empty() {
+        text.push_str("\nAlways translate these terms this way:\n");
+        for (zh, en) in glossary {
+            text.push_str(&format!("- {en} → {zh}\n"));
+        }
+    }
+    text
+}
+
 /// The language the participant speaks in the meeting (Settings: speak_language), by its English
 /// name for the prompts. A code it does not know is passed on as it is.
 pub fn language_name(code: &str) -> String {

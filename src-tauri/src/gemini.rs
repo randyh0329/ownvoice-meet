@@ -5,6 +5,12 @@
 //   serverContent.interimInputTranscription.text  live hypothesis while someone talks (gray)
 //   serverContent.inputTranscription.text         finalized text at a pause (white, translated)
 // A session streams for up to 10 minutes, so it is replaced before that, at a pause when possible.
+// The same client runs Live Translate (gemini-3.5-live-translate-preview, per
+// ai.google.dev/gemini-api/docs/live-api/live-translate): setup adds
+// generationConfig.translationConfig { targetLanguageCode, echoTargetLanguage } with AUDIO out and
+// both transcriptions on; serverContent.inputTranscription is what was said and
+// outputTranscription the translation, both as continuous streams (gemini_translate.rs pairs them
+// into caption lines). The translated audio itself is not played.
 // OWNVOICE_DEBUG=1 appends every raw server message to gemini-debug.log in the config folder.
 
 use std::io::Write as _;
@@ -19,6 +25,7 @@ use tokio_tungstenite::tungstenite::{self, Message};
 
 use crate::audio::chunk_len;
 use crate::captions::{self, status};
+use crate::gemini_translate::{CaptionSink, Interp};
 use crate::usage;
 
 /// Gemini Live takes 16 kHz PCM.
@@ -36,12 +43,33 @@ enum End {
 
 struct Fatal(String);
 
+/// What a session is asked to do.
+pub struct Opts {
+    /// The catalog id usage is recorded under.
+    pub catalog_id: String,
+    pub model: String,
+    /// BCP-47 hint for the transcript; empty = detect. Transcription only.
+    pub language: String,
+    /// Live Translate instead of transcription.
+    pub translate: Option<Translate>,
+}
+
+pub struct Translate {
+    /// BCP-47, e.g. zh-Hant.
+    pub target: String,
+    /// System instruction: wording and glossary.
+    pub instruction: String,
+}
+
 /// Run until the audio channel closes (listening stopped), reconnecting as needed.
-pub async fn run(app: AppHandle, key: String, model: String, language: String, mut audio: mpsc::Receiver<Vec<i16>>) {
-    let mut live = Live::default();
+pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Receiver<Vec<i16>>) {
+    let mut handler = if opts.translate.is_some() { Handler::Translate(Interp::default()) } else { Handler::Transcribe(Live::default()) };
     let mut backoff = 1u64;
     loop {
-        match session(&app, &key, &model, &language, &mut audio, &mut live).await {
+        let res = session(&app, &key, &opts, &mut audio, &mut handler).await;
+        // A translation still owed by a closed socket will not come: its lines end as they stand.
+        handler.flush(&app);
+        match res {
             Ok(End::AudioClosed) => break,
             Ok(End::Rotate) => backoff = 1,
             Err(Err2::Fatal(Fatal(msg))) => {
@@ -57,6 +85,50 @@ pub async fn run(app: AppHandle, key: String, model: String, language: String, m
     }
 }
 
+/// What turns the server's messages into captions.
+enum Handler {
+    Transcribe(Live),
+    Translate(Interp),
+}
+
+impl Handler {
+    fn handle(&mut self, app: &AppHandle, v: &Value) {
+        match self {
+            Handler::Transcribe(live) => live.handle(app, v),
+            Handler::Translate(interp) => {
+                let sc = &v["serverContent"];
+                let mut sink = CaptionSink(app);
+                if let Some(t) = sc["inputTranscription"]["text"].as_str() {
+                    interp.heard(t, Instant::now(), &mut sink);
+                }
+                if let Some(t) = sc["outputTranscription"]["text"].as_str() {
+                    interp.translated(t, Instant::now(), &mut sink);
+                }
+            }
+        }
+    }
+
+    fn tick(&mut self, app: &AppHandle) {
+        if let Handler::Translate(interp) = self {
+            interp.tick(Instant::now(), &mut CaptionSink(app));
+        }
+    }
+
+    fn flush(&mut self, app: &AppHandle) {
+        if let Handler::Translate(interp) = self {
+            interp.flush(&mut CaptionSink(app));
+        }
+    }
+
+    /// Nobody is mid-sentence: a good moment to replace the session.
+    fn quiet(&self) -> bool {
+        match self {
+            Handler::Transcribe(live) => live.current.is_none(),
+            Handler::Translate(interp) => interp.idle(),
+        }
+    }
+}
+
 enum Err2 {
     Fatal(Fatal),
     Retry(String),
@@ -68,8 +140,41 @@ fn retry(e: impl std::fmt::Display) -> Err2 {
 
 type Ws = tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
+/// The setup message: transcription, or translation with both transcripts.
+fn setup_message(opts: &Opts) -> Value {
+    let model = format!("models/{}", opts.model);
+    match &opts.translate {
+        None => {
+            let languages: Vec<&str> = if opts.language.trim().is_empty() { vec![] } else { vec![opts.language.trim()] };
+            json!({
+                "setup": {
+                    "model": model,
+                    "generationConfig": { "responseModalities": ["TEXT"] },
+                    "inputAudioTranscription": { "languageCodes": languages }
+                }
+            })
+        }
+        Some(t) => {
+            let mut setup = json!({
+                "model": model,
+                "inputAudioTranscription": {},
+                "outputAudioTranscription": {},
+                "generationConfig": {
+                    "responseModalities": ["AUDIO"],
+                    // Speech already in the target language stays silent (no Chinese under Chinese).
+                    "translationConfig": { "targetLanguageCode": t.target, "echoTargetLanguage": false }
+                }
+            });
+            if !t.instruction.trim().is_empty() {
+                setup["systemInstruction"] = json!({ "parts": [{ "text": t.instruction }] });
+            }
+            json!({ "setup": setup })
+        }
+    }
+}
+
 /// Open a socket, send the setup and wait for setupComplete.
-async fn connect(key: &str, model: &str, language: &str, log: impl Fn(&str)) -> Result<Ws, Err2> {
+async fn connect(key: &str, opts: &Opts, log: impl Fn(&str)) -> Result<Ws, Err2> {
     let url = format!("{ENDPOINT}?key={key}");
     let (ws, _) = match tokio_tungstenite::connect_async(url.as_str()).await {
         Ok(ok) => ok,
@@ -87,15 +192,7 @@ async fn connect(key: &str, model: &str, language: &str, log: impl Fn(&str)) -> 
     };
     let (mut tx, mut rx) = ws.split();
 
-    let languages: Vec<&str> = if language.trim().is_empty() { vec![] } else { vec![language.trim()] };
-    let setup = json!({
-        "setup": {
-            "model": format!("models/{model}"),
-            "generationConfig": { "responseModalities": ["TEXT"] },
-            "inputAudioTranscription": { "languageCodes": languages }
-        }
-    });
-    tx.send(Message::Text(setup.to_string().into())).await.map_err(retry)?;
+    tx.send(Message::Text(setup_message(opts).to_string().into())).await.map_err(retry)?;
 
     // Wait for setupComplete before sending audio. A bad key or model closes the socket here,
     // with the reason in the close frame.
@@ -113,18 +210,11 @@ async fn connect(key: &str, model: &str, language: &str, log: impl Fn(&str)) -> 
     tx.reunite(rx).map_err(|_| retry("socket halves did not match"))
 }
 
-async fn session(
-    app: &AppHandle,
-    key: &str,
-    model: &str,
-    language: &str,
-    audio: &mut mpsc::Receiver<Vec<i16>>,
-    live: &mut Live,
-) -> Result<End, Err2> {
+async fn session(app: &AppHandle, key: &str, opts: &Opts, audio: &mut mpsc::Receiver<Vec<i16>>, live: &mut Handler) -> Result<End, Err2> {
     let log = |t: &str| debug_log(app, t);
-    let ws = connect(key, model, language, log).await?;
+    let ws = connect(key, opts, log).await?;
     let (mut tx, mut rx) = ws.split();
-    status(app, "聆聽中（Gemini Live）");
+    status(app, if opts.translate.is_some() { "聆聽中（Gemini Live 同步口譯）" } else { "聆聽中（Gemini Live）" });
 
     let started = Instant::now();
     let mut last_audio = Instant::now();
@@ -138,7 +228,7 @@ async fn session(
                     last_audio = Instant::now();
                     tx.send(audio_message(&chunk)).await.map_err(retry)?;
                     // Gemini bills every second streamed, silence included.
-                    usage::add_audio(app, "gemini-live", chunk.len() as f64 / RATE as f64);
+                    usage::add_audio(app, &opts.catalog_id, chunk.len() as f64 / RATE as f64);
                 }
                 None => {
                     // Listening stopped: end the stream and give the last words a moment to arrive.
@@ -169,9 +259,10 @@ async fn session(
             _ = tick.tick() => {
                 if last_audio.elapsed() > SILENCE_AFTER {
                     tx.send(audio_message(&silence)).await.map_err(retry)?;
-                    usage::add_audio(app, "gemini-live", silence.len() as f64 / RATE as f64);
+                    usage::add_audio(app, &opts.catalog_id, silence.len() as f64 / RATE as f64);
                 }
-                let quiet = live.current.is_none();
+                live.tick(app);
+                let quiet = live.quiet();
                 if (going_away && quiet) || (started.elapsed() > ROTATE_AT_PAUSE && quiet) || started.elapsed() > ROTATE_ANYWAY {
                     let _ = tx.close().await;
                     return Ok(End::Rotate);
@@ -394,7 +485,7 @@ mod tests {
     #[ignore]
     async fn gemini_bad_key_is_reported_not_retried() {
         let _ = rustls::crypto::ring::default_provider().install_default();
-        match connect("not-a-real-key", "gemini-3.5-transcribe-live", "en-US", |_| {}).await {
+        match connect("not-a-real-key", &transcribe_opts(), |_| {}).await {
             Err(Err2::Fatal(Fatal(msg))) => println!("fatal as expected: {msg}"),
             Err(Err2::Retry(msg)) => panic!("a bad key must not be retried forever: {msg}"),
             Ok(_) => panic!("a bad key must not connect"),
@@ -409,7 +500,50 @@ mod tests {
             return;
         };
         let _ = rustls::crypto::ring::default_provider().install_default();
-        let ws = connect(&key, "gemini-3.5-transcribe-live", "en-US", |t| println!("server: {t}")).await;
+        let ws = connect(&key, &transcribe_opts(), |t| println!("server: {t}")).await;
         assert!(ws.is_ok(), "setup failed");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn gemini_live_translate_reaches_setup_complete() {
+        let Ok(key) = std::env::var("GEMINI_API_KEY") else {
+            println!("GEMINI_API_KEY not set; skipped");
+            return;
+        };
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let ws = connect(&key, &translate_opts(), |t| println!("server: {t}")).await;
+        assert!(ws.is_ok(), "setup failed");
+    }
+
+    fn transcribe_opts() -> Opts {
+        Opts { catalog_id: "gemini-live".into(), model: "gemini-3.5-transcribe-live".into(), language: "en-US".into(), translate: None }
+    }
+
+    fn translate_opts() -> Opts {
+        Opts {
+            catalog_id: "gemini-live-translate".into(),
+            model: "gemini-3.5-live-translate-preview".into(),
+            language: String::new(),
+            translate: Some(Translate { target: "zh-Hant".into(), instruction: crate::prompts::live_translate_instruction(&[]) }),
+        }
+    }
+
+    #[test]
+    fn setup_messages() {
+        let t = setup_message(&transcribe_opts());
+        assert_eq!(t["setup"]["model"], "models/gemini-3.5-transcribe-live");
+        assert_eq!(t["setup"]["generationConfig"]["responseModalities"], json!(["TEXT"]));
+        assert_eq!(t["setup"]["inputAudioTranscription"]["languageCodes"], json!(["en-US"]));
+        assert!(t["setup"]["generationConfig"].get("translationConfig").is_none());
+
+        let x = setup_message(&translate_opts());
+        assert_eq!(x["setup"]["model"], "models/gemini-3.5-live-translate-preview");
+        assert_eq!(x["setup"]["generationConfig"]["responseModalities"], json!(["AUDIO"]));
+        assert_eq!(x["setup"]["generationConfig"]["translationConfig"]["targetLanguageCode"], "zh-Hant");
+        assert_eq!(x["setup"]["generationConfig"]["translationConfig"]["echoTargetLanguage"], false);
+        assert_eq!(x["setup"]["inputAudioTranscription"], json!({}));
+        assert_eq!(x["setup"]["outputAudioTranscription"], json!({}));
+        assert!(x["setup"]["systemInstruction"]["parts"][0]["text"].as_str().unwrap().contains("Taiwan"));
     }
 }

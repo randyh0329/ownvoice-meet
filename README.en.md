@@ -93,6 +93,7 @@ Bring your own keys, or your ChatGPT plan; keys are kept in the system's credent
 | OpenAI gpt-live-transcribe (live, about US$1.02 an hour) | OpenAI gpt-6-luna, gpt-6.1-sol |
 | OpenAI gpt-4o-mini-transcribe (per sentence, about US$0.18 an hour) | Gemini 3.5 Flash-Lite, 3.8 Flash |
 | Gemini 3.5 Transcribe (per sentence, about US$0.30 an hour) | |
+| Gemini 3.5 Live Translate (interpreter, preview: listens and translates in one, captions skip the translation model; about US$2.2 an hour) | (replies and the summary still use the model chosen here) |
 | | **ChatGPT plan** (gpt-6-luna, no API key: press **Continue with ChatGPT** and use your Go, Plus, Pro or Business plan) |
 | Local recognition (Parakeet and SenseVoice; free, on the device, no key; about 910 MB downloaded once) | |
 | A Whisper server on your own machine (free) | vLLM or Ollama on your own machine (free) |

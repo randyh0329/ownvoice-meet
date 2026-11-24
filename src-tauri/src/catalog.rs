@@ -71,6 +71,22 @@ pub const MODELS: &[Model] = &[
         available: true,
     },
     Model {
+        id: "gemini-live-translate",
+        kind: Kind::Stt,
+        provider: "gemini",
+        api_model: "gemini-3.5-live-translate-preview",
+        label: "Gemini 3.5 Live Translate（同步口譯：聽＋翻一起）",
+        transport: "gemini-translate",
+        min_effort: "",
+        price: Price::PerMinute { usd: 0.0368 },
+        price_note: "官方估算：音訊輸入 $3.50 + 譯文語音輸出 $21 / 百萬 token；不說話時較少",
+        speed: "即時串流：邊說邊出原文與中文，不等整句",
+        strength: "辨識和翻譯一次完成，字幕不經過「翻」的模型；聽得懂 70 種以上語言",
+        caution: "預覽版；約 Gemini Live＋Haiku 的 4 倍價格；台灣用語靠指示與術語表，偶有大陸用語；回覆和摘要仍用「翻」選的模型",
+        needs: "Gemini API key",
+        available: true,
+    },
+    Model {
         id: "openai-live",
         kind: Kind::Stt,
         provider: "openai",
@@ -380,6 +396,8 @@ mod tests {
         assert!((cost(gem, 3600.0, 0, 0, 0) - 0.54).abs() < 1e-9);
         let batch = find("gemini-transcribe").unwrap();
         assert!((cost(batch, 3600.0, 0, 0, 0) - 0.30).abs() < 1e-9);
+        let interp = find("gemini-live-translate").unwrap();
+        assert!((cost(interp, 3600.0, 0, 0, 0) - 2.208).abs() < 1e-9);
         let haiku = find("claude-haiku-5-5").unwrap();
         // 180k input + 30k output ≈ $0.033, the estimate shown to the user
         assert!((cost(haiku, 0.0, 180_000, 0, 30_000) - 0.033).abs() < 1e-9);
