@@ -19,7 +19,6 @@ struct SettingsView: View {
 
 private struct ListenTranslateTab: View {
     @Environment(AppModel.self) private var model
-    @State private var appleStatus = ""
 
     var body: some View {
         @Bindable var model = model
@@ -55,8 +54,8 @@ private struct ListenTranslateTab: View {
                             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Localization-Settings.extension")!)
                         }
                     }
-                    if !appleStatus.isEmpty {
-                        Text(verbatim: appleStatus).font(.caption)
+                    if !model.appleCheck.isEmpty {
+                        Text(verbatim: model.appleCheck).font(.caption)
                     }
                 }
             }
@@ -77,33 +76,32 @@ private struct ListenTranslateTab: View {
         let source = Locale.Language(identifier: s.meetingLanguage.isEmpty ? "en" : s.meetingLanguage)
         let (target, status) = await AppleTranslator.target(from: source, chinese: s.chinese)
         switch status {
-        case .installed: appleStatus = String(localized: "✓ Ready: \(s.meetingLanguage) → \(target) is on this Mac.")
-        case .supported: appleStatus = String(localized: "Not downloaded yet: open Language & Region → Translation Languages and download both languages.")
-        default: appleStatus = String(localized: "Apple Translation does not offer this pair.")
+        case .installed: model.appleCheck = String(localized: "✓ Ready: \(s.meetingLanguage) → \(target) is on this Mac.")
+        case .supported: model.appleCheck = String(localized: "Not downloaded yet: open Language & Region → Translation Languages and download both languages.")
+        default: model.appleCheck = String(localized: "Apple Translation does not offer this pair.")
         }
     }
 }
 
 private struct KeysTab: View {
-    @State private var gemini = Keychain.get("gemini") ?? ""
-    @State private var anthropic = Keychain.get("anthropic") ?? ""
-    @State private var saved = false
+    @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         Form {
             Section {
-                SecureField("Gemini API key", text: $gemini)
-                SecureField("Anthropic API key", text: $anthropic)
+                SecureField("Gemini API key", text: $model.geminiKeyDraft)
+                SecureField("Anthropic API key", text: $model.anthropicKeyDraft)
             } footer: {
                 Text("Kept in your login Keychain, never in a file. Apple recognition, Apple Translation and Gemma need no key.")
             }
             HStack {
                 Spacer()
-                if saved { Text("Saved").foregroundStyle(.secondary) }
+                if model.keysSaved { Text("Saved").foregroundStyle(.secondary) }
                 Button("Save Keys") {
-                    Keychain.set("gemini", gemini)
-                    Keychain.set("anthropic", anthropic)
-                    saved = true
+                    Keychain.set("gemini", model.geminiKeyDraft)
+                    Keychain.set("anthropic", model.anthropicKeyDraft)
+                    model.keysSaved = true
                 }
                 .keyboardShortcut(.defaultAction)
             }
@@ -114,8 +112,6 @@ private struct KeysTab: View {
 
 private struct AppearanceTab: View {
     @Environment(AppModel.self) private var model
-    @State private var language = InterfaceLanguage.current
-    @State private var languageChanged = false
 
     var body: some View {
         @Bindable var model = model
@@ -127,14 +123,10 @@ private struct AppearanceTab: View {
                 Toggle("Keep Window on Top", isOn: $model.settings.alwaysOnTop)
             }
             Section("Interface") {
-                Picker("Language", selection: $language) {
+                Picker("Language", selection: $model.interfaceLanguage) {
                     ForEach(InterfaceLanguage.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
-                .onChange(of: language) { _, new in
-                    new.apply()
-                    languageChanged = true
-                }
-                if languageChanged {
+                if model.languageChanged {
                     Text("Quit and reopen OwnVoice Meet to use the new language.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

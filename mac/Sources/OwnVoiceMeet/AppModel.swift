@@ -9,9 +9,25 @@ import OwnVoiceCore
 @MainActor
 @Observable
 final class AppModel {
+    /// The one model, for the app's whole life.
+    static let shared = AppModel()
+
     var settings = AppSettings.load() {
         didSet { settings.save() }
     }
+
+    // The Settings window's own state, kept here so it outlives its views.
+    var appleCheck = ""
+    var geminiKeyDraft = Keychain.get("gemini") ?? ""
+    var anthropicKeyDraft = Keychain.get("anthropic") ?? ""
+    var keysSaved = false
+    var interfaceLanguage = InterfaceLanguage.current {
+        didSet {
+            interfaceLanguage.apply()
+            languageChanged = true
+        }
+    }
+    var languageChanged = false
     private(set) var book = CaptionBook()
     private(set) var isListening = false
     private(set) var status = String(localized: "Press Start to listen.")
@@ -41,8 +57,9 @@ final class AppModel {
         let recognizer = self.recognizer!
         Task {
             do {
-                try await recognizer.start { [weak self] event in
-                    Task { @MainActor in self?.handle(event) }
+                // The model lives as long as the app.
+                try await recognizer.start { event in
+                    Task { @MainActor in self.handle(event) }
                 }
                 try await source.start { buffer in recognizer.feed(buffer) }
                 if case .appleSpeech = s.listen { status = String(localized: "Listening (on this Mac)") }

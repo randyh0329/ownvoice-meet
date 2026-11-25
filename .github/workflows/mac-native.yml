@@ -26,6 +26,10 @@ jobs:
           xcodebuild -version
       - name: Core tests
         run: swift test --package-path mac/Core
+      # With the macOS 27 SDK, SwiftUI's @State is a macro whose plugin ships only with Xcode; the
+      # app keeps building with the Command Line Tools by not using it (this runner's SDK cannot tell).
+      - name: No @State (builds with the Command Line Tools too)
+        run: "! grep -rn --include='*.swift' -E '^[^/]*@State\\b' mac/Sources"
       - name: Every interface string is translated
         run: python3 mac/scripts/check-strings.py
       - name: Build the app and the dmg

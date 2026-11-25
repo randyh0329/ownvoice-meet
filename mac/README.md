@@ -30,7 +30,7 @@ usage costs, OpenAI and the ChatGPT plan, Gemini Live Translate, updates.
 
 ## Build on a Mac
 
-Xcode 26 or later (or its Command Line Tools), then:
+Xcode 26 or later, or just the Command Line Tools (`xcode-select --install`), then:
 
 ```bash
 cd mac && scripts/build-app.sh
@@ -38,3 +38,7 @@ open "build/OwnVoice Meet.app"
 ```
 
 The ad hoc signed app: the first time, allow it in System Settings → Privacy & Security.
+
+The code avoids SwiftUI's `@State`: in the macOS 27 SDK it became a macro whose plugin ships only
+with Xcode, so the Command Line Tools could not build it. State lives in the observable `AppModel`
+instead; CI fails if `@State` comes back.
