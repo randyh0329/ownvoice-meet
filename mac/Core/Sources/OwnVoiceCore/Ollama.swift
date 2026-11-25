@@ -9,18 +9,14 @@ public enum Ollama {
     /// Ollama for macOS, as ollama.com offers it (a zip holding Ollama.app).
     public static let appDownload = URL(string: "https://ollama.com/download/Ollama-darwin.zip")!
 
-    /// Whether the /api/tags answer lists `model`. A plain `ollama pull gemma4` is E4B, listed as
-    /// gemma4:latest.
+    /// Whether the /api/tags answer lists `model` under that very tag. Ollama answers a request only
+    /// for a tag it lists: a model pulled as gemma4:latest is the same E4B, yet a request for
+    /// gemma4:e4b fails until that tag is pulled too, so :latest does not count.
     public static func hasModel(tags: Data, model: String) -> Bool {
         guard let v = (try? JSONSerialization.jsonObject(with: tags)) as? [String: Any],
               let models = v["models"] as? [[String: Any]] else { return false }
         let names = models.flatMap { [$0["name"] as? String, $0["model"] as? String].compactMap { $0 } }
-        return names.contains(model) || (latestAlias(model).map(names.contains) ?? false)
-    }
-
-    /// A plain `ollama pull gemma4` is E4B and `translategemma` is 4B: both listed as `:latest`.
-    static func latestAlias(_ model: String) -> String? {
-        ["gemma4:e4b": "gemma4:latest", "translategemma:4b": "translategemma:latest"][model]
+        return names.contains(model)
     }
 
     public enum PullStep: Equatable, Sendable {

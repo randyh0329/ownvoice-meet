@@ -7,6 +7,10 @@
 //     too and the Chinese reads as a whole sentence of plausible length, or when no Chinese has come
 //     for zhQuiet after the line ended. Chinese that completes one line and starts the next is split
 //     at the sentence end.
+//   - Chinese that comes when no line is waiting for it belongs to the line just completed (one
+//     English sentence may come back as two Chinese ones: "Right, let's start." as "對。" then
+//     "我們開始吧。"): that line's translation is sent again, longer, still done. Chinese with no
+//     line at all before it gets a line of its own, ended at once with nothing heard.
 // No network, no screen: a sink receives the lines, so the pairing is tested on its own.
 
 import Foundation
@@ -32,6 +36,8 @@ public struct Interpreter {
     }
 
     private var lines: [Line] = []
+    /// The line completed last, for Chinese that comes after it with no line waiting.
+    private var lastDone: Line?
     private var lastIn: Date?
     private var lastOut: Date?
 
@@ -59,13 +65,22 @@ public struct Interpreter {
         var rest = Substring(piece)
         while !rest.isEmpty {
             release(now: now, sink: sink)
-            if lines.isEmpty {
-                // Chinese with nothing heard before it: a line of its own.
-                lines.append(Line(id: sink.open(), ended: now))
-            }
             let cut = rest.firstIndex(where: Self.isZhEnd).map { rest.index(after: $0) } ?? rest.endIndex
             let head = rest[..<cut]
             rest = rest[cut...]
+            if lines.isEmpty, var last = lastDone {
+                // More Chinese for the line just completed.
+                Self.grow(&last.zh, String(head))
+                lastDone = last
+                sink.translated(last.id, last.zh.trimmingCharacters(in: .whitespacesAndNewlines), done: true)
+                continue
+            }
+            if lines.isEmpty {
+                // Chinese with nothing heard before it: a line of its own, with nothing heard.
+                let line = Line(id: sink.open(), ended: now)
+                sink.heard(line.id, "", done: true)
+                lines.append(line)
+            }
             let nextEnded = lines.count > 1 && lines[1].ended != nil
             Self.grow(&lines[0].zh, String(head))
             if Self.complete(lines[0], nextEnded: nextEnded) {
@@ -100,6 +115,7 @@ public struct Interpreter {
             complete(line, sink: sink)
         }
         lines.removeAll()
+        lastDone = nil
     }
 
     private mutating func release(now: Date, sink: InterpreterSink) {
@@ -108,12 +124,13 @@ public struct Interpreter {
         }
     }
 
-    private func complete(_ line: Line, sink: InterpreterSink) {
+    private mutating func complete(_ line: Line, sink: InterpreterSink) {
         let zh = line.zh.trimmingCharacters(in: .whitespacesAndNewlines)
         if line.heard.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && zh.isEmpty {
             sink.drop(line.id)
         } else {
             sink.translated(line.id, zh, done: true)
+            lastDone = line
         }
     }
 

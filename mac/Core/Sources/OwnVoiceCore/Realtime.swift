@@ -3,7 +3,8 @@
 // OpenAI gpt-live-transcribe over the Realtime WebSocket (developers.openai.com/api/docs/guides/
 // realtime-transcription): session.update with a transcription session (PCM 24 kHz, no server turn
 // detection); the client segments, sends input_audio_buffer.append then .commit per utterance (so
-// silence is never billed); deltas and the completed transcript come back per item_id.
+// silence is never billed); deltas and the completed transcript come back per item_id, not always
+// in the order the utterances were spoken (Utterances puts them back in order).
 //
 // Gemini Live Translate (gemini-3.5-live-translate-preview): setup adds translationConfig with AUDIO
 // out and both transcriptions; inputTranscription is what was said and outputTranscription the
@@ -24,6 +25,10 @@ public enum OpenAIRealtime {
         case delta(item: String, text: String)
         case completed(item: String, text: String)
         case error(String)
+        /// An utterance was committed (input_audio_buffer.committed): the order they were spoken in.
+        case committed(item: String)
+        /// No transcript will come for this utterance.
+        case failed(item: String)
     }
 
     public static func sessionUpdate(model: String, language: String) -> String {
@@ -57,8 +62,84 @@ public enum OpenAIRealtime {
         case "session.updated": return .accepted
         case "conversation.item.input_audio_transcription.delta": return .delta(item: item, text: v["delta"] as? String ?? "")
         case "conversation.item.input_audio_transcription.completed": return .completed(item: item, text: v["transcript"] as? String ?? "")
+        case "conversation.item.input_audio_transcription.failed": return .failed(item: item)
+        case "input_audio_buffer.committed": return .committed(item: item)
         case "error": return .error((v["error"] as? [String: Any])?["message"] as? String ?? "error")
         default: return nil
+        }
+    }
+}
+
+extension OpenAIRealtime {
+    /// One connection's transcripts as caption events, utterance by utterance in the order they
+    /// were spoken: the gray line shows the oldest utterance still being transcribed, and a
+    /// transcript that completes before an earlier one waits for it, so it never lands on the
+    /// earlier utterance's line. Make a new one for each connection.
+    public struct Utterances: Sendable {
+        public enum Output: Equatable, Sendable {
+            case partial(String)
+            case final(String)
+        }
+
+        private var order: [String] = []
+        private var texts: [String: String] = [:]
+        private var finals: [String: String] = [:]
+        private var ended: Set<String> = []
+
+        public init() {}
+
+        public mutating func handle(_ event: Event) -> [Output] {
+            switch event {
+            case .committed(let item):
+                note(item)
+                return []
+            case let .delta(item, text):
+                guard note(item) else { return [] }
+                texts[item, default: ""] += text
+                return item == order.first ? [.partial(texts[item] ?? "")] : []
+            case let .completed(item, text):
+                guard note(item) else { return [] }
+                finals[item] = text
+                return release()
+            case .failed(let item):
+                guard note(item) else { return [] }
+                // What was heard of it, if anything, is all there will be.
+                finals[item] = texts[item] ?? ""
+                return release()
+            case .accepted, .error:
+                return []
+            }
+        }
+
+        /// The connection dropped: each utterance still waiting ends with what was heard of it.
+        public mutating func flush() -> [Output] {
+            let out = order.map { Output.final(finals[$0] ?? texts[$0] ?? "") }
+            self = Utterances()
+            return out
+        }
+
+        /// Puts `item` in line; false for an utterance already ended.
+        @discardableResult
+        private mutating func note(_ item: String) -> Bool {
+            if ended.contains(item) { return false }
+            if !order.contains(item) { order.append(item) }
+            return true
+        }
+
+        /// The completed transcripts at the front, in order, then the gray line of the next one.
+        private mutating func release() -> [Output] {
+            var out: [Output] = []
+            while let first = order.first, let text = finals[first] {
+                out.append(.final(text))
+                order.removeFirst()
+                finals[first] = nil
+                texts[first] = nil
+                ended.insert(first)
+            }
+            if !out.isEmpty, let first = order.first, let text = texts[first], !text.isEmpty {
+                out.append(.partial(text))
+            }
+            return out
         }
     }
 }

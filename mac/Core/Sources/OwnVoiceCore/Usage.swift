@@ -90,9 +90,9 @@ public struct UsageBook: Codable, Equatable, Sendable {
         models.reduce(0) { $0 + $1.value.cost($1.key) }
     }
 
-    /// "2026-11": the month a record belongs to.
+    /// "2026-11": the month a record belongs to, a Gregorian one whatever calendar the Mac shows.
     public static func month(_ date: Date, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month], from: date)
+        let c = SessionFiles.gregorian(calendar).dateComponents([.year, .month], from: date)
         return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 0)
     }
 }

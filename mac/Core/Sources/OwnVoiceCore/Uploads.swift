@@ -39,6 +39,8 @@ public enum Uploads {
             "input": [["type": "audio", "data": wav.base64EncodedString(), "mime_type": "audio/wav"]],
             // Verbatim: Smart mode would act on "actually no, …" in a meeting as an editing instruction.
             "generation_config": ["transcription_config": ["language_codes": lang.isEmpty ? [] : [lang]]],
+            // The interaction is not kept on Google's side: the meeting's audio and its text stay private.
+            "store": false,
         ]
         return try JSONSerialization.data(withJSONObject: body)
     }

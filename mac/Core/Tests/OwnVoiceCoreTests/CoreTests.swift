@@ -208,8 +208,9 @@ final class SessionFileTests: XCTestCase {
 final class OllamaTests: XCTestCase {
     func testModelListAndPullLines() {
         XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b","model":"gemma4:e4b"}]}"#.utf8), model: "gemma4:e4b"))
-        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"}]}"#.utf8), model: "gemma4:e4b"), "a plain pull of gemma4 is E4B")
-        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"translategemma:latest"}]}"#.utf8), model: "translategemma:4b"))
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"}]}"#.utf8), model: "gemma4:e4b"), "Ollama does not answer gemma4:e4b for gemma4:latest")
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"translategemma:latest"}]}"#.utf8), model: "translategemma:4b"))
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"},{"name":"translategemma:4b"}]}"#.utf8), model: "translategemma:4b"))
         XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b"}]}"#.utf8), model: "translategemma:4b"))
         XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[]}"#.utf8), model: "gemma4:e4b"))
         XCTAssertEqual(Ollama.pullStep(#"{"status":"pulling manifest"}"#), .progress(status: "pulling manifest", done: 0, total: 0))
@@ -372,6 +373,7 @@ final class UploadTests: XCTestCase {
         XCTAssertEqual(try Uploads.transcriptionText(Data(#"{"text":" Hello. "}"#.utf8), status: 200), "Hello.")
         let g = try JSONSerialization.jsonObject(with: Uploads.geminiBody(model: "gemini-3.5-transcribe", language: "en-US", wav: Data("RIFF".utf8))) as! [String: Any]
         XCTAssertEqual(((g["input"] as! [[String: Any]])[0])["data"] as? String, "UklGRg==")
+        XCTAssertEqual(g["store"] as? Bool, false, "Google keeps neither the audio nor the transcript")
         XCTAssertEqual(try Uploads.geminiText(Data(#"{"status":"completed","steps":[{"type":"model_output","content":[{"type":"text","text":"Hello world"}]}]}"#.utf8), status: 200), "Hello world")
         XCTAssertThrowsError(try Uploads.geminiText(Data(#"{"status":"failed"}"#.utf8), status: 200))
     }
@@ -465,5 +467,179 @@ final class VoiceTests: XCTestCase {
         var book = UsageBook()
         book.addTokens("claude-opus-5-5", Tokens(input: 1_000_000, output: 100_000))
         XCTAssertEqual(book.total, 4 + 2, accuracy: 1e-9)
+    }
+}
+
+final class SecondReviewTests: XCTestCase {
+    func testTaiwanTextWithCharactersBothScriptsUseIsLeftAlone() {
+        XCTAssertEqual(ChineseVariant.traditionalTaiwan.fix("涂先生說夸克很小"), "涂先生說夸克很小")
+        let doc = "這筆交易很划算，佣金也合理。\n范先生說干擾不大，于是大家同意。\n麵包發霉了，手頭拮据。"
+        XCTAssertEqual(ChineseVariant.traditionalTaiwan.fix(doc), doc)
+        XCTAssertFalse(ChineseScript.isSimplified("我們的佣金是三成，這个價格很合理，大家都同意這件事情。"), "one stray character in a long line")
+        XCTAssertTrue(ChineseScript.isSimplified("他说好。"), "one in a short line is a fair share")
+        XCTAssertTrue(ChineseScript.isSimplified("我们开始吧"))
+    }
+
+    func testOnlyTheLinesThatReadAsSimplifiedAreConverted() {
+        let doc = "范先生說干擾不大。\r\n这个问题很重要。\n\n最後一行。"
+        XCTAssertEqual(ChineseVariant.traditionalTaiwan.fix(doc), "范先生說干擾不大。\r\n這個問題很重要。\n\n最後一行。")
+        XCTAssertEqual(ChineseScript.lines("a\nb\n").joined(), "a\nb\n")
+        XCTAssertEqual(ChineseScript.lines(""), [""])
+    }
+
+    func testChineseThatComesAfterItsLineIsCompletedStaysWithIt() {
+        var i = Interpreter()
+        let s = InterpreterTests.Screen()
+        i.heard("Right, let's start.", now: Date(timeIntervalSince1970: 0), sink: s)
+        i.tick(now: Date(timeIntervalSince1970: 1.1), sink: s)
+        i.translated("對。", now: Date(timeIntervalSince1970: 1.2), sink: s)
+        XCTAssertTrue(s.lines[0].zhDone)
+        i.translated("我們開始吧。", now: Date(timeIntervalSince1970: 1.4), sink: s)
+        XCTAssertEqual(s.lines.count, 1, "no line of its own")
+        XCTAssertEqual(s.lines[0].heard, "Right, let's start.")
+        XCTAssertEqual(s.lines[0].zh, "對。我們開始吧。")
+        XCTAssertTrue(s.lines[0].zhDone)
+        XCTAssertTrue(i.idle)
+
+        // Both sentences in one piece.
+        var j = Interpreter()
+        let t = InterpreterTests.Screen()
+        j.heard("Right, let's start.", now: Date(timeIntervalSince1970: 0), sink: t)
+        j.tick(now: Date(timeIntervalSince1970: 1.1), sink: t)
+        j.translated("對。我們開始吧。", now: Date(timeIntervalSince1970: 1.2), sink: t)
+        XCTAssertEqual(t.lines.count, 1)
+        XCTAssertEqual(t.lines[0].zh, "對。我們開始吧。")
+    }
+
+    func testChineseWithNothingHeardBeforeItEndsItsOwnLine() {
+        var i = Interpreter()
+        let s = InterpreterTests.Screen()
+        i.translated("大家好。", now: Date(timeIntervalSince1970: 0), sink: s)
+        XCTAssertEqual(s.lines.count, 1)
+        XCTAssertTrue(s.lines[0].heardDone, "ended, with nothing heard")
+        XCTAssertTrue(s.lines[0].zhDone)
+        XCTAssertTrue(i.idle)
+    }
+
+    func testGluedWordsInTheLiveHypothesisAreSpacedAgain() {
+        // Gemini's interim text for one line, as it arrived (the first version's debug log, 2026-10-17).
+        let arrived = [
+            "and then retire the old built servers",
+            "and then retire the old built servers once",
+            "and then retire the oldbuild servers once every single",
+            "and then retire the oldbuild servers onceevery single team has",
+            "and then retire the oldbuild servers once every single team has signed",
+            "and then retire the oldbuild servers onceevery single team has signed off on the",
+            "and then retire the oldbuild servers onceevery single team has signedoff on the migration checklist",
+            "and then retire the oldbuild servers onceevery single team has signedoff on the migrationchecklist that we shared last week.",
+        ]
+        var r = GeminiLive.Respace()
+        let shown = arrived.map { r.fix($0) }
+        XCTAssertEqual(shown.last, "and then retire the old build servers once every single team has signed off on the migration checklist that we shared last week.")
+        XCTAssertEqual(shown[2], "and then retire the old build servers once every single")
+
+        var o = GeminiLive.Respace()
+        _ = o.fix("they said an other")
+        XCTAssertEqual(o.fix("another day, they said an other"), "another day, they said an other", "ordinary words are not split")
+        XCTAssertEqual(o.fix("the theory is"), "the theory is")
+        o.reset()
+        XCTAssertTrue(o.prev.isEmpty)
+
+        var reader = GeminiLive.Reader()
+        func interim(_ t: String) -> Data { Data("{\"serverContent\":{\"interimInputTranscription\":{\"text\":\"\(t)\"}}}".utf8) }
+        _ = reader.parse(interim("retire the old built servers"))
+        XCTAssertEqual(reader.parse(interim("retire the oldbuild servers.Then")), [.partial("retire the old build servers. Then")])
+        XCTAssertEqual(reader.parse(Data(#"{"serverContent":{"inputTranscription":{"text":"Retire the old build servers."}}}"#.utf8)), [.final("Retire the old build servers.")])
+        XCTAssertEqual(reader.parse(interim("oldbuild")), [.partial("oldbuild")], "a new line starts afresh")
+    }
+
+    func testAnthropicStopReasonAndCacheTokens() throws {
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"message_start","message":{"usage":{"input_tokens":20,"cache_creation_input_tokens":1500,"cache_read_input_tokens":900,"output_tokens":1}}}"#),
+                       .usage(Tokens(input: 1520, cached: 900, output: 0)), "cache writes count as input")
+        let cut = #"data: {"type":"message_delta","delta":{"stop_reason":"max_tokens","stop_sequence":null},"usage":{"output_tokens":1000}}"#
+        XCTAssertEqual(Streaming.stopReason(cut, format: .anthropic), "max_tokens")
+        XCTAssertEqual(Streaming.anthropic(cut), .usage(Tokens(output: 1000)))
+        XCTAssertNil(Streaming.stopReason(#"data: {"type":"message_stop"}"#, format: .anthropic))
+
+        var reply = StreamedReply(.anthropic)
+        for line in [
+            "event: message_start",
+            #"data: {"type":"message_start","message":{"usage":{"input_tokens":20,"cache_creation_input_tokens":1500,"output_tokens":1}}}"#,
+            #"data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"會議"}}"#,
+            #"data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"摘要"}}"#,
+            cut,
+            #"data: {"type":"message_stop"}"#,
+        ] { try reply.read(line) }
+        XCTAssertEqual(reply.text, "會議摘要")
+        XCTAssertEqual(reply.tokens, Tokens(input: 1520, cached: 0, output: 1000))
+        XCTAssertTrue(reply.finished)
+        XCTAssertTrue(reply.truncated, "cut off at max_tokens: not a whole reply")
+
+        var whole = StreamedReply(.anthropic)
+        try whole.read(#"data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":5}}"#)
+        XCTAssertFalse(whole.truncated)
+        var failed = StreamedReply(.anthropic)
+        XCTAssertThrowsError(try failed.read(#"data: {"type":"error","error":{"message":"overloaded"}}"#))
+    }
+
+    func testGeminiUsageAndChatFinishReason() throws {
+        // Gemini's OpenAI-compatible stream: the usage rides with the last text, thinking counted in the total.
+        let last = #"data: {"choices":[{"delta":{"content":"吧。","role":"assistant"},"finish_reason":"stop","index":0}],"usage":{"prompt_tokens":800,"completion_tokens":40,"total_tokens":1040}}"#
+        XCTAssertEqual(Streaming.events(last, format: .chat), [.text("吧。"), .usage(Tokens(input: 800, cached: 0, output: 240))])
+        XCTAssertEqual(Streaming.chat(last), .text("吧。"))
+        XCTAssertEqual(Streaming.stopReason(last, format: .chat), "stop")
+        // OpenAI: total = prompt + completion, nothing counted twice.
+        XCTAssertEqual(Streaming.events(#"data: {"choices":[],"usage":{"prompt_tokens":1200,"completion_tokens":30,"total_tokens":1230,"prompt_tokens_details":{"cached_tokens":1000}}}"#, format: .chat),
+                       [.usage(Tokens(input: 200, cached: 1000, output: 30))])
+        // Gemini's own format.
+        let native = #"data: {"candidates":[{"content":{"parts":[{"text":"好的"}],"role":"model"},"finishReason":"MAX_TOKENS"}],"usageMetadata":{"promptTokenCount":500,"cachedContentTokenCount":100,"candidatesTokenCount":60,"thoughtsTokenCount":200,"totalTokenCount":760}}"#
+        XCTAssertEqual(Streaming.events(native, format: .chat), [.text("好的"), .usage(Tokens(input: 400, cached: 100, output: 260))])
+        XCTAssertTrue(Streaming.isTruncated(Streaming.stopReason(native, format: .chat)))
+
+        var reply = StreamedReply(.chat)
+        XCTAssertTrue(try reply.read(#"data: {"choices":[{"delta":{"content":"我們開始","role":"assistant"},"index":0}]}"#))
+        XCTAssertTrue(try reply.read(last))
+        XCTAssertFalse(try reply.read("data: [DONE]"))
+        XCTAssertEqual(reply.text, "我們開始吧。")
+        XCTAssertEqual(reply.tokens, Tokens(input: 800, cached: 0, output: 240))
+        XCTAssertTrue(reply.finished)
+        XCTAssertFalse(reply.truncated)
+        var long = StreamedReply(.chat)
+        try long.read(#"data: {"choices":[{"delta":{},"finish_reason":"length","index":0}]}"#)
+        XCTAssertTrue(long.truncated)
+    }
+
+    func testFolderNamesAndMonthsAreGregorianWhateverTheCalendar() {
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = TimeZone(identifier: "UTC")!
+        XCTAssertEqual(SessionFiles.folderName(Date(timeIntervalSince1970: 0), calendar: buddhist), "1970-01-01 0000")
+        var japanese = Calendar(identifier: .japanese)
+        japanese.timeZone = TimeZone(identifier: "Asia/Taipei")!
+        XCTAssertEqual(SessionFiles.folderName(Date(timeIntervalSince1970: 1_795_000_000), calendar: japanese), "2026-11-18 1906")
+        XCTAssertEqual(UsageBook.month(Date(timeIntervalSince1970: 0), calendar: buddhist), "1970-01")
+    }
+
+    func testRealtimeTranscriptsKeepTheOrderTheyWereSpoken() {
+        func event(_ json: String) -> OpenAIRealtime.Event { OpenAIRealtime.parse(Data(json.utf8))! }
+        XCTAssertEqual(event(#"{"type":"input_audio_buffer.committed","item_id":"a","previous_item_id":null}"#), .committed(item: "a"))
+        XCTAssertEqual(event(#"{"type":"conversation.item.input_audio_transcription.failed","item_id":"a","error":{}}"#), .failed(item: "a"))
+
+        var u = OpenAIRealtime.Utterances()
+        XCTAssertEqual(u.handle(.committed(item: "a")), [])
+        XCTAssertEqual(u.handle(.delta(item: "a", text: "Good")), [.partial("Good")])
+        XCTAssertEqual(u.handle(.committed(item: "b")), [])
+        XCTAssertEqual(u.handle(.delta(item: "b", text: "Next")), [], "the gray line is the first utterance's")
+        XCTAssertEqual(u.handle(.completed(item: "b", text: "Next one.")), [], "waits for the earlier utterance")
+        XCTAssertEqual(u.handle(.delta(item: "a", text: " morning")), [.partial("Good morning")])
+        XCTAssertEqual(u.handle(.completed(item: "a", text: "Good morning.")), [.final("Good morning."), .final("Next one.")])
+        XCTAssertEqual(u.handle(.delta(item: "a", text: "late")), [], "an ended utterance stays ended")
+
+        XCTAssertEqual(u.handle(.committed(item: "c")), [])
+        XCTAssertEqual(u.handle(.committed(item: "d")), [])
+        XCTAssertEqual(u.handle(.delta(item: "d", text: "Then")), [])
+        XCTAssertEqual(u.handle(.failed(item: "c")), [.final(""), .partial("Then")], "a failed one gives way; the next shows gray")
+        XCTAssertEqual(u.handle(.delta(item: "d", text: " we")), [.partial("Then we")])
+        XCTAssertEqual(u.flush(), [.final("Then we")], "the connection dropped: it ends as heard")
+        XCTAssertEqual(u.handle(.delta(item: "e", text: "Back")), [.partial("Back")], "after a reconnect the gray line shows again")
     }
 }

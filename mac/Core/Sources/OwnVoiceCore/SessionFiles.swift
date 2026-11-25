@@ -33,10 +33,19 @@ public struct Segment: Equatable, Sendable {
 }
 
 public enum SessionFiles {
-    /// "2026-11-25 1405": the session's folder name, sortable.
+    /// "2026-11-25 1405": the session's folder name, sortable. Always a Gregorian date, in the time
+    /// zone of `calendar`, whatever calendar the Mac is set to show (a Buddhist or Japanese one
+    /// would otherwise give "2569-…" or "0008-…").
     public static func folderName(_ date: Date, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let c = gregorian(calendar).dateComponents([.year, .month, .day, .hour, .minute], from: date)
         return String(format: "%04d-%02d-%02d %02d%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0)
+    }
+
+    /// The Gregorian calendar in `calendar`'s time zone.
+    static func gregorian(_ calendar: Calendar) -> Calendar {
+        var g = Calendar(identifier: .gregorian)
+        g.timeZone = calendar.timeZone
+        return g
     }
 
     /// `base`, or "base 2", "base 3"… when that name is taken.
