@@ -13,6 +13,7 @@
 "Apple on-device recognition does not support %@." = "Apple 裝置上辨識不支援 %@。";
 "Apple on-device recognition has no audio format for this language." = "Apple 裝置上辨識沒有這個語言可用的音訊格式。";
 "Apple recognition stopped: %@" = "Apple 辨識停止了：%@";
+"Background" = "背景";
 "Captions" = "字幕";
 "Captions appear here: what is said, and its Chinese under it." = "字幕會出現在這裡：上面是說的話，下面是中文。";
 "Check Again" = "再檢查一次";
@@ -22,9 +23,11 @@
 "Choose…" = "選擇…";
 "Claude Haiku 5.5 (about US$0.03 an hour)" = "Claude Haiku 5.5（約每小時 US$0.03）";
 "Clear Captions" = "清除字幕";
+"Colors" = "顏色";
 "Copy" = "複製";
 "Could not make the session folder: %@" = "無法建立這次的資料夾：%@";
 "Could not start the recording: %@" = "無法開始錄音：%@";
+"Custom" = "自訂";
 "Don't save" = "不存檔";
 "Downloading Apple's speech model…" = "正在下載 Apple 語音模型…";
 "Downloading Gemma 4 E4B (about 7 GB)…" = "正在下載 Gemma 4 E4B（約 7 GB）…";
@@ -73,6 +76,7 @@
 "Meeting language" = "會議語言";
 "Microphone (in the room)" = "麥克風（實體會場）";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "麥克風權限沒開：到「系統設定 → 隱私權與安全性 → 麥克風」打開 OwnVoice Meet。";
+"Monospaced font" = "等寬字型";
 "No display found to capture sound from." = "找不到可以擷取聲音的螢幕。";
 "No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again." = "沒有權限聽 Mac 播放的聲音：到「系統設定 → 隱私權與安全性 → 螢幕與系統錄音」打開 OwnVoice Meet，再重新開始。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "還沒有講稿。按「編輯」直接寫、「開啟…」讀 .md 檔，或「插入範本」從範例開始。只寫一種語言也可以，按「補對照」補上另一半。";
@@ -108,6 +112,7 @@
 "Set Up Gemma 4 (Free, Offline)…" = "設定 Gemma 4（免費、不連網）…";
 "Settings" = "設定";
 "Show in Finder" = "在 Finder 中顯示";
+"Solarized" = "Solarized";
 "Sound" = "聲音";
 "Sound the Mac plays (online meetings)" = "Mac 播放的聲音（線上會議）";
 "Sound: %@" = "收音：%@";
@@ -120,9 +125,13 @@
 "Stop" = "停止";
 "Stop Listening" = "停止聆聽";
 "Stopped." = "已停止。";
+"Subtitles" = "電影字幕";
 "Summary" = "摘要";
 "Summary & Saving" = "摘要與存檔";
 "Summary failed: %@" = "摘要失敗：%@";
+"System" = "跟系統一樣";
+"Terminal (amber)" = "終端機（琥珀色）";
+"Terminal (green)" = "終端機（綠色）";
 "Text size" = "文字大小";
 "Thai" = "泰文";
 "The Ollama download did not contain Ollama.app." = "下載的 Ollama 裡沒有 Ollama.app。";
@@ -133,6 +142,7 @@
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "模型還沒下載完就中斷了，按「設定 Gemma 4」繼續。";
 "The model returned nothing." = "模型沒有回傳內容。";
 "The script changed while filling in; try again." = "補對照時講稿被改過了，請再試一次。";
+"Theme" = "主題";
 "Transcript" = "逐字稿";
 "Transcript and summary" = "逐字稿和摘要";
 "Transcript, summary and recording" = "逐字稿、摘要和錄音";
@@ -150,6 +160,7 @@
 "Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma." = "用文字模型：就是「翻譯」選的那個；選 Apple 翻譯時，用第一個有金鑰的（Claude、Gemini），都沒有就用 Gemma。";
 "Vietnamese" = "越南文";
 "What do you want to say? (Chinese)" = "想說什麼？（用中文打）";
+"What was said" = "說的話（原文）";
 "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen." = "macOS 內建的 SpeechAnalyzer：在 Mac 上辨識，說話中就有灰字。第一次會下載該語言的模型。需要選定會議語言。";
 "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages." = "macOS 內建的翻譯：中文幾乎立刻出現。一句一句翻，不看前文也不用術語表。請先到「系統設定 → 一般 → 語言與地區 → 翻譯語言」下載語言包。";
 "✓ Ready: %@ → %@ is on this Mac." = "✓ 可以用了：%@ → %@ 已在這台 Mac 上。";

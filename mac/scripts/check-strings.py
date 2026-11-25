@@ -13,7 +13,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "Sources"
 LOCALES = ["en", "zh-Hant", "zh-Hans"]
-CALL = re.compile(r'(?:String\(localized:|LocalizedStringKey\(|\b(?:Text|Button|Toggle|Picker|Section|Tab|SecureField|CommandMenu|Window|Label|LabeledContent|TextField)\(|\.help\()\s*"((?:[^"\\]|\\.)*)"')
+CALL = re.compile(r'(?:String\(localized:|LocalizedStringKey\(|\b(?:Text|Button|Toggle|Picker|Section|Tab|SecureField|CommandMenu|Window|Label|LabeledContent|TextField|ColorPicker)\(|\.help\()\s*"((?:[^"\\]|\\.)*)"')
 
 
 def keys():

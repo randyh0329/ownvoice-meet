@@ -10,22 +10,25 @@ struct CaptionsView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        let style = CaptionStyle.of(model.settings)
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         if model.book.lines.isEmpty {
                             Text("Captions appear here: what is said, and its Chinese under it.")
-                                .foregroundStyle(.secondary)
+                                .font(style.font(size: 14))
+                                .foregroundStyle(style.partial)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         ForEach(model.book.lines) { line in
-                            CaptionRow(line: line, fontSize: model.settings.fontSize)
+                            CaptionRow(line: line, fontSize: model.settings.fontSize, style: style)
                                 .id(line.id)
                         }
                     }
                     .padding(16)
                 }
+                .background(style.background ?? .clear)
                 .onChange(of: model.book.lines.last) { _, last in
                     if let last { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
@@ -67,15 +70,17 @@ struct CaptionsView: View {
 struct CaptionRow: View {
     let line: CaptionLine
     let fontSize: Double
+    let style: CaptionStyle
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(verbatim: line.heard)
-                .font(.system(size: fontSize * 0.8))
-                .foregroundStyle(line.isFinal ? .primary : .secondary)
+                .font(style.font(size: fontSize * 0.8))
+                .foregroundStyle(line.isFinal ? style.heard : style.partial)
             if !line.translation.isEmpty {
                 Text(verbatim: line.translation)
-                    .font(.system(size: fontSize, weight: .medium))
+                    .font(style.font(size: fontSize, weight: .medium))
+                    .foregroundStyle(style.translation)
             }
         }
         .textSelection(.enabled)

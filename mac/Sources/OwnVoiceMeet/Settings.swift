@@ -169,6 +169,11 @@ struct AppSettings: Codable, Equatable {
     var glossary = ""
     var alwaysOnTop = true
     var fontSize = 20.0
+    var captionTheme: CaptionTheme = .system
+    var customHeard = "#33FF66"
+    var customTranslation = "#FFE066"
+    var customBackground = "#0C0C0C"
+    var customMonospaced = true
 
     init() {}
 
@@ -188,6 +193,11 @@ struct AppSettings: Codable, Equatable {
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize
+        captionTheme = (try? c.decodeIfPresent(CaptionTheme.self, forKey: .captionTheme)) ?? d.captionTheme
+        customHeard = (try? c.decodeIfPresent(String.self, forKey: .customHeard)) ?? d.customHeard
+        customTranslation = (try? c.decodeIfPresent(String.self, forKey: .customTranslation)) ?? d.customTranslation
+        customBackground = (try? c.decodeIfPresent(String.self, forKey: .customBackground)) ?? d.customBackground
+        customMonospaced = (try? c.decodeIfPresent(Bool.self, forKey: .customMonospaced)) ?? d.customMonospaced
     }
 
     /// Where sessions are saved.

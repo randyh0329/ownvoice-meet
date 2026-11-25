@@ -13,22 +13,28 @@ struct ReplyView: View {
 
     var body: some View {
         @Bindable var model = model
+        let style = CaptionStyle.of(model.settings)
         VStack(alignment: .leading, spacing: 12) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.replyChinese.isEmpty {
                         Text("Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text.")
-                            .foregroundStyle(.secondary)
+                            .font(style.font(size: 14))
+                            .foregroundStyle(style.partial)
                     } else {
                         Text(verbatim: model.replyChinese)
-                            .foregroundStyle(.secondary)
+                            .font(style.font(size: model.settings.fontSize * 0.8))
+                            .foregroundStyle(style.translation)
                         Text(verbatim: model.replyText.isEmpty ? "…" : model.replyText)
-                            .font(.system(size: model.settings.fontSize * 1.5, weight: .semibold))
+                            .font(style.font(size: model.settings.fontSize * 1.5, weight: .semibold))
+                            .foregroundStyle(style.heard)
                             .textSelection(.enabled)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
             }
+            .background(style.background ?? .clear, in: RoundedRectangle(cornerRadius: 8))
             TextField("What do you want to say? (Chinese)", text: $model.replyInput, axis: .vertical)
                 .lineLimit(2...5)
                 .textFieldStyle(.roundedBorder)

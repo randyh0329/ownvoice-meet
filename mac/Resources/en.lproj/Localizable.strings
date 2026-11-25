@@ -13,6 +13,7 @@
 "Apple on-device recognition does not support %@." = "Apple on-device recognition does not support %@.";
 "Apple on-device recognition has no audio format for this language." = "Apple on-device recognition has no audio format for this language.";
 "Apple recognition stopped: %@" = "Apple recognition stopped: %@";
+"Background" = "Background";
 "Captions" = "Captions";
 "Captions appear here: what is said, and its Chinese under it." = "Captions appear here: what is said, and its Chinese under it.";
 "Check Again" = "Check Again";
@@ -22,9 +23,11 @@
 "Choose…" = "Choose…";
 "Claude Haiku 5.5 (about US$0.03 an hour)" = "Claude Haiku 5.5 (about US$0.03 an hour)";
 "Clear Captions" = "Clear Captions";
+"Colors" = "Colors";
 "Copy" = "Copy";
 "Could not make the session folder: %@" = "Could not make the session folder: %@";
 "Could not start the recording: %@" = "Could not start the recording: %@";
+"Custom" = "Custom";
 "Don't save" = "Don't save";
 "Downloading Apple's speech model…" = "Downloading Apple's speech model…";
 "Downloading Gemma 4 E4B (about 7 GB)…" = "Downloading Gemma 4 E4B (about 7 GB)…";
@@ -73,6 +76,7 @@
 "Meeting language" = "Meeting language";
 "Microphone (in the room)" = "Microphone (in the room)";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone.";
+"Monospaced font" = "Monospaced font";
 "No display found to capture sound from." = "No display found to capture sound from.";
 "No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again." = "No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
@@ -108,6 +112,7 @@
 "Set Up Gemma 4 (Free, Offline)…" = "Set Up Gemma 4 (Free, Offline)…";
 "Settings" = "Settings";
 "Show in Finder" = "Show in Finder";
+"Solarized" = "Solarized";
 "Sound" = "Sound";
 "Sound the Mac plays (online meetings)" = "Sound the Mac plays (online meetings)";
 "Sound: %@" = "Sound: %@";
@@ -120,9 +125,13 @@
 "Stop" = "Stop";
 "Stop Listening" = "Stop Listening";
 "Stopped." = "Stopped.";
+"Subtitles" = "Subtitles";
 "Summary" = "Summary";
 "Summary & Saving" = "Summary & Saving";
 "Summary failed: %@" = "Summary failed: %@";
+"System" = "System";
+"Terminal (amber)" = "Terminal (amber)";
+"Terminal (green)" = "Terminal (green)";
 "Text size" = "Text size";
 "Thai" = "Thai";
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
@@ -133,6 +142,7 @@
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "The model download stopped before it finished; press Set Up Gemma 4 to go on.";
 "The model returned nothing." = "The model returned nothing.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
+"Theme" = "Theme";
 "Transcript" = "Transcript";
 "Transcript and summary" = "Transcript and summary";
 "Transcript, summary and recording" = "Transcript, summary and recording";
@@ -150,6 +160,7 @@
 "Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma." = "Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma.";
 "Vietnamese" = "Vietnamese";
 "What do you want to say? (Chinese)" = "What do you want to say? (Chinese)";
+"What was said" = "What was said";
 "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen." = "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen.";
 "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages." = "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages.";
 "✓ Ready: %@ → %@ is on this Mac." = "✓ Ready: %@ → %@ is on this Mac.";

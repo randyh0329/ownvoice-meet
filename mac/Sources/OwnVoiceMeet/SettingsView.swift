@@ -208,6 +208,11 @@ private struct KeysTab: View {
 private struct AppearanceTab: View {
     @Environment(AppModel.self) private var model
 
+    /// A color setting (stored as "#RRGGBB") for a ColorPicker.
+    private func hexBinding(_ key: WritableKeyPath<AppSettings, String>) -> Binding<Color> {
+        Binding(get: { Color(hex: model.settings[keyPath: key]) }, set: { model.settings[keyPath: key] = $0.hex })
+    }
+
     var body: some View {
         @Bindable var model = model
         Form {
@@ -216,6 +221,18 @@ private struct AppearanceTab: View {
                     Text("Text size")
                 }
                 Toggle("Keep Window on Top", isOn: $model.settings.alwaysOnTop)
+            }
+            Section("Colors") {
+                Picker("Theme", selection: $model.settings.captionTheme) {
+                    ForEach(CaptionTheme.allCases) { Text(verbatim: $0.label).tag($0) }
+                }
+                if model.settings.captionTheme == .custom {
+                    ColorPicker("What was said", selection: hexBinding(\.customHeard), supportsOpacity: false)
+                    ColorPicker("Chinese", selection: hexBinding(\.customTranslation), supportsOpacity: false)
+                    ColorPicker("Background", selection: hexBinding(\.customBackground), supportsOpacity: false)
+                    Toggle("Monospaced font", isOn: $model.settings.customMonospaced)
+                }
+                ThemePreview(style: CaptionStyle.of(model.settings), fontSize: model.settings.fontSize)
             }
             Section("Interface") {
                 Picker("Language", selection: $model.interfaceLanguage) {
@@ -229,5 +246,20 @@ private struct AppearanceTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Two caption lines in the chosen colors: one finished and translated, one still being spoken.
+private struct ThemePreview: View {
+    let style: CaptionStyle
+    let fontSize: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CaptionRow(line: CaptionLine(id: 1, heard: "Welcome to the panel on digital libraries.", translation: "歡迎來到數位圖書館座談會。", isFinal: true), fontSize: min(fontSize, 22), style: style)
+            CaptionRow(line: CaptionLine(id: 2, heard: "Our first panelist will talk about", isFinal: false), fontSize: min(fontSize, 22), style: style)
+        }
+        .padding(12)
+        .background(style.background ?? Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
     }
 }
