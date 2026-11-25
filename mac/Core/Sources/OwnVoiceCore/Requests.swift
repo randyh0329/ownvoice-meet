@@ -1,0 +1,62 @@
+// Request bodies and answers for the text models: Anthropic's Messages API, and the OpenAI-style
+// Chat Completions that Gemini (its OpenAI-compatible endpoint) and Ollama also serve.
+
+import Foundation
+
+public struct ServiceError: LocalizedError, Equatable {
+    public let message: String
+    public init(_ message: String) { self.message = message }
+    public var errorDescription: String? { message }
+}
+
+public enum Requests {
+    public static let anthropicURL = URL(string: "https://api.anthropic.com/v1/messages")!
+    public static let geminiCompatURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!
+    public static let ollamaURL = URL(string: "http://localhost:11434/v1/chat/completions")!
+
+    /// `effort`: the lowest thinking setting the model takes ("" leaves the default).
+    public static func anthropicBody(model: String, system: String, user: String, effort: String, maxTokens: Int = 1000) throws -> Data {
+        var body: [String: Any] = [
+            "model": model,
+            "max_tokens": maxTokens,
+            "system": system,
+            "messages": [["role": "user", "content": user]],
+        ]
+        if !effort.isEmpty { body["output_config"] = ["effort": effort] }
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+
+    public static func chatBody(model: String, system: String, user: String, effort: String) throws -> Data {
+        var body: [String: Any] = [
+            "model": model,
+            "messages": [["role": "system", "content": system], ["role": "user", "content": user]],
+        ]
+        if !effort.isEmpty { body["reasoning_effort"] = effort }
+        return try JSONSerialization.data(withJSONObject: body)
+    }
+
+    /// The text of a Messages API answer.
+    public static func anthropicText(_ data: Data, status: Int) throws -> String {
+        let v = try object(data, status: status)
+        let parts = (v["content"] as? [[String: Any]] ?? []).filter { $0["type"] as? String == "text" }
+        return parts.compactMap { $0["text"] as? String }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The text of a Chat Completions answer.
+    public static func chatText(_ data: Data, status: Int) throws -> String {
+        let v = try object(data, status: status)
+        let message = ((v["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any]) ?? [:]
+        return (message["content"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The JSON answer, or the service's own error message.
+    static func object(_ data: Data, status: Int) throws -> [String: Any] {
+        let v = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        guard (200..<300).contains(status), let v else {
+            let error = v?["error"]
+            let message = (error as? [String: Any])?["message"] as? String ?? error as? String ?? String(decoding: data.prefix(200), as: UTF8.self)
+            throw ServiceError("\(status)：\(message)")
+        }
+        return v
+    }
+}

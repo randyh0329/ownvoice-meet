@@ -1,0 +1,3 @@
+"NSMicrophoneUsageDescription" = "OwnVoice Meet 会听麦克风，为线下会场的演讲加字幕。";
+"NSSpeechRecognitionUsageDescription" = "OwnVoice Meet 在这台 Mac 上识别语音来显示字幕。";
+"NSAudioCaptureUsageDescription" = "OwnVoice Meet 会听 Mac 播放的声音，为线上会议加字幕。";

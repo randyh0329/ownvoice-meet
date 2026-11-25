@@ -1,0 +1,37 @@
+# The native Mac app (mac/, SwiftUI, Apple Silicon, macOS 26+): the Core tests, every interface
+# string translated, then OwnVoice Meet.app and a .dmg attached to the run. On changes under mac/
+# or by hand. Built on an Intel runner (arm64 macOS jobs have waited 15+ minutes for a machine),
+# cross-compiling for arm64.
+name: Mac app (Swift)
+
+on:
+  push:
+    paths: ['mac/**', '.github/workflows/mac-native.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      # SpeechAnalyzer, TranslationSession(installedSource:target:) and the app's macOS 26 target
+      # need the macOS 26 SDK.
+      - name: Newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | python3 -c 'import re,sys; print(max(sys.stdin.read().split(), key=lambda p: [int(n) for n in re.findall(r"\d+", p)]))')
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - name: Core tests
+        run: swift test --package-path mac/Core
+      - name: Every interface string is translated
+        run: python3 mac/scripts/check-strings.py
+      - name: Build the app and the dmg
+        run: mac/scripts/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OwnVoice-Meet-Mac-native
+          path: mac/build/*.dmg
+          if-no-files-found: error

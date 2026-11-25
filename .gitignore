@@ -19,3 +19,9 @@ THIRD_PARTY_LICENSES.txt
 
 # the Apple Translation helper, compiled by src-tauri/build.rs on macOS
 src-tauri/binaries/
+
+# the native Mac app (mac/): SwiftPM and build-app.sh output
+mac/.build/
+mac/Core/.build/
+mac/build/
+.swiftpm/
