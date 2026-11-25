@@ -642,4 +642,30 @@ final class SecondReviewTests: XCTestCase {
         XCTAssertEqual(u.flush(), [.final("Then we")], "the connection dropped: it ends as heard")
         XCTAssertEqual(u.handle(.delta(item: "e", text: "Back")), [.partial("Back")], "after a reconnect the gray line shows again")
     }
+
+    func testUndoKeepsLinesThatCameLater() {
+        var book = CaptionBook()
+        for s in ["one", "two", "three"] { book.finish(s) }
+        let before = book
+        book.setSpeaker(1, for: 3)
+        for s in ["four", "five"] { book.finish(s) }
+        book.adopt(before)
+        XCTAssertEqual(book.lines.map(\.heard), ["one", "two", "three", "four", "five"])
+        XCTAssertNil(book.line(3)?.speaker)
+        XCTAssertEqual(book.finish("six"), 6)
+    }
+
+    func testUndoClearBringsLinesBackAndRedoClearsThemAgain() {
+        var book = CaptionBook()
+        for s in ["one", "two"] { book.finish(s) }
+        let beforeClear = book
+        book.clear()
+        book.finish("three")
+        let afterClear = book
+        book.adopt(beforeClear)
+        XCTAssertEqual(book.lines.map(\.heard), ["one", "two", "three"])
+        book.finish("four")
+        book.adopt(afterClear)
+        XCTAssertEqual(book.lines.map(\.heard), ["three", "four"])
+    }
 }

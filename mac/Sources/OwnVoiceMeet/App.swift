@@ -5,11 +5,13 @@
 // the app also builds with the Command Line Tools. State lives in AppModel (Observation's macros
 // are in both).
 
+import AppKit
 import SwiftUI
 
 @main
 struct OwnVoiceMeetApp: App {
     private let model = AppModel.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         Window("OwnVoice Meet", id: "captions") {
@@ -36,6 +38,21 @@ struct OwnVoiceMeetApp: App {
         Settings {
             SettingsView().environment(model)
         }
+    }
+}
+
+/// Quitting while listening (or while the last session finishes) first closes the session, so the
+/// recording can be played and the transcript, summary and minutes are written.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let model = AppModel.shared
+        guard model.isListening || model.finishing else { return .terminateNow }
+        Task { @MainActor in
+            await model.prepareToQuit()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 

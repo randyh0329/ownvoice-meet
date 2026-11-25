@@ -84,14 +84,16 @@ final class SpeakerDetector: @unchecked Sendable {
     private let vad: OpaquePointer
     private let extractor: OpaquePointer
     private let dim: Int
-    /// Where sample 0 falls on the session's clock (seconds from its start).
-    private let offset: TimeInterval
+    private let sessionStart: Date
+    /// Where sample 0 falls on the session's clock (seconds from its start): known once the first
+    /// sound arrives, which can be a while after the session started (a permission prompt, say).
+    private var offset: TimeInterval?
     private var pending: [Float] = []
     private var clusters = VoiceClusters()
     private var stretches: [VoiceStretch] = []
 
     /// nil when the models cannot be loaded.
-    init?(sessionOffset: TimeInterval) {
+    init?(sessionStart: Date) {
         let vadPath = SpeakerModels.path(SpeakerModels.files[0]).path
         let embedPath = SpeakerModels.path(SpeakerModels.files[1]).path
         let vad: OpaquePointer? = vadPath.withCString { model in
@@ -127,7 +129,7 @@ final class SpeakerDetector: @unchecked Sendable {
         self.vad = vad
         self.extractor = extractor
         dim = Int(SherpaOnnxSpeakerEmbeddingExtractorDim(extractor))
-        offset = sessionOffset
+        self.sessionStart = sessionStart
     }
 
     deinit {
@@ -139,7 +141,11 @@ final class SpeakerDetector: @unchecked Sendable {
     func feed(_ buffer: AVAudioPCMBuffer) {
         guard let converted = converter.convert(buffer), let channel = converted.floatChannelData?[0] else { return }
         let samples = Array(UnsafeBufferPointer(start: channel, count: Int(converted.frameLength)))
+        let arrived = Date()
         queue.async {
+            if self.offset == nil {
+                self.offset = max(0, arrived.timeIntervalSince(self.sessionStart) - Double(samples.count) / Double(Self.rate))
+            }
             self.pending += samples
             let whole = self.pending.count / 512 * 512
             var i = 0
@@ -163,8 +169,11 @@ final class SpeakerDetector: @unchecked Sendable {
     }
 
     /// The speaker (a cluster: 0, 1, 2…) of the session's `from…to`, once its stretch is printed.
-    func speaker(from: TimeInterval, to: TimeInterval) -> Int? {
-        queue.sync { VoiceStretch.speaker(in: stretches, from: from, to: to) }
+    /// Asked without blocking: the queue may be busy working out a voice print.
+    func speaker(from: TimeInterval, to: TimeInterval) async -> Int? {
+        await withCheckedContinuation { done in
+            queue.async { done.resume(returning: VoiceStretch.speaker(in: self.stretches, from: from, to: to)) }
+        }
     }
 
     /// On `queue`: every finished stretch becomes a voice print and is given a speaker.
@@ -176,7 +185,8 @@ final class SpeakerDetector: @unchecked Sendable {
             if let samples = segment.pointee.samples, n > 0, let print = voicePrint(samples, count: n) {
                 let seconds = Double(n) / Double(Self.rate)
                 let who = clusters.assign(print, seconds: Float(seconds))
-                stretches.append(VoiceStretch(start: offset + start, end: offset + start + seconds, speaker: who))
+                let base = offset ?? 0
+                stretches.append(VoiceStretch(start: base + start, end: base + start + seconds, speaker: who))
                 if stretches.count > 600 { stretches.removeFirst(stretches.count - 600) }
             }
             SherpaOnnxDestroySpeechSegment(segment)

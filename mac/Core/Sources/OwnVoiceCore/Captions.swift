@@ -120,6 +120,25 @@ public struct CaptionBook: Sendable {
         openID = nil
     }
 
+    /// Undo and Redo: the lines as `earlier` had them come back (their speakers, and lines cleared
+    /// since), lines it had not seen yet stay as they are, and line numbers keep counting up, so
+    /// nothing that arrived after the change is lost or numbered twice.
+    public mutating func adopt(_ earlier: CaptionBook) {
+        let had = Dictionary(earlier.lines.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+        // A line `earlier` could have had (numbered before its next one) but does not: cleared then.
+        lines.removeAll { $0.id < earlier.nextID && had[$0.id] == nil }
+        if let id = openID, index(of: id) == nil { openID = nil }
+        for i in lines.indices {
+            if let then = had[lines[i].id] { lines[i].speaker = then.speaker }
+        }
+        let present = Set(lines.map(\.id))
+        let back = earlier.lines.filter { !present.contains($0.id) }
+        if !back.isEmpty {
+            lines = (back + lines).sorted { $0.id < $1.id }
+            trim()
+        }
+    }
+
     private mutating func take() -> Int {
         defer { nextID += 1 }
         return nextID

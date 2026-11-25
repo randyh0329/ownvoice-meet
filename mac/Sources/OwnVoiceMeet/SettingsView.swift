@@ -77,7 +77,8 @@ private struct ListenTranslateTab: View {
                     ForEach(SpeakLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
                 }
                 .help("Replies and Fill In Missing Halves write in this language.")
-                if model.settings.translate == .localServer {
+                // Also when only a summary uses it, so it can be filled in at all.
+                if model.settings.translate == .localServer || model.settings.liveSummaryModel == .local || model.settings.meetingSummaryModel == .local {
                     TextField("Server address (up to /v1)", text: $model.settings.localServerURL)
                     TextField("Model", text: $model.settings.localServerModel)
                 }
@@ -137,7 +138,11 @@ private struct GemmaSection: View {
                 Button("Set Up") {
                     Task {
                         await setup.setUp()
-                        if setup.state == .ready { model.settings.translate = setup.model.option }
+                        // Taken for translation only if a local model was already the choice
+                        // (otherwise Use It does it), so setting one up for replies keeps Claude, say.
+                        if setup.state == .ready, model.settings.translate.ollamaModel != nil {
+                            model.settings.translate = setup.model.option
+                        }
                     }
                 }
                 .disabled(setup.state == .working || setup.state == .checking || setup.state == .ready)
@@ -151,7 +156,14 @@ private struct GemmaSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .task { await setup.check() }
+        .task {
+            // The section follows the local model chosen under Translation, not the one at launch.
+            if let chosen = model.settings.translate.ollamaModel { setup.model = chosen }
+            await setup.check()
+        }
+        .onChange(of: model.settings.translate) { _, new in
+            if let chosen = new.ollamaModel { setup.model = chosen }
+        }
     }
 }
 
@@ -258,6 +270,10 @@ private struct KeysTab: View {
             }
         }
         .formStyle(.grouped)
+        // "Saved" is about what the fields show: editing one takes it away.
+        .onChange(of: [model.geminiKeyDraft, model.anthropicKeyDraft, model.openAIKeyDraft, model.localKeyDraft]) { _, _ in
+            model.keysSaved = false
+        }
     }
 }
 

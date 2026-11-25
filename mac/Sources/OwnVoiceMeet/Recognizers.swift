@@ -98,9 +98,13 @@ final class GeminiLiveRecognizer: Recognizer {
     private let language: String
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
     private let queue = DispatchQueue(label: "gemini-live")
+    // On `queue`:
     private var socket: URLSessionWebSocketTask?
     private var pending: [Int16] = []
     private var sentSeconds = 0.0
+    private var stopping = false
+    /// The gray text of the line being spoken, finished by hand if its session ends first.
+    private var openPartial = ""
     private var running = false
     private var onEvent: ((RecognitionEvent) -> Void)?
 
@@ -115,7 +119,7 @@ final class GeminiLiveRecognizer: Recognizer {
         try await connect()
     }
 
-    private func connect() async throws {
+    private func open() async throws -> URLSessionWebSocketTask {
         var url = URLComponents(string: GeminiLive.endpoint)!
         url.queryItems = [URLQueryItem(name: "key", value: key)]
         let socket = URLSession.shared.webSocketTask(with: url.url!)
@@ -129,24 +133,67 @@ final class GeminiLiveRecognizer: Recognizer {
             socket.cancel()
             throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
         }
+        return socket
+    }
+
+    private func connect() async throws {
+        let socket = try await open()
         queue.sync { self.socket = socket }
         onEvent?(.status(String(localized: "Listening (Gemini Live)")))
         receive(on: socket)
     }
 
+    private func isCurrent(_ socket: URLSessionWebSocketTask) -> Bool { queue.sync { self.socket === socket } }
+
+    /// The line still gray when its session ends is kept as it stands, not overwritten.
+    private func finishPartial() {
+        let text = queue.sync { () -> String in
+            defer { openPartial = "" }
+            return openPartial
+        }
+        if !text.isEmpty { onEvent?(.final(text)) }
+    }
+
     private func receive(on socket: URLSessionWebSocketTask) {
+        let opened = Date()
         Task {
+            var reader = GeminiLive.Reader()
+            var rotating = false
             while running {
                 do {
-                    for event in GeminiLive.parse(try await socket.receive().data) {
+                    let message = try await socket.receive()
+                    // A session already replaced by the next: its late words are not shown.
+                    guard isCurrent(socket) else { continue }
+                    for event in reader.parse(message.data) {
                         switch event {
-                        case .partial(let t): onEvent?(.partial(t))
-                        case .final(let t): onEvent?(.final(t))
-                        case .setupComplete, .goAway: break
+                        case .partial(let t):
+                            queue.sync { openPartial = t }
+                            onEvent?(.partial(t))
+                        case .final(let t):
+                            queue.sync { openPartial = "" }
+                            onEvent?(.final(t))
+                            // Sessions are limited to about ten minutes: the next one is opened
+                            // at a pause after nine.
+                            if !rotating, Date().timeIntervalSince(opened) >= 9 * 60 {
+                                rotating = true
+                                rotate(from: socket)
+                            }
+                        case .goAway:
+                            if !rotating {
+                                rotating = true
+                                rotate(from: socket)
+                            }
+                        case .setupComplete:
+                            break
                         }
                     }
+                    if !rotating, Date().timeIntervalSince(opened) >= 590 {
+                        rotating = true
+                        rotate(from: socket)
+                    }
                 } catch {
-                    guard running else { return }
+                    guard running, !queue.sync(execute: { stopping }), isCurrent(socket) else { return }
+                    finishPartial()
                     queue.sync { self.socket = nil }
                     await reconnectWithBackoff(service: "Gemini", running: { self.running }, onEvent: onEvent, connect: connect)
                     return
@@ -155,16 +202,37 @@ final class GeminiLiveRecognizer: Recognizer {
         }
     }
 
+    /// The next session is set up while this one still listens, then takes over the sound.
+    private func rotate(from old: URLSessionWebSocketTask) {
+        Task {
+            // If it cannot be opened, the old one goes on until it closes, and reconnects then.
+            guard let next = try? await open() else { return }
+            guard running, isCurrent(old) else {
+                next.cancel()
+                return
+            }
+            queue.sync { self.socket = next }
+            finishPartial()
+            receive(on: next)
+            old.send(.string(GeminiLive.streamEnd)) { _ in }
+            try? await Task.sleep(for: .seconds(1))
+            old.cancel(with: .normalClosure, reason: nil)
+        }
+    }
+
     func feed(_ buffer: AVAudioPCMBuffer) {
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
-            // Disconnected: nothing is sent, and nothing is billed.
+            guard !self.stopping else { return }
+            self.pending += samples
+            // Disconnected: nothing is sent or billed, but the last few seconds are kept for the
+            // next connection, so a reconnect loses little of what was said.
             guard self.socket != nil else {
-                self.pending.removeAll()
+                let keep = Int(GeminiLive.sampleRate * 5)
+                if self.pending.count > keep { self.pending.removeFirst(self.pending.count - keep) }
                 return
             }
-            self.pending += samples
             while self.pending.count >= GeminiLive.chunkSamples {
                 let chunk = Array(self.pending.prefix(GeminiLive.chunkSamples))
                 self.pending.removeFirst(GeminiLive.chunkSamples)
@@ -179,12 +247,20 @@ final class GeminiLiveRecognizer: Recognizer {
     }
 
     func stop() async {
-        running = false
-        let socket = queue.sync { self.socket }
+        let socket = queue.sync { () -> URLSessionWebSocketTask? in
+            stopping = true
+            return self.socket
+        }
         socket?.send(.string(GeminiLive.streamEnd)) { _ in }
-        try? await Task.sleep(for: .milliseconds(800))
+        // The last sentence comes back after the end of the stream: it is read for up to 1.5 s.
+        for _ in 0..<15 {
+            try? await Task.sleep(for: .milliseconds(100))
+            if queue.sync(execute: { openPartial.isEmpty }) { break }
+        }
+        running = false
         socket?.cancel(with: .normalClosure, reason: nil)
         queue.sync { self.socket = nil }
+        finishPartial()
     }
 }
 
@@ -356,7 +432,6 @@ final class OpenAILiveRecognizer: Recognizer {
     private var segmenter = Segmenter(rate: OpenAIRealtime.sampleRate)
     private var socket: URLSessionWebSocketTask?
     private var running = false
-    private var current: String?
     private var sentSeconds = 0.0
     private var onEvent: ((RecognitionEvent) -> Void)?
 
@@ -404,25 +479,28 @@ final class OpenAILiveRecognizer: Recognizer {
 
     private func receive(on socket: URLSessionWebSocketTask) {
         Task {
-            var texts: [String: String] = [:]
+            // Per connection: transcripts in the order they were spoken, each on its own line.
+            var utterances = OpenAIRealtime.Utterances()
+            func emit(_ outputs: [OpenAIRealtime.Utterances.Output]) {
+                for output in outputs {
+                    switch output {
+                    case .partial(let t): onEvent?(.partial(t))
+                    case .final(let t): onEvent?(.final(t))
+                    }
+                }
+            }
             while running {
                 do {
-                    switch OpenAIRealtime.parse(try await socket.receive().data) {
-                    case let .delta(item, text)?:
-                        texts[item, default: ""] += text
-                        if current == nil { current = item }
-                        if current == item { onEvent?(.partial(texts[item] ?? "")) }
-                    case let .completed(item, text)?:
-                        texts[item] = nil
-                        if current == item { current = nil }
-                        onEvent?(.final(text))
-                    case .error(let message)?:
+                    guard let event = OpenAIRealtime.parse(try await socket.receive().data) else { continue }
+                    if case .error(let message) = event {
                         onEvent?(.status("OpenAI: \(message)"))
-                    default:
-                        continue
+                    } else {
+                        emit(utterances.handle(event))
                     }
                 } catch {
                     guard running else { return }
+                    // What was heard so far is kept, not overwritten by the next connection.
+                    emit(utterances.flush())
                     queue.sync { self.socket = nil }
                     await reconnectWithBackoff(service: "OpenAI", running: { self.running }, onEvent: onEvent, connect: connect)
                     return
@@ -486,6 +564,7 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
     private var nextLine = 0
     private var pending: [Int16] = []
     private var sentSeconds = 0.0
+    private var stopping = false
     private var running = false
     private var ticker: Task<Void, Never>?
     private var onEvent: ((RecognitionEvent) -> Void)?
@@ -509,7 +588,7 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
         }
     }
 
-    private func connect() async throws {
+    private func open() async throws -> URLSessionWebSocketTask {
         var url = URLComponents(string: GeminiLive.endpoint)!
         url.queryItems = [URLQueryItem(name: "key", value: key)]
         let socket = URLSession.shared.webSocketTask(with: url.url!)
@@ -522,16 +601,46 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
             socket.cancel()
             throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
         }
+        return socket
+    }
+
+    private func connect() async throws {
+        let socket = try await open()
         queue.sync { self.socket = socket }
         onEvent?(.status(String(localized: "Listening (Gemini Live Translate)")))
         receive(on: socket)
     }
 
-    private func receive(on socket: URLSessionWebSocketTask) {
+    private func isCurrent(_ socket: URLSessionWebSocketTask) -> Bool { queue.sync { self.socket === socket } }
+
+    /// Sessions are limited to about ten minutes: after nine, the next one is set up while this
+    /// one still listens, then takes over the sound. The old one's last words still count.
+    private func rotate(from old: URLSessionWebSocketTask) {
         Task {
+            guard let next = try? await open() else { return }
+            guard running, isCurrent(old) else {
+                next.cancel()
+                return
+            }
+            queue.sync { self.socket = next }
+            receive(on: next)
+            old.send(.string(GeminiLive.streamEnd)) { _ in }
+            try? await Task.sleep(for: .milliseconds(1500))
+            old.cancel(with: .normalClosure, reason: nil)
+        }
+    }
+
+    private func receive(on socket: URLSessionWebSocketTask) {
+        let opened = Date()
+        Task {
+            var rotating = false
             while running {
                 do {
                     let events = GeminiLive.parseTranslate(try await socket.receive().data)
+                    if !rotating, Date().timeIntervalSince(opened) >= 9 * 60, isCurrent(socket) {
+                        rotating = true
+                        rotate(from: socket)
+                    }
                     queue.async {
                         for event in events {
                             switch event {
@@ -542,7 +651,7 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
                         }
                     }
                 } catch {
-                    guard running else { return }
+                    guard running, !queue.sync(execute: { stopping }), isCurrent(socket) else { return }
                     queue.sync {
                         self.interpreter.flush(sink: self)
                         self.socket = nil
@@ -558,12 +667,14 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
-            // Disconnected: nothing is sent, and nothing is billed.
+            guard !self.stopping else { return }
+            self.pending += samples
+            // Disconnected: nothing is sent or billed; the last few seconds wait for the next connection.
             guard self.socket != nil else {
-                self.pending.removeAll()
+                let keep = Int(GeminiLive.sampleRate * 5)
+                if self.pending.count > keep { self.pending.removeFirst(self.pending.count - keep) }
                 return
             }
-            self.pending += samples
             while self.pending.count >= GeminiLive.chunkSamples {
                 let chunk = Array(self.pending.prefix(GeminiLive.chunkSamples))
                 self.pending.removeFirst(GeminiLive.chunkSamples)
@@ -578,13 +689,20 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
     }
 
     func stop() async {
+        let socket = queue.sync { () -> URLSessionWebSocketTask? in
+            stopping = true
+            return self.socket
+        }
+        socket?.send(.string(GeminiLive.streamEnd)) { _ in }
+        // The last sentence and its Chinese come after the end of the stream: read for 1.5 s.
+        try? await Task.sleep(for: .milliseconds(1500))
         running = false
         ticker?.cancel()
-        queue.sync { self.interpreter.flush(sink: self) }
-        let socket = queue.sync { self.socket }
-        socket?.send(.string(GeminiLive.streamEnd)) { _ in }
         socket?.cancel(with: .normalClosure, reason: nil)
-        queue.sync { self.socket = nil }
+        queue.sync {
+            self.socket = nil
+            self.interpreter.flush(sink: self)
+        }
     }
 
     // InterpreterSink (called on `queue`)

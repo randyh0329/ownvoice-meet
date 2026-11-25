@@ -13,9 +13,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.7.0</string>
+	<string>0.7.1</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>6</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleDevelopmentRegion</key>
@@ -36,6 +36,14 @@
 	<string>OwnVoice Meet listens to the microphone to caption a talk in the room.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>OwnVoice Meet recognizes speech on this Mac to show captions.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Your own server or Whisper server may be plain http on the local network, by name. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>OwnVoice Meet listens to the sound the Mac plays to caption an online meeting.</string>
 </dict>

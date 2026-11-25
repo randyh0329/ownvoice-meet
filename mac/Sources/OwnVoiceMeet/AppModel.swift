@@ -120,6 +120,8 @@ final class AppModel {
     private var usageMonth = UsageBook.month(Date())
     /// Lines whose final translation is in: a late streamed piece must not overwrite it.
     private var translated: Set<Int> = []
+    /// The recognition this session started with.
+    private var sessionListen = ListenOption.appleSpeech
     /// Live Translate's own line numbers → caption lines.
     private var interpLines: [Int: Int] = [:]
 
@@ -151,6 +153,7 @@ final class AppModel {
             return
         }
         self.recognizer = recognizer
+        sessionListen = s.listen
         isListening = true
         generation += 1
         let session = generation
@@ -200,7 +203,7 @@ final class AppModel {
                 }
                 let started = record?.started ?? Date()
                 let detector: SpeakerDetector? = detectVoices
-                    ? await Task.detached { SpeakerDetector(sessionOffset: Date().timeIntervalSince(started)) }.value
+                    ? await Task.detached { SpeakerDetector(sessionStart: started) }.value
                     : nil
                 if detectVoices, detector == nil { status = String(localized: "The voice models could not be loaded; speakers are not told apart.") }
                 self.detector = detector
@@ -255,8 +258,13 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(50))
         }
         inFlight.removeAll()
-        // "Only when I press Update Now" means no summary at stop either.
-        if let record, summaryInterval != nil { await summarize(force: true, record: record) }
+        // "Only when I press Update Now" means no summary at stop either. One already being written
+        // (Update Now pressed just before) is waited for, up to a minute, so the last lines still go in.
+        if let record, summaryInterval != nil {
+            let until = Date().addingTimeInterval(60)
+            while summaryWorking, Date() < until { try? await Task.sleep(for: .milliseconds(200)) }
+            await summarize(force: true, record: record)
+        }
         record?.close()
         lastRecord = record
         eventSession = -1
@@ -267,12 +275,26 @@ final class AppModel {
         }
     }
 
+    /// The app is quitting: the session ends as at Stop, given up to 15 seconds for its final
+    /// summary; then, whatever still runs, the files are closed (the recording playable).
+    func prepareToQuit() async {
+        if isListening {
+            let task = Task { await self.finishSession() }
+            await waitAtMost(seconds: 15, for: task)
+        }
+        let deadline = Date().addingTimeInterval(15)
+        while finishing, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        record?.close()
+    }
+
     func clear() {
         let before = captionsState
         book.clear()
         book.speaker = currentSpeaker
-        translated.removeAll()
-        interpLines.removeAll()
+        // Live Translate's lines still on their way keep their numbers: they are still written to
+        // the transcript when they finish, just not shown.
         summary = ""
         summaryUpdated = ""
         summaryError = ""
@@ -296,13 +318,16 @@ final class AppModel {
         CaptionsState(book: book, translated: translated, summary: summary, summaryUpdated: summaryUpdated, speakerNames: settings.speakerNames, currentSpeaker: currentSpeaker, voiceSpeaker: voiceSpeaker)
     }
 
-    /// Puts `state` back, and registers the way back again (so Redo works).
+    /// Puts `state` back, and registers the way back again (so Redo works). Lines that came in
+    /// after the change stay (CaptionBook.adopt); a summary written since is kept.
     private func apply(_ state: CaptionsState, _ action: String) {
         let now = captionsState
-        book = state.book
-        translated = state.translated
-        summary = state.summary
-        summaryUpdated = state.summaryUpdated
+        book.adopt(state.book)
+        translated.formUnion(state.translated)
+        if summary.isEmpty {
+            summary = state.summary
+            summaryUpdated = state.summaryUpdated
+        }
         settings.speakerNames = state.speakerNames
         currentSpeaker = state.currentSpeaker
         voiceSpeaker = state.voiceSpeaker
@@ -334,8 +359,10 @@ final class AppModel {
 
     private var sessionClock: TimeInterval { Date().timeIntervalSince(record?.started ?? Date()) }
 
+    /// The first words of a line reach the screen a moment after they were said: its time starts
+    /// 1.5 s earlier.
     private func heardFrom(_ id: Int) {
-        if lineTimes[id] == nil { lineTimes[id] = (sessionClock, nil) }
+        if lineTimes[id] == nil { lineTimes[id] = (max(0, sessionClock - 1.5), nil) }
     }
 
     /// The line ended: once the detector has printed its stretch, the line takes that voice's speaker.
@@ -347,7 +374,7 @@ final class AppModel {
             // A stretch is printed only when it ends (a pause, or 10 s), often after the line's words.
             for _ in 0..<10 {
                 try? await Task.sleep(for: .milliseconds(1500))
-                if let voice = detector.speaker(from: times.from, to: to) {
+                if let voice = await detector.speaker(from: times.from, to: to) {
                     labelLine(id, voice: voice)
                     return
                 }
@@ -442,6 +469,8 @@ final class AppModel {
         }
         if let c = currentSpeaker { setCurrentSpeaker(c == i ? nil : (c > i ? c - 1 : c)) }
         voiceSpeaker = voiceSpeaker.compactMapValues { s in s == i ? nil : (s > i ? s - 1 : s) }
+        // Every line of the transcript, not only those on screen.
+        record?.removeSpeaker(at: i)
         record?.adoptSpeakers(book.lines)
         registerCaptionsUndo(before, String(localized: "Remove Speaker"))
     }
@@ -523,6 +552,10 @@ final class AppModel {
 
     private func handle(_ event: RecognitionEvent) {
         switch event {
+        case .partial, .final, .lineHeard: gate?.speechHeard()
+        default: break
+        }
+        switch event {
         case .partial(let text):
             if let id = book.partial(text) {
                 record?.opened(id, speaker: book.line(id)?.speaker)
@@ -538,7 +571,8 @@ final class AppModel {
         case .status(let message):
             status = message
         case .audio(let seconds):
-            addAudio(settings.listen.rawValue, seconds)
+            // Priced as the recognizer of this session, even if Settings changed since.
+            addAudio(sessionListen.rawValue, seconds)
         case .lineOpened(let n):
             let id = book.openLine()
             interpLines[n] = id
@@ -555,10 +589,10 @@ final class AppModel {
             guard let id = interpLines[n] else { return }
             let zh = settings.chinese.fix(text)
             book.setTranslation(zh, for: id)
+            // Kept after done: Chinese that comes after a line is complete still joins it.
             if done {
                 translated.insert(id)
                 record?.translated(id, zh)
-                interpLines[n] = nil
             }
         case .lineDropped(let n):
             if let id = interpLines.removeValue(forKey: n) { book.removeLine(id) }
@@ -641,13 +675,17 @@ final class AppModel {
         updateMessage = String(localized: "Checking…")
         updateURL = nil
         let local = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        var req = URLRequest(url: URL(string: "https://api.github.com/repos/randyh0329/ownvoice-meet/releases/latest")!, timeoutInterval: 15)
+        // The newest release of this app (mac-v…), not of the cross-platform one in the same repo.
+        var req = URLRequest(url: URL(string: "https://api.github.com/repos/randyh0329/ownvoice-meet/releases?per_page=30")!, timeoutInterval: 15)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "accept")
         do {
             let (data, response) = try await URLSession.shared.data(for: req)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            guard status == 200, let v = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tag = v["tag_name"] as? String else {
+            let releases = (status == 200 ? try JSONSerialization.jsonObject(with: data) as? [[String: Any]] : nil) ?? []
+            let mac = releases.first { r in
+                (r["tag_name"] as? String)?.hasPrefix("mac-v") == true && r["draft"] as? Bool != true && r["prerelease"] as? Bool != true
+            }
+            guard let v = mac, let tag = v["tag_name"] as? String else {
                 updateMessage = String(localized: "No release found on GitHub.")
                 return
             }
@@ -754,7 +792,7 @@ final class AppModel {
         let system = Prompts.withGlossary(Assistants.summarySystem(s.chinese), glossary: s.glossary)
         let user = Assistants.summaryUser(before: summary, transcript: SessionFiles.forSummary(lines, clock: record.clock))
         do {
-            let reply = try await model.stream(system: system, user: user, script: script, maxTokens: 1500) { _ in }
+            let reply = try await model.stream(system: system, user: user, script: script, maxTokens: 4000) { _ in }
             addTokens(model.id, reply.tokens)
             let text = s.chinese.fix(reply.text)
             guard !text.isEmpty else { throw AppError(String(localized: "The model returned nothing.")) }
@@ -835,7 +873,8 @@ final class AppModel {
         scriptWorking = true
         scriptMessage = String(localized: "Filling in \(String(needs.count)) lines with \(model.name)…")
         let original = script
-        let system = Assistants.glossSystem(language: Assistants.languageName(s.speakLanguage), variant: s.chinese)
+        // The glossary's spellings hold here too, as in captions and replies.
+        let system = Prompts.withGlossary(Assistants.glossSystem(language: Assistants.languageName(s.speakLanguage), variant: s.chinese), glossary: s.glossary)
         do {
             var answers: [String] = []
             for start in stride(from: 0, to: needs.count, by: 40) {
@@ -898,19 +937,38 @@ final class QuietGate: @unchecked Sendable {
     private var lastSound = Date()
     private var paused = false
     private var resumed = false
+    /// The room's own level (fans, air conditioning, the microphone's hiss), learned as it goes:
+    /// it follows quieter sound at once and louder sound only slowly, so steady noise never
+    /// counts as someone speaking.
+    private var floor: Float?
+    private var loudBuffers = 0
 
     func admit(_ buffer: AVAudioPCMBuffer) -> Bool {
-        let loud = buffer.peak > 0.003
+        let level = buffer.rms
         lock.lock()
         defer { lock.unlock() }
-        if loud {
-            lastSound = Date()
-            if paused {
-                paused = false
-                resumed = true
-            }
-        }
+        let base = floor ?? level
+        floor = level < base ? base + (level - base) * 0.2 : base + (level - base) * 0.002
+        // Sound well above the room's level, for a quarter of a second or so.
+        loudBuffers = level > max(base * 4, 0.003) ? loudBuffers + 1 : 0
+        if loudBuffers >= 3 { heard() }
         return !paused
+    }
+
+    /// The recognizer heard words: someone is speaking, whatever the level.
+    func speechHeard() {
+        lock.lock()
+        defer { lock.unlock() }
+        heard()
+    }
+
+    /// Under `lock`.
+    private func heard() {
+        lastSound = Date()
+        if paused {
+            paused = false
+            resumed = true
+        }
     }
 
     var quietFor: TimeInterval {

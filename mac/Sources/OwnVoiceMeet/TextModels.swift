@@ -126,7 +126,7 @@ struct AnthropicModel: TextModel {
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         if fallbacks { req.setValue(Requests.fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
         req.httpBody = try Requests.anthropicBody(model: model, system: system, user: user, effort: effort, script: script, stream: true, maxTokens: maxTokens, fallbacks: fallbacks)
-        return try await read(req, parse: Streaming.anthropic, failure: Requests.anthropicText, onText: onText)
+        return try await read(req, format: .anthropic, failure: Requests.anthropicText, onText: onText)
     }
 }
 
@@ -145,7 +145,7 @@ struct ChatModel: TextModel {
         if let key { req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization") }
         req.httpBody = try Requests.chatBody(model: model, system: system, user: user, effort: effort, script: script, stream: true)
         do {
-            return try await read(req, parse: Streaming.chat, failure: Requests.chatText, onText: onText)
+            return try await read(req, format: .chat, failure: Requests.chatText, onText: onText)
         } catch let error as URLError where url == Requests.ollamaURL && error.code == .cannotConnectToHost {
             throw AppError(String(localized: "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4."))
         }
@@ -155,7 +155,7 @@ struct ChatModel: TextModel {
 /// Reads a server-sent event stream; a refused request is read whole for the service's own message.
 private func read(
     _ req: URLRequest,
-    parse: (String) -> StreamEvent?,
+    format: Streaming.Format,
     failure: (Data, Int) throws -> String,
     onText: @escaping @Sendable (String) -> Void
 ) async throws -> ModelReply {
@@ -167,24 +167,16 @@ private func read(
         _ = try failure(body, status)
         throw ServiceError("\(status)")
     }
-    var text = ""
-    var tokens = Tokens()
+    var reply = StreamedReply(format)
     for try await line in bytes.lines {
-        switch parse(line) {
-        case .text(let t)?:
-            text += t
-            onText(text)
-        case .usage(let t)?:
-            tokens.merge(t)
-        case .done?:
-            // Chat Completions sends its usage after the last text and before [DONE]; Anthropic's
-            // message_stop comes after message_delta. Either way the usage is in by now.
-            return ModelReply(text: text.trimmingCharacters(in: .whitespacesAndNewlines), tokens: tokens)
-        case .error(let message)?:
-            throw ServiceError(message)
-        case nil:
-            continue
-        }
+        if try reply.read(line) { onText(reply.text) }
+        // Chat Completions sends its usage after the last text and before [DONE]; Anthropic's
+        // message_stop comes after message_delta. Either way the usage is in by now.
+        if reply.finished { break }
     }
-    return ModelReply(text: text.trimmingCharacters(in: .whitespacesAndNewlines), tokens: tokens)
+    // A reply cut off at its length limit (thinking can use most of it) is not taken as whole.
+    if reply.truncated {
+        throw AppError(String(localized: "The reply was cut off at its length limit; try again."))
+    }
+    return ModelReply(text: reply.text.trimmingCharacters(in: .whitespacesAndNewlines), tokens: reply.tokens)
 }

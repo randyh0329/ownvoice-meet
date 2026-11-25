@@ -300,3 +300,5 @@
 "Next update: when one more line is in" = "下次更新：再有 1 行新字幕时";
 "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops." = "在摘要窗口点按“立即更新”之前不会生成摘要，停止聆听时也不会。";
 "The main points appear here every minute while listening." = "聆听时每分钟，要点会显示在这里。";
+"No microphone found. Plug one in, or choose it in System Settings → Sound → Input." = "找不到麦克风。请接上一个，或前往“系统设置”→“声音”→“输入”选择。";
+"The reply was cut off at its length limit; try again." = "回复在长度上限处被截断了，请再试一次。";

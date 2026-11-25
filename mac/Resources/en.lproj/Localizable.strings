@@ -141,6 +141,7 @@
 "Next update: when %@ more lines are in" = "Next update: when %@ more lines are in";
 "Next update: when one more line is in" = "Next update: when one more line is in";
 "No Speaker" = "No Speaker";
+"No microphone found. Plug one in, or choose it in System Settings → Sound → Input." = "No microphone found. Plug one in, or choose it in System Settings → Sound → Input.";
 "No release found on GitHub." = "No release found on GitHub.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
@@ -250,6 +251,7 @@
 "The model did not answer with a list; try again." = "The model did not answer with a list; try again.";
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "The model download stopped before it finished; press Set Up Gemma 4 to go on.";
 "The model returned nothing." = "The model returned nothing.";
+"The reply was cut off at its length limit; try again." = "The reply was cut off at its length limit; try again.";
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "The same price as Haiku; its speed varies more. Needs an OpenAI API key.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
 "The transcript starts a new section from here." = "The transcript starts a new section from here.";

@@ -20,21 +20,44 @@ func makeAudioSource(_ input: AudioInput) -> AudioSource {
 
 final class MicrophoneSource: AudioSource {
     private let engine = AVAudioEngine()
+    private var onBuffer: ((AVAudioPCMBuffer) -> Void)?
+    private var observer: NSObjectProtocol?
 
     func start(_ onBuffer: @escaping (AVAudioPCMBuffer) -> Void) async throws {
         guard await AVCaptureDevice.requestAccess(for: .audio) else {
             throw AppError(String(localized: "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone."))
         }
+        self.onBuffer = onBuffer
+        try begin()
+        // Another microphone chosen or plugged in (AirPods connecting, say): the engine stops,
+        // so it starts again on the new one.
+        observer = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+            guard let self, self.onBuffer != nil else { return }
+            self.engine.inputNode.removeTap(onBus: 0)
+            try? self.begin()
+        }
+    }
+
+    private func begin() throws {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
+        // Without a microphone (a Mac mini with nothing plugged in) the format is empty, and
+        // installing a tap on it would end the app.
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            throw AppError(String(localized: "No microphone found. Plug one in, or choose it in System Settings → Sound → Input."))
+        }
+        let onBuffer = self.onBuffer
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
-            onBuffer(buffer)
+            onBuffer?(buffer)
         }
         engine.prepare()
         try engine.start()
     }
 
     func stop() {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = nil
+        onBuffer = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
     }
@@ -79,8 +102,17 @@ final class SystemAudioSource: AudioSource {
         }
         try check(AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, queue) { _, input, _, _, _ in
             // The buffer is only valid during this call; every consumer copies or converts at once.
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: input, deallocator: nil) else { return }
-            onBuffer(buffer)
+            // An output device with a microphone of its own (a USB or Bluetooth headset, an audio
+            // interface) puts its input stream ahead of the tap's, so only the last one is taken.
+            let streams = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
+            guard let last = streams.last, last.mNumberChannels == format.channelCount else {
+                if let buffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: input, deallocator: nil) { onBuffer(buffer) }
+                return
+            }
+            var one = AudioBufferList(mNumberBuffers: 1, mBuffers: last)
+            withUnsafePointer(to: &one) { list in
+                if let buffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: list, deallocator: nil) { onBuffer(buffer) }
+            }
         })
         try check(AudioDeviceStart(aggregate, proc))
     }
@@ -164,6 +196,22 @@ final class SilenceWatch: @unchecked Sendable {
 }
 
 extension AVAudioPCMBuffer {
+    /// The level of the first channel (root mean square), 0…1.
+    var rms: Float {
+        let n = Int(frameLength)
+        guard n > 0 else { return 0 }
+        var sum: Float = 0
+        if let samples = floatChannelData?[0] {
+            for i in 0..<n { sum += samples[i] * samples[i] }
+        } else if let samples = int16ChannelData?[0] {
+            for i in 0..<n {
+                let s = Float(samples[i]) / 32768
+                sum += s * s
+            }
+        }
+        return (sum / Float(n)).squareRoot()
+    }
+
     /// The loudest sample of the first channel, 0…1 (any non-zero sample counts for 16-bit buffers).
     var peak: Float {
         guard let samples = floatChannelData?[0] else { return int16Samples.contains { $0 != 0 } ? 1 : 0 }

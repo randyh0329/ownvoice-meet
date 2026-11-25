@@ -81,6 +81,16 @@ final class SessionRecord {
         if closed { writeIfChanged() }
     }
 
+    /// Speaker `i` is gone from the list: their lines lose the name, later speakers move up one.
+    func removeSpeaker(at i: Int) {
+        for (id, e) in entries {
+            guard let s = e.speaker, s >= i else { continue }
+            entries[id]?.speaker = s == i ? nil : s - 1
+            dirty = true
+        }
+        if closed { writeIfChanged() }
+    }
+
     private func name(_ speaker: Int?) -> String {
         guard let speaker, speaker < speakerNames.count else { return "" }
         let n = speakerNames[speaker].trimmingCharacters(in: .whitespaces)
@@ -96,10 +106,20 @@ final class SessionRecord {
 
     func translated(_ id: Int, _ zh: String) {
         guard var e = entries[id] else { return }
+        let again = e.finished && !e.translation.isEmpty
+        let earlier = TranscriptLine(offset: e.offset, heard: e.heard, translation: e.translation, segment: e.segment, speaker: name(e.speaker))
         e.translation = zh
         entries[id] = e
         dirty = true
-        if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment, speaker: name(e.speaker))) }
+        if e.finished {
+            let line = TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment, speaker: name(e.speaker))
+            if !again {
+                forSummary.append(line)
+            } else if let i = forSummary.firstIndex(of: earlier) {
+                // More Chinese for a line already in (Live Translate): the summary sees it once.
+                forSummary[i] = line
+            }
+        }
         if closed { writeIfChanged() }
     }
 
