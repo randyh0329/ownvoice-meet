@@ -62,11 +62,16 @@ jobs:
           done
       - run: npm run tauri build -- --target universal-apple-darwin --bundles dmg --config src-tauri/tauri.release.conf.json
       - name: The dmg was built, with the Apple Translation helper for both architectures
+        # Tauri removes the intermediate .app after making the dmg: look inside the dmg itself.
         run: |
-          ls -la src-tauri/target/universal-apple-darwin/release/bundle/dmg
-          helper="src-tauri/target/universal-apple-darwin/release/bundle/macos/OwnVoice Meet.app/Contents/MacOS/ownvoice-apple-translate"
+          dmg=$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+          ls -la "$dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint /tmp/ownvoice-dmg "$dmg"
+          helper="/tmp/ownvoice-dmg/OwnVoice Meet.app/Contents/MacOS/ownvoice-apple-translate"
+          ls -la "/tmp/ownvoice-dmg/OwnVoice Meet.app/Contents/MacOS"
           lipo -archs "$helper"
           "$helper" --self-check | tee /dev/stderr | grep -q '"sdk26":true' || { echo "::error::the helper was built without the macOS 26 SDK"; exit 1; }
+          hdiutil detach /tmp/ownvoice-dmg
       - uses: actions/upload-artifact@v4
         with:
           name: OwnVoice-Meet-macOS-dmg
