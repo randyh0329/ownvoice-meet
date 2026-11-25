@@ -73,6 +73,9 @@ function showLocalFields(): void {
   document.querySelector<HTMLElement>('#stt-sherpa')!.hidden = !sherpa;
   if (sherpa) void showSherpa();
   document.querySelector<HTMLElement>('#llm-local')!.hidden = chosen('llm') !== 'local-llm';
+  const gemma = models.get(chosen('llm'))?.provider === 'ollama';
+  document.querySelector<HTMLElement>('#llm-gemma')!.hidden = !gemma;
+  if (gemma) void checkGemma();
   const plan = chosen('llm') === 'chatgpt-luna';
   document.querySelector<HTMLElement>('#llm-chatgpt')!.hidden = !plan;
   if (plan) void showChatgpt();
@@ -104,6 +107,55 @@ sherpaBtn.addEventListener('click', async () => {
     off();
     sherpaBtn.disabled = false;
   }
+});
+
+// ---------- Gemma 4 in Ollama: check it is running with the model, download the model ----------
+const gemmaCheck = document.querySelector<HTMLButtonElement>('#gemma-check')!;
+const gemmaPull = document.querySelector<HTMLButtonElement>('#gemma-pull')!;
+const gemmaState = document.querySelector<HTMLElement>('#gemma-state')!;
+
+function gemmaModel(): string {
+  return models.get(chosen('llm'))?.api_model ?? '';
+}
+
+async function checkGemma(): Promise<void> {
+  const model = gemmaModel();
+  if (!model) return;
+  gemmaState.textContent = '檢查中…';
+  try {
+    gemmaState.textContent = await invoke<string>('ollama_check', { model });
+    gemmaPull.hidden = true;
+  } catch (err) {
+    gemmaState.textContent = String(err);
+    // Ollama answers but lacks the model: offer the download.
+    gemmaPull.hidden = !String(err).startsWith('Ollama 有在執行');
+  }
+}
+
+gemmaCheck.addEventListener('click', () => void checkGemma());
+
+gemmaPull.addEventListener('click', async () => {
+  const model = gemmaModel();
+  gemmaPull.disabled = gemmaCheck.disabled = true;
+  const off = await listen<{ status: string; done: number; total: number }>('ollama-pull', (e) => {
+    const { status, done, total } = e.payload;
+    const gb = (n: number) => (n / 1e9).toFixed(1);
+    gemmaState.textContent = total > 0 ? `下載 ${model} 中… ${gb(done)} / ${gb(total)} GB` : `${model}：${status}`;
+  });
+  try {
+    await invoke('ollama_pull', { model });
+    await checkGemma();
+  } catch (err) {
+    gemmaState.textContent = String(err);
+  } finally {
+    off();
+    gemmaPull.disabled = gemmaCheck.disabled = false;
+  }
+});
+
+document.querySelector('#ollama-link')!.addEventListener('click', (e) => {
+  e.preventDefault();
+  void openUrl('https://ollama.com/download');
 });
 
 // ---------- Speaker labels: the models come down the first time it is turned on ----------

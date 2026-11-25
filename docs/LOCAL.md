@@ -35,6 +35,14 @@ Servers that implement the OpenAI transcription API should work the same way: pu
 
 ## Translation: a local language model
 
+### Gemma 4 through Ollama (built in)
+
+Under 翻, **Gemma 4 E4B** and **Gemma 4 12B** run Google's open Gemma 4 models in [Ollama](https://ollama.com/download) at its default address (`http://localhost:11434`), with no URL or model name to type. Install Ollama and open it once; Settings then checks that it answers (「檢查 Ollama」) and can download the model (「下載模型」, Ollama's `/api/pull`; about 7 GB for E4B). Or in a terminal: `ollama pull gemma4:e4b` (a plain `ollama pull gemma4` is the same model). Thinking is switched off for every request (`reasoning_effort: "none"`), so a caption is not held up by it. Replies and the live summary use the same model.
+
+E4B fits most Apple Silicon Macs; 12B translates more steadily and wants 16 GB of memory or more. Both are small next to the cloud models: try them on a recording before a meeting, and expect some Mainland wording. Not yet checked against a running Ollama by us.
+
+### Any other OpenAI-compatible server
+
 OwnVoice Meet sends Chat Completions requests with streaming to `POST <server>/chat/completions`. vLLM, Ollama and LM Studio all serve this API. Not yet tested by us; please report what works.
 
 | Server | Start | Settings 伺服器網址 | 模型名稱 |

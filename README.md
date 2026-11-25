@@ -97,6 +97,7 @@ Get-FileHash .\OwnVoice.Meet_x.y.z_x64-setup.exe -Algorithm SHA256
 | | **ChatGPT 方案**（gpt-6-luna，不用 API key：按 **Continue with ChatGPT** 登入，用你的 Go／Plus／Pro／Business 方案額度） |
 | 本機辨識（Parakeet＋SenseVoice；免費、在電腦上辨識、不需要 key；第一次下載約 910 MB） | |
 | 自己電腦上的 Whisper 伺服器（免費） | 自己電腦上的 vLLM 或 Ollama（免費） |
+| | **Gemma 4 E4B／12B**（免費、在電腦上翻、不需要 key；透過 Ollama，設定裡可以一鍵下載模型） |
 | Windows 11 即時輔助字幕（即時、免費、在電腦上辨識、不需要 key；實驗功能，設定會帶你完成一次性設定） | |
 
 表中的每小時價格是依各家官方牌價估算的，2026-10-17 查自各家的價目頁；實際以各家帳單為準。翻譯選最快一級時，每小時約幾美分（例如 Claude Haiku 5.5，忙碌的一小時約 0.03 美元，同樣是牌價估算）。設定裡每個選項都列出價格、實測速度、強項、注意事項與需要什麼，也會記錄估算用量。ChatGPT 方案是 OpenAI 預覽中的功能，只能翻譯，不能辨識語音。省錢組合見[使用手冊第 6 節](docs/MANUAL.md#6-省錢)。

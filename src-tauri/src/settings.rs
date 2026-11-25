@@ -282,6 +282,7 @@ pub fn display_name(provider: &str) -> &str {
         "openai" => "OpenAI",
         "gemini" => "Gemini",
         "local" => "本機伺服器",
+        "ollama" => "Ollama（本機）",
         other => other,
     }
 }

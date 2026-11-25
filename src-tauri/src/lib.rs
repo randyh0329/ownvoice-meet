@@ -181,6 +181,30 @@ async fn local_models(app: AppHandle, url: String) -> Result<Vec<String>, String
     local::list_models(&client, &url, settings::get_key("local")).await
 }
 
+/// Settings: is Ollama running with this Gemma 4 model?
+#[tauri::command]
+async fn ollama_check(app: AppHandle, model: String) -> Result<String, String> {
+    let client = app.state::<llm::Http>().0.clone();
+    local::ollama_check(&client, &model).await
+}
+
+#[derive(Clone, serde::Serialize)]
+struct PullProgress {
+    status: String,
+    done: u64,
+    total: u64,
+}
+
+/// Settings: download a Gemma 4 model into Ollama; "ollama-pull" events follow it.
+#[tauri::command]
+async fn ollama_pull(app: AppHandle, model: String) -> Result<(), String> {
+    let client = app.state::<llm::Http>().0.clone();
+    local::ollama_pull(&client, &model, |status, done, total| {
+        let _ = app.emit("ollama-pull", PullProgress { status: status.to_string(), done, total });
+    })
+    .await
+}
+
 /// Debug builds only: OWNVOICE_AUTOMATION, e.g. {"open": ["reply", "script"], "listen": true,
 /// "script_tab": "Q&A"}, lets scripted demos and checks drive the app without the mouse, which
 /// races with whoever is using the computer. Release builds always answer None.
@@ -748,6 +772,8 @@ pub fn run() {
             automation,
             test_local_stt,
             local_models,
+            ollama_check,
+            ollama_pull,
             live_captions_open,
             start_demo,
             clear_captions,

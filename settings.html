@@ -87,6 +87,14 @@
         <datalist id="local-models"></datalist>
         <div class="actions"><button type="button" id="test-llm">測試連線並列出模型</button><span id="test-llm-result" class="status"></span></div>
       </div>
+      <div id="llm-gemma" class="local" hidden>
+        <p class="hint">Gemma 4 在你的電腦上翻譯：免費、文字不送出去、不需要 key。要先裝 <a href="https://ollama.com/download" id="ollama-link">Ollama</a>（裝好打開一次，它會在背景執行），再下載模型一次。回覆和即時摘要也用它。</p>
+        <div class="actions">
+          <button type="button" id="gemma-check">檢查 Ollama</button>
+          <button type="button" id="gemma-pull" hidden>下載模型</button>
+          <span id="gemma-state" class="status"></span>
+        </div>
+      </div>
       <div id="llm-chatgpt" class="local" hidden>
         <p class="hint">不用 API key：字幕翻譯、回覆、摘要和「補對照」改用你的 ChatGPT 方案額度（Go、Plus、Pro、Business）。這是 OpenAI 預覽中的功能，語音辨識仍然要另外選。</p>
         <div class="actions">

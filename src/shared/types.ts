@@ -127,6 +127,8 @@ export interface CatalogModel {
   id: string;
   kind: 'stt' | 'llm';
   provider: string;
+  /** Model name sent to the API (for Gemma 4: the Ollama model to download). */
+  api_model: string;
   label: string;
   price: Price;
   price_note: string;

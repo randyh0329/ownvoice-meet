@@ -60,6 +60,8 @@ pub fn target(s: &Settings) -> Result<Target, String> {
             let base = s.local_llm_url.trim_end_matches('/');
             (format!("{base}/chat/completions"), s.local_llm_model.trim().to_string(), settings::get_key("local"))
         }
+        // Gemma 4 in Ollama at its default address; no key.
+        "ollama" => (format!("{}/chat/completions", crate::local::OLLAMA_URL), m.api_model.to_string(), None),
         // The ChatGPT plan: the token is fetched (and refreshed) for each request in stream_until.
         "chatgpt" => {
             if crate::chatgpt::load().is_none() {

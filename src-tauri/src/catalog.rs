@@ -347,6 +347,38 @@ pub const MODELS: &[Model] = &[
         available: true,
     },
     Model {
+        id: "gemma4-e4b",
+        kind: Kind::Llm,
+        provider: "ollama",
+        api_model: "gemma4:e4b",
+        label: "Gemma 4 E4B（本機 Ollama，免費、不上傳）",
+        transport: "openai-compat",
+        min_effort: "none", // Ollama: "none" turns Gemma 4's thinking off
+        price: Price::Free,
+        price_note: "在你的電腦上跑",
+        speed: "看電腦：Apple Silicon 約每句 1 秒上下；第一句要先載入模型",
+        strength: "免費、文字不離開電腦、不需要 key；Google 的開放模型",
+        caution: "小模型：台灣用語與長句品質不如雲端模型，請先試；約占 7–10 GB 記憶體；要先裝 Ollama",
+        needs: "Ollama＋下載模型一次（約 7 GB）",
+        available: true,
+    },
+    Model {
+        id: "gemma4-12b",
+        kind: Kind::Llm,
+        provider: "ollama",
+        api_model: "gemma4:12b",
+        label: "Gemma 4 12B（本機 Ollama，品質較好）",
+        transport: "openai-compat",
+        min_effort: "none",
+        price: Price::Free,
+        price_note: "在你的電腦上跑",
+        speed: "比 E4B 慢；建議 Apple Silicon 搭 16 GB 以上記憶體",
+        strength: "免費、文字不離開電腦；翻譯與用語比 E4B 穩",
+        caution: "記憶體不夠時會很慢；要先裝 Ollama",
+        needs: "Ollama＋下載模型一次（較大）",
+        available: true,
+    },
+    Model {
         id: "local-llm",
         kind: Kind::Llm,
         provider: "local",
@@ -416,6 +448,10 @@ mod tests {
         let batch = find("gemini-transcribe").unwrap();
         assert!((cost(batch, 3600.0, 0, 0, 0) - 0.30).abs() < 1e-9);
         let interp = find("gemini-live-translate").unwrap();
+        for id in ["gemma4-e4b", "gemma4-12b"] {
+            let g = find(id).unwrap();
+            assert!(g.kind == Kind::Llm && g.provider == "ollama" && g.min_effort == "none" && matches!(g.price, Price::Free));
+        }
         let follow = find("gemini-live-translate-zh").unwrap();
         assert!(follow.kind == Kind::Llm && follow.transport == AUDIO_TRANSLATE);
         assert!(find(crate::llm::FALLBACK_ID).is_some_and(|m| m.available && m.kind == Kind::Llm && m.provider == "gemini"));

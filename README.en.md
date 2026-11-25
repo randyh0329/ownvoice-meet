@@ -97,6 +97,7 @@ Bring your own keys, or your ChatGPT plan; keys are kept in the system's credent
 | | **ChatGPT plan** (gpt-6-luna, no API key: press **Continue with ChatGPT** and use your Go, Plus, Pro or Business plan) |
 | Local recognition (Parakeet and SenseVoice; free, on the device, no key; about 910 MB downloaded once) | |
 | A Whisper server on your own machine (free) | vLLM or Ollama on your own machine (free) |
+| | **Gemma 4 E4B / 12B** (free, on your computer, no key; through Ollama, with a one-click model download in Settings) |
 | Windows 11 Live Captions (live, free, on the device, no key; experimental, Settings walks you through a one-time setup) | |
 
 The hourly prices in the table are estimates from the providers' list prices, checked on their pricing pages on 2026-10-17; your provider's bill is the authority. Translation on the fastest models costs a few cents an hour (for example Claude Haiku 5.5, about US$0.03 for a busy hour, also estimated from list prices). Settings shows every option with its price, measured speed, strengths, cautions and what it needs, and tracks estimated usage. The ChatGPT plan is an OpenAI feature in preview; it can translate but not recognise speech. Money-saving combinations are in [section 6 of the manual](docs/MANUAL.md#6-省錢) (in Traditional Chinese).
