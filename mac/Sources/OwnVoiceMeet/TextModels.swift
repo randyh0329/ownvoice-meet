@@ -30,9 +30,15 @@ struct ModelSpec {
     let provider: Provider
     let apiModel: String
     let effort: String
+    /// Claude 5.5-generation models: a declined request is re-run on another model in the same call.
+    var fallbacks = false
 
     static let haiku = ModelSpec(id: "claude-haiku-5-5", name: "Claude Haiku 5.5", provider: .anthropic, apiModel: "claude-haiku-5-5", effort: "low")
-    static let sonnet = ModelSpec(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5", provider: .anthropic, apiModel: "claude-sonnet-5-5", effort: "low")
+    static let sonnet = ModelSpec(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5", provider: .anthropic, apiModel: "claude-sonnet-5-5", effort: "low", fallbacks: true)
+    // Thinking cannot be turned off on Opus 5.5 (its default effort is medium); Fable 5.2 is best
+    // started at high.
+    static let opus = ModelSpec(id: "claude-opus-5-5", name: "Claude Opus 5.5", provider: .anthropic, apiModel: "claude-opus-5-5", effort: "medium", fallbacks: true)
+    static let fable = ModelSpec(id: "claude-fable-5-2", name: "Claude Fable 5.2", provider: .anthropic, apiModel: "claude-fable-5-2", effort: "high", fallbacks: true)
     static let luna = ModelSpec(id: "gpt-6-luna", name: "OpenAI gpt-6-luna", provider: .openai, apiModel: "gpt-6-luna", effort: "none")
     // gpt-6.1-sol rejects "none" (checked against the API 2026-10-17).
     static let sol = ModelSpec(id: "gpt-6.1-sol", name: "OpenAI gpt-6.1-sol", provider: .openai, apiModel: "gpt-6.1-sol", effort: "low")
@@ -64,6 +70,12 @@ extension TranslateOption {
     }
 }
 
+/// The model the summaries use: one chosen in Settings, or (auto) the text model.
+func makeSummaryModel(_ choice: SummaryModelChoice, _ s: AppSettings) throws -> TextModel {
+    guard let spec = choice.spec else { return try makeTextModel(s) }
+    return try makeModel(spec, s)
+}
+
 /// The model for text jobs (replies, the summary, 補對照, and captions with a text model). Under 翻,
 /// a text model is itself; with Apple Translation or TranslateGemma (which only translate caption
 /// lines) it is the first model there is a key for, else Gemma 4 E4B in Ollama.
@@ -82,7 +94,7 @@ func makeModel(_ spec: ModelSpec, _ s: AppSettings) throws -> TextModel {
     }
     switch spec.provider {
     case .anthropic:
-        return AnthropicModel(id: spec.id, key: try key("anthropic", String(localized: "Add an Anthropic API key in Settings first.")), model: spec.apiModel, effort: spec.effort, name: spec.name)
+        return AnthropicModel(id: spec.id, key: try key("anthropic", String(localized: "Add an Anthropic API key in Settings first.")), model: spec.apiModel, effort: spec.effort, name: spec.name, fallbacks: spec.fallbacks)
     case .openai:
         return ChatModel(id: spec.id, url: Requests.openAIURL, key: try key("openai", String(localized: "Add an OpenAI API key in Settings first.")), model: spec.apiModel, effort: spec.effort, name: spec.name)
     case .gemini:
@@ -104,6 +116,7 @@ struct AnthropicModel: TextModel {
     let model: String
     let effort: String
     let name: String
+    var fallbacks = false
 
     func stream(system: String, user: String, script: String, maxTokens: Int, onText: @escaping @Sendable (String) -> Void) async throws -> ModelReply {
         var req = URLRequest(url: Requests.anthropicURL, timeoutInterval: 60)
@@ -111,7 +124,8 @@ struct AnthropicModel: TextModel {
         req.setValue("application/json", forHTTPHeaderField: "content-type")
         req.setValue(key, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        req.httpBody = try Requests.anthropicBody(model: model, system: system, user: user, effort: effort, script: script, stream: true, maxTokens: maxTokens)
+        if fallbacks { req.setValue(Requests.fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
+        req.httpBody = try Requests.anthropicBody(model: model, system: system, user: user, effort: effort, script: script, stream: true, maxTokens: maxTokens, fallbacks: fallbacks)
         return try await read(req, parse: Streaming.anthropic, failure: Requests.anthropicText, onText: onText)
     }
 }

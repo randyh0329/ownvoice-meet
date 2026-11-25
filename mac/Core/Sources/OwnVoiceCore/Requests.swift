@@ -18,7 +18,9 @@ public enum Requests {
     /// `effort`: the lowest thinking setting the model takes ("" leaves the default). `script`: the
     /// prepared script, sent as its own cached block after the instructions (it is the same on
     /// every call).
-    public static func anthropicBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false, maxTokens: Int = 1000) throws -> Data {
+    /// `fallbacks`: let the API re-run a declined request on another model inside the same call
+    /// (Opus 5.5, Fable 5.2, Sonnet 5.5; needs the server-side-fallback-2026-07-01 beta header).
+    public static func anthropicBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false, maxTokens: Int = 1000, fallbacks: Bool = false) throws -> Data {
         var blocks: [[String: Any]] = [["type": "text", "text": system]]
         if let block = Assistants.scriptBlock(script) {
             blocks.append(["type": "text", "text": block, "cache_control": ["type": "ephemeral"]])
@@ -31,8 +33,11 @@ public enum Requests {
         ]
         if stream { body["stream"] = true }
         if !effort.isEmpty { body["output_config"] = ["effort": effort] }
+        if fallbacks { body["fallbacks"] = "default" }
         return try JSONSerialization.data(withJSONObject: body)
     }
+
+    public static let fallbackBeta = "server-side-fallback-2026-07-01"
 
     /// Chat Completions has no cache marks: the script joins the system message.
     public static func chatBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false) throws -> Data {

@@ -78,6 +78,7 @@ final class SessionRecord {
             entries[line.id]?.speaker = line.speaker
             dirty = true
         }
+        if closed { writeIfChanged() }
     }
 
     private func name(_ speaker: Int?) -> String {
@@ -133,6 +134,19 @@ final class SessionRecord {
         dirty = false
         let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment, speaker: name($0.speaker)) }
         write(SessionFiles.transcript(title: String(localized: "Transcript"), header: header, segments: segments, lines: lines), to: folder.appendingPathComponent("transcript.md"))
+    }
+
+    /// Every finished line so far, in order (for the meeting summary).
+    func allLines() -> [TranscriptLine] {
+        order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment, speaker: name($0.speaker)) }
+    }
+
+    /// The session's title for the minutes: its start, as the folder is named.
+    var title: String { SessionFiles.folderName(started) }
+
+    func writeMinutes(_ text: String, model: String) {
+        guard let folder else { return }
+        write("# \(String(localized: "Meeting summary")) · \(title)\n\n_\(model)_\n\n\(text.trimmingCharacters(in: .whitespacesAndNewlines))\n", to: folder.appendingPathComponent("minutes.md"))
     }
 
     func writeSummary(_ text: String, updated: String) {

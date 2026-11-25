@@ -437,3 +437,33 @@ final class SpeakerTests: XCTestCase {
         XCTAssertEqual(SessionFiles.forSummary([TranscriptLine(offset: 0, heard: "Hi.", translation: "", speaker: "Bob")], clock: { _ in "14:05" }), "[14:05] Bob: Hi.")
     }
 }
+
+final class VoiceTests: XCTestCase {
+    func testClustersFollowTheVoicesAndShortStretchesKeepTheSpeaker() {
+        var c = VoiceClusters()
+        XCTAssertEqual(c.assign([1, 0, 0], seconds: 3), 0)
+        XCTAssertEqual(c.assign([0.9, 0.1, 0], seconds: 3), 0, "alike: the same speaker")
+        XCTAssertEqual(c.assign([0, 1, 0], seconds: 3), 1, "a different voice, long enough: a new speaker")
+        XCTAssertEqual(c.assign([0, 0, 1], seconds: 1), 1, "too short to found a speaker: keeps the one talking")
+        XCTAssertEqual(c.assign([0.05, 0.95, 0], seconds: 4), 1)
+        XCTAssertEqual(c.assign([1, 0.05, 0], seconds: 2.5), 0)
+        XCTAssertEqual(c.count, 2)
+    }
+
+    func testALineTakesTheStretchThatOverlapsItMost() {
+        let s = [VoiceStretch(start: 0, end: 4, speaker: 0), VoiceStretch(start: 4.2, end: 9, speaker: 1)]
+        XCTAssertEqual(VoiceStretch.speaker(in: s, from: 1, to: 3.5), 0)
+        XCTAssertEqual(VoiceStretch.speaker(in: s, from: 3, to: 8), 1, "more of it in the second stretch")
+        XCTAssertNil(VoiceStretch.speaker(in: s, from: 10, to: 12))
+    }
+
+    func testMinutesPromptAndPrices() throws {
+        XCTAssertTrue(Assistants.minutesSystem(.traditionalTaiwan).contains("Action items"))
+        XCTAssertFalse(Assistants.minutesSystem(.simplified).contains("Traditional"))
+        let body = try JSONSerialization.jsonObject(with: Requests.anthropicBody(model: "claude-opus-5-5", system: "S", user: "U", effort: "medium", fallbacks: true)) as! [String: Any]
+        XCTAssertEqual(body["fallbacks"] as? String, "default")
+        var book = UsageBook()
+        book.addTokens("claude-opus-5-5", Tokens(input: 1_000_000, output: 100_000))
+        XCTAssertEqual(book.total, 4 + 2, accuracy: 1e-9)
+    }
+}

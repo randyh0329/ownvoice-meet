@@ -25,3 +25,4 @@ mac/.build/
 mac/Core/.build/
 mac/build/
 .swiftpm/
+mac/vendor/

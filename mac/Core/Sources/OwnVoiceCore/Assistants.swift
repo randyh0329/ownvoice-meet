@@ -44,6 +44,20 @@ Output only the bullet points.
         return "Summary so far:\n\(b.isEmpty ? "(none yet)" : b)\n\nNewest transcript lines (time, what was said in the meeting's language, then the Chinese meaning):\n\(transcript)"
     }
 
+    // MARK: Meeting summary (minutes), once the meeting is over
+
+    public static func minutesSystem(_ variant: ChineseVariant = .traditionalTaiwan) -> String {
+        adapt("""
+        You write the minutes of a meeting or talk for a Taiwanese participant, from its full transcript. The transcript comes from speech recognition and may contain recognition errors; each line has the time, the speaker when known, what was said in the meeting's language and its Chinese meaning.
+        Write in Traditional Chinese as used in Taiwan (繁體中文), in Markdown, with these sections, each headed in that language: Overview (two to four sentences), Key points (grouped by topic or by segment, short bullets, saying who said what when speakers are named), Decisions, Action items (who, what, by when, only as stated), Open questions.
+        Keep names, numbers, dates and technical terms exactly as they appear. Leave a section out when the meeting had nothing for it. Do not invent anything, do not give advice and do not suggest what the participant should say.
+        """, variant)
+    }
+
+    public static func minutesUser(title: String, transcript: String) -> String {
+        "Meeting: \(title)\n\nFull transcript:\n\(transcript)"
+    }
+
     // MARK: 補對照
 
     public static func glossSystem(language lang: String, variant: ChineseVariant = .traditionalTaiwan) -> String {

@@ -1,5 +1,5 @@
 // What each service costs, and what was used: list prices (USD, checked 2026-10-17 on the providers'
-// pricing pages, as in the first version's catalog), audio seconds for speech recognition billed by
+// pricing pages, as in the first version's catalog; Claude rates checked 2026-11-03), audio seconds for speech recognition billed by
 // the minute, tokens for text models. Apple, Gemma and a local server cost nothing.
 
 import Foundation
@@ -39,7 +39,9 @@ public enum Pricing {
         case "openai-live": .perMinute(0.017)
         case "openai-mini": .perMinute(0.003)
         case "claude-haiku-5-5": .perMillionTokens(input: 0.10, cached: 0.01, output: 0.50)
-        case "claude-sonnet-5-5": .perMillionTokens(input: 2.00, cached: 0.20, output: 10.00)
+        case "claude-sonnet-5-5": .perMillionTokens(input: 2.00, cached: 0.10, output: 10.00)
+        case "claude-opus-5-5": .perMillionTokens(input: 4.00, cached: 0.20, output: 20.00)
+        case "claude-fable-5-2": .perMillionTokens(input: 8.00, cached: 0.20, output: 40.00)
         case "gpt-6-luna": .perMillionTokens(input: 0.10, cached: 0.01, output: 0.50)
         case "gpt-6.1-sol": .perMillionTokens(input: 2.00, cached: 0.10, output: 10.00)
         case "gemini-3.5-flash-lite": .perMillionTokens(input: 0.30, cached: 0.03, output: 2.50)

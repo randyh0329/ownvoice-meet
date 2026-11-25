@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."
 
 python3 scripts/check-strings.py >/dev/null || { python3 scripts/check-strings.py; exit 1; }
 
+scripts/fetch-sherpa.sh
 swift build -c release --arch arm64
 bin="$(swift build -c release --arch arm64 --show-bin-path)/OwnVoiceMeet"
 

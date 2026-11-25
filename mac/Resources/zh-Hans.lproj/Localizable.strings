@@ -4,6 +4,7 @@
 "%@ minutes" = "%@ 分钟";
 "%@ minutes of sound" = "%@ 分钟声音";
 "%@ requests, %@ tokens in, %@ out" = "%@ 次请求，输入 %@ token，输出 %@";
+"A voice model did not match its checksum, so it was not kept." = "有一个声纹模型的校验和不符，因此没有保留。";
 "API Keys" = "API 密钥";
 "About" = "关于";
 "Add" = "添加";
@@ -26,6 +27,7 @@
 "Apple on-device recognition has no audio format for this language." = "Apple 设备端识别没有这个语言可用的音频格式。";
 "Apple recognition stopped: %@" = "Apple 识别停止了：%@";
 "Background" = "背景";
+"By %@, %@" = "由 %@ 撰写，%@";
 "Cancel" = "取消";
 "Captions" = "字幕";
 "Captions appear here: what is said, and its Chinese under it." = "字幕会显示在这里：上面是说的话，下面是中文。";
@@ -37,7 +39,9 @@
 "Checking…" = "正在检查…";
 "Chinese" = "中文";
 "Choose…" = "选择…";
+"Claude Fable 5.2 (most capable; US$8 / US$40 per million tokens)" = "Claude Fable 5.2（最强；每百万 token US$8 / US$40）";
 "Claude Haiku 5.5 (about US$0.03 an hour)" = "Claude Haiku 5.5（约每小时 US$0.03）";
+"Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)" = "Claude Opus 5.5（最划算的强模型；每百万 token US$4 / US$20）";
 "Claude Sonnet 5.5 (about US$0.66 an hour)" = "Claude Sonnet 5.5（约每小时 US$0.66）";
 "Clear Captions" = "清除字幕";
 "Colors" = "颜色";
@@ -48,10 +52,12 @@
 "Could not start the recording: %@" = "无法开始录音：%@";
 "Custom" = "自定义";
 "Don't save" = "不保存";
+"Download" = "下载";
 "Downloading %@…" = "正在下载 %@…";
 "Downloading %@… %@ / %@ GB" = "正在下载 %@… %@ / %@ GB";
 "Downloading Apple's speech model…" = "正在下载 Apple 语音模型…";
 "Downloading Ollama…" = "正在下载 Ollama…";
+"Downloading the voice models (%@ of %@)…" = "正在下载声纹模型（第 %@ 个，共 %@ 个）…";
 "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key." = "每句说完才发送给 Google：没有灰色文字，价格约为 Live 的一半。需要 Gemini API 密钥。";
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "每句说完才发送给 OpenAI：云端最便宜，没有灰色文字。需要 OpenAI API 密钥。";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "每句发送到你自己部署的 Whisper 服务器（faster-whisper、whisper.cpp server…）：声音不离开你的机器。在下面填写地址。";
@@ -61,6 +67,7 @@
 "English (UK)" = "英语（英国）";
 "English (US)" = "英语（美国）";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "按各家标价估算（2026-10-17 查询），实际以各家账单为准。Apple、Gemma、TranslateGemma 和你自己的服务器不花钱。";
+"Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "会议中每隔几分钟更新：用又快又便宜的模型就够了。“与回复相同”就是“翻译”中选择的模型；选择 Apple 翻译或 TranslateGemma 时，使用第一个有密钥的，都没有则用 Gemma 4。";
 "Every line already has both halves." = "每一行都已经有对照了。";
 "Fill In Missing Halves" = "补对照";
 "Filled in %@ lines." = "已补好 %@ 行。";
@@ -109,6 +116,8 @@
 "Live summary" = "实时摘要";
 "Local model on this Mac (free, offline)" = "在这台 Mac 上运行的本地模型（免费、离线）";
 "Meeting language" = "会议语言";
+"Meeting summary" = "会议摘要";
+"Meeting summary failed: %@" = "会议摘要失败：%@";
 "Microphone (in the room)" = "麦克风（线下会场）";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "麦克风权限未开启：前往“系统设置 → 隐私与安全性 → 麦克风”打开 OwnVoice Meet。";
 "Model" = "模型";
@@ -121,12 +130,14 @@
 "New lines get this name until you choose another." = "在你选择其他人之前，新的字幕行都会标上这个名字。";
 "New segment" = "新段落";
 "New segment: %@" = "新段落：%@";
+"New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "新的声音会自动变成讲者 1、2、3…。在某个声音的任一行右键选择名字，这个声音前后所有的字幕行都会换成那个名字。任何识别方式都能用；免费，不会发送任何数据。";
 "No Speaker" = "不标讲者";
 "No release found on GitHub." = "GitHub 上找不到发布版本。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "还没有讲稿。按“编辑”直接写、“打开…”读取 .md 文件，或“插入模板”从示例开始。只写一种语言也可以，按“补对照”补上另一半。";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "还没听到 Mac 的声音。请播放一点声音；如果一直没声音，前往“系统设置 → 隐私与安全性 → 录屏与系统录音”的“仅系统录音”允许 OwnVoice Meet，然后退出并重新打开它。";
 "No sound output device found." = "找不到声音输出设备。";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "还没下载：打开“语言与地区 → 翻译语言”，下载这两种语言。";
+"Nothing to summarize yet." = "还没有可以摘要的内容。";
 "Nothing yet." = "还没有。";
 "Ollama could not be downloaded from ollama.com." = "无法从 ollama.com 下载 Ollama。";
 "Ollama could not download the model: %@" = "Ollama 下载模型失败：%@";
@@ -134,6 +145,7 @@
 "Ollama is installed but not running." = "Ollama 已安装，但没有运行。";
 "Ollama is not installed." = "尚未安装 Ollama。";
 "Ollama is running; %@ is not downloaded yet." = "Ollama 正在运行，但尚未下载 %@。";
+"Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "会议结束时一次：整份逐字稿（含讲者和翻译）发送给这个模型写成会议纪要——要点、决议、待办事项、待厘清问题——显示在摘要窗口，并保存为 minutes.md。用 Claude Opus 5.5 这类强大的云端模型效果好，一小时约 US$0.10–0.50。逐字稿会发送到该服务。也可以随时在摘要窗口点按“摘要整场会议”。";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "点一下就会装好缺少的部分：从 ollama.com 下载 Ollama（约 230 MB，会检查签名）和所选模型。TranslateGemma 只翻译字幕（回复和摘要会用其他模型）；Gemma 4 也能做回复和摘要。文字不会离开这台 Mac。";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "每行一个词：中文 = English。Claude、Gemini 和 Gemma 会使用。";
 "Only when asked" = "仅在点按时更新";
@@ -167,6 +179,7 @@
 "Reply: type Chinese, read the words aloud" = "回复：输入中文，照着念出来";
 "Reset" = "重置";
 "Return sends. The language to read is chosen in Settings (I speak)." = "按 Return 发送。要念的语言在“设置”的“我说的语言”中选择。";
+"Same as replies (the text model in use)" = "与回复相同（当前使用的文字模型）";
 "Same as the Mac" = "与 Mac 相同";
 "Save Keys" = "保存密钥";
 "Saved" = "已保存";
@@ -205,10 +218,13 @@
 "Stopped." = "已停止。";
 "Stronger wording and judgment than Haiku, slower, about 20 times the price; captions rarely need it. Needs an Anthropic API key." = "措辞和判断比 Haiku 强，更慢，价格约 20 倍；实时字幕通常用不到。需要 Anthropic API 密钥。";
 "Subtitles" = "电影字幕";
+"Summarize Whole Meeting" = "摘要整场会议";
+"Summarize the whole meeting when it ends" = "会议结束时摘要整场会议";
 "Summary" = "摘要";
 "Summary & Saving" = "摘要与保存";
 "Summary failed: %@" = "摘要失败：%@";
 "System" = "跟随系统";
+"Tell speakers apart by voice (on this Mac)" = "按声音自动区分讲者（在这台 Mac 上）";
 "Terminal (amber)" = "终端（琥珀色）";
 "Terminal (green)" = "终端（绿色）";
 "Text size" = "文字大小";
@@ -224,6 +240,9 @@
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "和 Haiku 同价，速度波动较大。需要 OpenAI API 密钥。";
 "The script changed while filling in; try again." = "补对照时讲稿被修改了，请再试一次。";
 "The transcript starts a new section from here." = "逐字稿从这里开始新的段落。";
+"The voice models (about 32 MB) are downloaded once." = "声纹模型（约 32 MB）只需下载一次。";
+"The voice models could not be downloaded." = "无法下载声纹模型。";
+"The voice models could not be loaded; speakers are not told apart." = "声纹模型加载失败，本次不会自动区分讲者。";
 "Theme" = "主题";
 "This fork: randyh0329/ownvoice-meet" = "这个 fork：randyh0329/ownvoice-meet";
 "This month" = "本月";
@@ -248,12 +267,13 @@
 "Use It" = "改用它";
 "Uses the earlier lines and the glossary; shares the key with Gemini recognition." = "会参考上文和术语表；与 Gemini 识别共用同一个密钥。";
 "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key." = "会参考上文和术语表，措辞稳定。需要 Anthropic API 密钥。";
-"Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma." = "使用文字模型：即“翻译”中选择的模型；选择 Apple 翻译时，使用第一个有密钥的（Claude、Gemini），都没有则用 Gemma。";
 "Version" = "版本";
 "Vietnamese" = "越南语";
 "What do you want to say? (Chinese)" = "想说什么？（用中文输入）";
 "What was said" = "说的话（原文）";
+"When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving." = "会议结束后，可以把整份逐字稿交给更强的模型写成会议纪要：要点、决议、待办事项和待厘清问题。在“设置 → 摘要与保存”中选择模型。";
 "Who is speaking now: new lines get this name. Right-click a line to change its speaker." = "现在谁在说话：新的字幕行会标上这个名字。在某一行右键可以修改它的讲者。";
+"Writing the meeting summary with %@…" = "正在用 %@ 撰写会议摘要…";
 "Your Whisper server: fill in its address in Settings first." = "你的 Whisper 服务器：请先在“设置”中填写地址。";
 "Your own Whisper server (OpenAI-compatible, free)" = "你自己的 Whisper 服务器（OpenAI 兼容，免费）";
 "Your own server" = "你自己的服务器";
@@ -264,4 +284,5 @@
 "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages." = "macOS 内置的翻译：中文几乎立刻出现。逐句翻译，不看上文也不使用术语表。请先前往“系统设置 → 通用 → 语言与地区 → 翻译语言”下载语言包。";
 "✓ Ready: %@ → %@ is on this Mac." = "✓ 可以使用：%@ → %@ 已在这台 Mac 上。";
 "✓ Ready: Ollama is running and has %@." = "✓ 可以使用：Ollama 正在运行，并已有 %@。";
+"✓ The voice models are on this Mac." = "✓ 声纹模型已在这台 Mac 上。";
 "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud." = "补对照：没有中文意思的句子补上中文；用中文写的句子补上要念的外语。";

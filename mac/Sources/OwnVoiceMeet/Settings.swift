@@ -109,6 +109,40 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+/// A model for the summaries: the text model in use, or one of these.
+enum SummaryModelChoice: String, CaseIterable, Codable, Identifiable {
+    case auto
+    case haiku, sonnet, opus, fable, luna, sol, flashLite, flash, gemma, gemma12, local
+
+    var id: String { rawValue }
+
+    var spec: ModelSpec? {
+        switch self {
+        case .auto: nil
+        case .haiku: .haiku
+        case .sonnet: .sonnet
+        case .opus: .opus
+        case .fable: .fable
+        case .luna: .luna
+        case .sol: .sol
+        case .flashLite: .flashLite
+        case .flash: .flash
+        case .gemma: .gemma
+        case .gemma12: .gemma12
+        case .local: TranslateOption.localServer.textModel
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .auto: String(localized: "Same as replies (the text model in use)")
+        case .opus: String(localized: "Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)")
+        case .fable: String(localized: "Claude Fable 5.2 (most capable; US$8 / US$40 per million tokens)")
+        default: spec?.name ?? rawValue
+        }
+    }
+}
+
 /// The models Settings can set up in Ollama.
 enum LocalModel: String, CaseIterable, Identifiable {
     case translateGemma4B = "translategemma:4b"
@@ -245,6 +279,10 @@ struct AppSettings: Codable, Equatable {
     var speakLanguage = "en"
     /// Minutes between summary updates; 0 = only when asked.
     var summaryEveryMinutes = 5
+    var liveSummaryModel: SummaryModelChoice = .auto
+    /// Once the meeting ends, the whole transcript goes to `meetingSummaryModel` for the minutes.
+    var meetingSummaryOnStop = false
+    var meetingSummaryModel: SummaryModelChoice = .auto
     var saveMode: SaveMode = .off
     /// Empty: Documents/OwnVoice Meet.
     var saveFolder = ""
@@ -258,6 +296,8 @@ struct AppSettings: Codable, Equatable {
     var stopAfterQuietMinutes = 30
     /// The people in the meeting, named by the user (lines refer to them by position).
     var speakerNames: [String] = []
+    /// Speakers told apart by voice, on this Mac (SpeakerDetector).
+    var autoSpeakers = false
     var glossary = ""
     var alwaysOnTop = true
     var fontSize = 20.0
@@ -280,6 +320,9 @@ struct AppSettings: Codable, Equatable {
         chinese = (try? c.decodeIfPresent(ChineseVariant.self, forKey: .chinese)) ?? d.chinese
         speakLanguage = (try? c.decodeIfPresent(String.self, forKey: .speakLanguage)) ?? d.speakLanguage
         summaryEveryMinutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryEveryMinutes
+        liveSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .liveSummaryModel)) ?? d.liveSummaryModel
+        meetingSummaryOnStop = (try? c.decodeIfPresent(Bool.self, forKey: .meetingSummaryOnStop)) ?? d.meetingSummaryOnStop
+        meetingSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .meetingSummaryModel)) ?? d.meetingSummaryModel
         saveMode = (try? c.decodeIfPresent(SaveMode.self, forKey: .saveMode)) ?? d.saveMode
         saveFolder = (try? c.decodeIfPresent(String.self, forKey: .saveFolder)) ?? d.saveFolder
         localServerURL = (try? c.decodeIfPresent(String.self, forKey: .localServerURL)) ?? d.localServerURL
@@ -289,6 +332,7 @@ struct AppSettings: Codable, Equatable {
         pauseWhenQuiet = (try? c.decodeIfPresent(Bool.self, forKey: .pauseWhenQuiet)) ?? d.pauseWhenQuiet
         stopAfterQuietMinutes = (try? c.decodeIfPresent(Int.self, forKey: .stopAfterQuietMinutes)) ?? d.stopAfterQuietMinutes
         speakerNames = (try? c.decodeIfPresent([String].self, forKey: .speakerNames)) ?? d.speakerNames
+        autoSpeakers = (try? c.decodeIfPresent(Bool.self, forKey: .autoSpeakers)) ?? d.autoSpeakers
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize

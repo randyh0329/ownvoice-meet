@@ -193,10 +193,29 @@ private struct CopyBlock: View {
 
 // MARK: - Summary
 
+enum SummaryPane: Hashable {
+    case live, meeting
+}
+
 struct SummaryView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
+        VStack(alignment: .leading, spacing: 10) {
+            Picker("Summary", selection: $model.summaryPane) {
+                Text("Live summary").tag(SummaryPane.live)
+                Text("Meeting summary").tag(SummaryPane.meeting)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            if model.summaryPane == .live { live } else { meeting }
+        }
+        .padding(16)
+        .frame(minWidth: 380, minHeight: 280)
+    }
+
+    private var live: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 Text(verbatim: model.summary.isEmpty ? String(localized: "The main points appear here every few minutes while listening (Settings → Summary & Saving).") : model.summary)
@@ -216,7 +235,29 @@ struct SummaryView: View {
                     .disabled(model.summaryWorking || model.record == nil)
             }
         }
-        .padding(16)
-        .frame(minWidth: 360, minHeight: 260)
+    }
+
+    private var meeting: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView {
+                Text(verbatim: model.minutes.isEmpty ? String(localized: "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.") : model.minutes)
+                    .font(.system(size: model.settings.fontSize * 0.8))
+                    .foregroundStyle(model.minutes.isEmpty ? .secondary : .primary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                Text(verbatim: model.minutesNote).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                Spacer()
+                if model.minutesWorking { ProgressView().controlSize(.small) }
+                Button("Copy", systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(model.minutes, forType: .string)
+                }
+                .disabled(model.minutes.isEmpty)
+                Button("Summarize Whole Meeting") { Task { await model.summarizeMeeting() } }
+                    .disabled(model.minutesWorking || (model.record == nil && model.lastRecord == nil))
+            }
+        }
     }
 }

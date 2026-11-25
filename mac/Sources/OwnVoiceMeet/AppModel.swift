@@ -51,6 +51,15 @@ final class AppModel {
 
     // Speakers: who is speaking now (an index into settings.speakerNames).
     private(set) var currentSpeaker: Int?
+    let speakerModels = SpeakerModels()
+    private var detector: SpeakerDetector?
+    /// Voices (the detector's clusters) → speakers in the list. Naming one line names its voice.
+    private var voiceSpeaker: [Int: Int] = [:]
+    /// The voice each line was heard in, and the lines the user labelled by hand.
+    private var lineVoice: [Int: Int] = [:]
+    private var labelledByHand: Set<Int> = []
+    /// When each line was heard, on the session's clock: (from, to).
+    private var lineTimes: [Int: (from: TimeInterval, to: TimeInterval?)] = [:]
     var speakerPrompt = false
     var speakerDraft = ""
 
@@ -78,6 +87,12 @@ final class AppModel {
     private(set) var scriptMessage = ""
 
     // Summary window
+    var summaryPane: SummaryPane = .live
+    private(set) var minutes = ""
+    private(set) var minutesNote = ""
+    private(set) var minutesWorking = false
+    /// The session that ended last, kept for "Summarize Whole Meeting" afterwards.
+    private(set) var lastRecord: SessionRecord?
     private(set) var summary = ""
     private(set) var summaryUpdated = ""
     private(set) var summaryWorking = false
@@ -143,10 +158,18 @@ final class AppModel {
         interpLines.removeAll()
         inFlight.removeAll()
         book.speaker = currentSpeaker
+        voiceSpeaker.removeAll()
+        lineVoice.removeAll()
+        labelledByHand.removeAll()
+        lineTimes.removeAll()
+        let detectVoices = s.autoSpeakers && speakerModels.ready && s.listen != .recordOnly
+        if detectVoices { pruneUnnamedSpeakers() }
         // A new meeting: its summary and its usage start from nothing.
         summary = ""
         summaryUpdated = ""
         summaryError = ""
+        minutes = ""
+        minutesNote = ""
         sessionUsage = UsageBook()
         let source = makeAudioSource(s.input)
         self.source = source
@@ -171,9 +194,16 @@ final class AppModel {
                     await recognizer?.stop()
                     return
                 }
+                let started = record?.started ?? Date()
+                let detector: SpeakerDetector? = detectVoices
+                    ? await Task.detached { SpeakerDetector(sessionOffset: Date().timeIntervalSince(started)) }.value
+                    : nil
+                if detectVoices, detector == nil { status = String(localized: "The voice models could not be loaded; speakers are not told apart.") }
+                self.detector = detector
                 try await source.start { buffer in
                     silence?.feed(buffer)
                     if gate.admit(buffer) { recognizer?.feed(buffer) }
+                    detector?.feed(buffer)
                     recorder?.write(buffer)
                 }
                 guard generation == session else {
@@ -223,8 +253,13 @@ final class AppModel {
         inFlight.removeAll()
         if let record { await summarize(force: true, record: record) }
         record?.close()
+        lastRecord = record
         eventSession = -1
         finishing = false
+        // The minutes come after: they may take a while and do not hold up a new start.
+        if settings.meetingSummaryOnStop, let record {
+            Task { await self.summarizeMeeting(record) }
+        }
     }
 
     func clear() {
@@ -249,10 +284,11 @@ final class AppModel {
         var summaryUpdated: String
         var speakerNames: [String]
         var currentSpeaker: Int?
+        var voiceSpeaker: [Int: Int]
     }
 
     private var captionsState: CaptionsState {
-        CaptionsState(book: book, translated: translated, summary: summary, summaryUpdated: summaryUpdated, speakerNames: settings.speakerNames, currentSpeaker: currentSpeaker)
+        CaptionsState(book: book, translated: translated, summary: summary, summaryUpdated: summaryUpdated, speakerNames: settings.speakerNames, currentSpeaker: currentSpeaker, voiceSpeaker: voiceSpeaker)
     }
 
     /// Puts `state` back, and registers the way back again (so Redo works).
@@ -264,6 +300,7 @@ final class AppModel {
         summaryUpdated = state.summaryUpdated
         settings.speakerNames = state.speakerNames
         currentSpeaker = state.currentSpeaker
+        voiceSpeaker = state.voiceSpeaker
         book.speaker = currentSpeaker
         record?.adoptSpeakers(book.lines)
         registerCaptionsUndo(now, action)
@@ -286,6 +323,61 @@ final class AppModel {
             MainActor.assumeIsolated { model.setScript(before, action: action) }
         }
         undo.setActionName(action)
+    }
+
+    // MARK: Speakers told apart by voice
+
+    private var sessionClock: TimeInterval { Date().timeIntervalSince(record?.started ?? Date()) }
+
+    private func heardFrom(_ id: Int) {
+        if lineTimes[id] == nil { lineTimes[id] = (sessionClock, nil) }
+    }
+
+    /// The line ended: once the detector has printed its stretch, the line takes that voice's speaker.
+    private func heardTo(_ id: Int) {
+        let now = sessionClock
+        lineTimes[id] = (lineTimes[id]?.from ?? max(0, now - 3), now)
+        guard let detector, let times = lineTimes[id], let to = times.to else { return }
+        Task {
+            // A stretch is printed only when it ends (a pause, or 10 s), often after the line's words.
+            for _ in 0..<10 {
+                try? await Task.sleep(for: .milliseconds(1500))
+                if let voice = detector.speaker(from: times.from, to: to) {
+                    labelLine(id, voice: voice)
+                    return
+                }
+            }
+        }
+    }
+
+    private func labelLine(_ id: Int, voice: Int) {
+        lineVoice[id] = voice
+        guard !labelledByHand.contains(id), book.line(id) != nil else { return }
+        let speaker: Int
+        if let known = voiceSpeaker[voice] {
+            speaker = known
+        } else {
+            // A new voice: a new speaker, unnamed ("Speaker 3") until the user names one of its lines.
+            settings.speakerNames.append("")
+            speaker = settings.speakerNames.count - 1
+            voiceSpeaker[voice] = speaker
+        }
+        book.setSpeaker(speaker, for: id)
+        record?.adoptSpeakers(book.lines)
+    }
+
+    /// Before a session that tells voices apart: unnamed speakers no line uses are dropped, so the
+    /// list does not grow by a meeting's worth of "Speaker n" each time.
+    private func pruneUnnamedSpeakers() {
+        let used = Set(book.lines.compactMap(\.speaker))
+        for i in settings.speakerNames.indices.reversed()
+        where settings.speakerNames[i].trimmingCharacters(in: .whitespaces).isEmpty && !used.contains(i) && i != currentSpeaker {
+            settings.speakerNames.remove(at: i)
+            for line in book.lines {
+                if let s = line.speaker, s > i { book.setSpeaker(s - 1, for: line.id) }
+            }
+            if let c = currentSpeaker, c > i { setCurrentSpeaker(c - 1) }
+        }
     }
 
     // MARK: Speakers
@@ -322,6 +414,14 @@ final class AppModel {
         guard book.line(id)?.speaker != i else { return }
         let before = captionsState
         book.setSpeaker(i, for: id)
+        labelledByHand.insert(id)
+        // Naming a line names its voice: every line of that voice follows, earlier and later.
+        if let i, let voice = lineVoice[id] {
+            voiceSpeaker[voice] = i
+            for (line, v) in lineVoice where v == voice && !labelledByHand.contains(line) {
+                book.setSpeaker(i, for: line)
+            }
+        }
         record?.adoptSpeakers(book.lines)
         registerCaptionsUndo(before, String(localized: "Set Speaker"))
     }
@@ -336,6 +436,7 @@ final class AppModel {
             if s == i { book.setSpeaker(nil, for: line.id) } else if s > i { book.setSpeaker(s - 1, for: line.id) }
         }
         if let c = currentSpeaker { setCurrentSpeaker(c == i ? nil : (c > i ? c - 1 : c)) }
+        voiceSpeaker = voiceSpeaker.compactMapValues { s in s == i ? nil : (s > i ? s - 1 : s) }
         record?.adoptSpeakers(book.lines)
         registerCaptionsUndo(before, String(localized: "Remove Speaker"))
     }
@@ -352,6 +453,9 @@ final class AppModel {
         source = nil
         await recognizer?.stop()
         recognizer = nil
+        // The stretch still going on is printed; lines waiting for their voice keep the detector.
+        detector?.finish()
+        detector = nil
         gate = nil
         isListening = false
     }
@@ -413,11 +517,15 @@ final class AppModel {
     private func handle(_ event: RecognitionEvent) {
         switch event {
         case .partial(let text):
-            if let id = book.partial(text) { record?.opened(id, speaker: book.line(id)?.speaker) }
+            if let id = book.partial(text) {
+                record?.opened(id, speaker: book.line(id)?.speaker)
+                heardFrom(id)
+            }
         case .final(let text):
             if let id = book.finish(text) {
                 record?.opened(id, speaker: book.line(id)?.speaker)
                 record?.finished(id, heard: book.heard(id) ?? text)
+                heardTo(id)
                 translate(id)
             }
         case .status(let message):
@@ -428,10 +536,14 @@ final class AppModel {
             let id = book.openLine()
             interpLines[n] = id
             record?.opened(id, speaker: book.line(id)?.speaker)
+            heardFrom(id)
         case let .lineHeard(n, text, done):
             guard let id = interpLines[n] else { return }
             book.setHeard(text, for: id, final: done)
-            if done { record?.finished(id, heard: text) }
+            if done {
+                record?.finished(id, heard: text)
+                heardTo(id)
+            }
         case let .lineTranslated(n, text, done):
             guard let id = interpLines[n] else { return }
             let zh = settings.chinese.fix(text)
@@ -598,7 +710,7 @@ final class AppModel {
         }
         let s = settings
         let model: TextModel
-        do { model = try makeTextModel(s) } catch {
+        do { model = try makeSummaryModel(s.liveSummaryModel, s) } catch {
             summaryError = error.localizedDescription
             record.giveBack(lines)
             return
@@ -622,6 +734,45 @@ final class AppModel {
             record.giveBack(lines)
         }
         summaryWorking = false
+    }
+
+    // MARK: Meeting summary
+
+    /// The whole transcript of `record` (the current or last session) to the meeting-summary model:
+    /// the minutes, shown in the Summary window and saved as minutes.md.
+    func summarizeMeeting(_ chosen: SessionRecord? = nil) async {
+        guard !minutesWorking, let record = chosen ?? record ?? lastRecord else { return }
+        let lines = record.allLines()
+        guard !lines.isEmpty else {
+            minutesNote = String(localized: "Nothing to summarize yet.")
+            return
+        }
+        let s = settings
+        let model: TextModel
+        do { model = try makeSummaryModel(s.meetingSummaryModel, s) } catch {
+            minutesNote = error.localizedDescription
+            return
+        }
+        minutesWorking = true
+        summaryPane = .meeting
+        minutesNote = String(localized: "Writing the meeting summary with \(model.name)…")
+        let system = Prompts.withGlossary(Assistants.minutesSystem(s.chinese), glossary: s.glossary)
+        let user = Assistants.minutesUser(title: record.title, transcript: SessionFiles.forSummary(lines, clock: record.clock))
+        do {
+            let reply = try await model.stream(system: system, user: user, script: script, maxTokens: 16000) { soFar in
+                Task { @MainActor in if self.minutesWorking { self.minutes = soFar } }
+            }
+            addTokens(model.id, reply.tokens)
+            let text = s.chinese.fix(reply.text)
+            guard !text.isEmpty else { throw AppError(String(localized: "The model returned nothing.")) }
+            minutes = text
+            let time = record.clock(Date().timeIntervalSince(record.started))
+            minutesNote = String(localized: "By \(model.name), \(time)")
+            record.writeMinutes(text, model: model.name)
+        } catch {
+            minutesNote = String(localized: "Meeting summary failed: \(error.localizedDescription)")
+        }
+        minutesWorking = false
     }
 
     // MARK: Script

@@ -166,7 +166,19 @@ private struct SummarySavingTab: View {
                     Text("Only when asked").tag(0)
                     ForEach([2, 5, 10, 15], id: \.self) { m in Text(verbatim: String(localized: "\(String(m)) minutes")).tag(m) }
                 }
-                Text("Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma.")
+                Picker("Model", selection: $model.settings.liveSummaryModel) {
+                    ForEach(SummaryModelChoice.allCases) { Text(verbatim: $0.label).tag($0) }
+                }
+                Text("Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Meeting summary") {
+                Toggle("Summarize the whole meeting when it ends", isOn: $model.settings.meetingSummaryOnStop)
+                Picker("Model", selection: $model.settings.meetingSummaryModel) {
+                    ForEach(SummaryModelChoice.allCases) { Text(verbatim: $0.label).tag($0) }
+                }
+                Text("Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -383,7 +395,25 @@ private struct SpeakersSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         Section("Speakers") {
+            Toggle("Tell speakers apart by voice (on this Mac)", isOn: $model.settings.autoSpeakers)
+                .onChange(of: model.settings.autoSpeakers) { _, on in
+                    if on, !model.speakerModels.ready { Task { await model.speakerModels.download() } }
+                }
+            if model.settings.autoSpeakers {
+                HStack {
+                    if model.speakerModels.downloading { ProgressView().controlSize(.small) }
+                    Text(verbatim: model.speakerModels.ready ? String(localized: "✓ The voice models are on this Mac.") : (model.speakerModels.message.isEmpty ? String(localized: "The voice models (about 32 MB) are downloaded once.") : model.speakerModels.message))
+                        .font(.caption)
+                    if !model.speakerModels.ready && !model.speakerModels.downloading {
+                        Button("Download") { Task { await model.speakerModels.download() } }
+                    }
+                }
+                Text("New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             ForEach(Array(model.settings.speakerNames.indices), id: \.self) { i in
                 HStack {
                     Text(verbatim: "⌥\(i + 1)").foregroundStyle(.secondary).monospacedDigit()

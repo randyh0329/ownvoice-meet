@@ -4,6 +4,7 @@
 "%@ minutes" = "%@ minutes";
 "%@ minutes of sound" = "%@ minutes of sound";
 "%@ requests, %@ tokens in, %@ out" = "%@ requests, %@ tokens in, %@ out";
+"A voice model did not match its checksum, so it was not kept." = "A voice model did not match its checksum, so it was not kept.";
 "API Keys" = "API Keys";
 "About" = "About";
 "Add" = "Add";
@@ -26,6 +27,7 @@
 "Apple on-device recognition has no audio format for this language." = "Apple on-device recognition has no audio format for this language.";
 "Apple recognition stopped: %@" = "Apple recognition stopped: %@";
 "Background" = "Background";
+"By %@, %@" = "By %@, %@";
 "Cancel" = "Cancel";
 "Captions" = "Captions";
 "Captions appear here: what is said, and its Chinese under it." = "Captions appear here: what is said, and its Chinese under it.";
@@ -37,7 +39,9 @@
 "Checking…" = "Checking…";
 "Chinese" = "Chinese";
 "Choose…" = "Choose…";
+"Claude Fable 5.2 (most capable; US$8 / US$40 per million tokens)" = "Claude Fable 5.2 (most capable; US$8 / US$40 per million tokens)";
 "Claude Haiku 5.5 (about US$0.03 an hour)" = "Claude Haiku 5.5 (about US$0.03 an hour)";
+"Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)" = "Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)";
 "Claude Sonnet 5.5 (about US$0.66 an hour)" = "Claude Sonnet 5.5 (about US$0.66 an hour)";
 "Clear Captions" = "Clear Captions";
 "Colors" = "Colors";
@@ -48,10 +52,12 @@
 "Could not start the recording: %@" = "Could not start the recording: %@";
 "Custom" = "Custom";
 "Don't save" = "Don't save";
+"Download" = "Download";
 "Downloading %@…" = "Downloading %@…";
 "Downloading %@… %@ / %@ GB" = "Downloading %@… %@ / %@ GB";
 "Downloading Apple's speech model…" = "Downloading Apple's speech model…";
 "Downloading Ollama…" = "Downloading Ollama…";
+"Downloading the voice models (%@ of %@)…" = "Downloading the voice models (%@ of %@)…";
 "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key." = "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key.";
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.";
@@ -61,6 +67,7 @@
 "English (UK)" = "English (UK)";
 "English (US)" = "English (US)";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing.";
+"Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "Every line already has both halves." = "Every line already has both halves.";
 "Fill In Missing Halves" = "Fill In Missing Halves";
 "Filled in %@ lines." = "Filled in %@ lines.";
@@ -109,6 +116,8 @@
 "Live summary" = "Live summary";
 "Local model on this Mac (free, offline)" = "Local model on this Mac (free, offline)";
 "Meeting language" = "Meeting language";
+"Meeting summary" = "Meeting summary";
+"Meeting summary failed: %@" = "Meeting summary failed: %@";
 "Microphone (in the room)" = "Microphone (in the room)";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone.";
 "Model" = "Model";
@@ -121,12 +130,14 @@
 "New lines get this name until you choose another." = "New lines get this name until you choose another.";
 "New segment" = "New segment";
 "New segment: %@" = "New segment: %@";
+"New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere.";
 "No Speaker" = "No Speaker";
 "No release found on GitHub." = "No release found on GitHub.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
 "No sound output device found." = "No sound output device found.";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "Not downloaded yet: open Language & Region → Translation Languages and download both languages.";
+"Nothing to summarize yet." = "Nothing to summarize yet.";
 "Nothing yet." = "Nothing yet.";
 "Ollama could not be downloaded from ollama.com." = "Ollama could not be downloaded from ollama.com.";
 "Ollama could not download the model: %@" = "Ollama could not download the model: %@";
@@ -134,6 +145,7 @@
 "Ollama is installed but not running." = "Ollama is installed but not running.";
 "Ollama is not installed." = "Ollama is not installed.";
 "Ollama is running; %@ is not downloaded yet." = "Ollama is running; %@ is not downloaded yet.";
+"Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time.";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma.";
 "Only when asked" = "Only when asked";
@@ -167,6 +179,7 @@
 "Reply: type Chinese, read the words aloud" = "Reply: type Chinese, read the words aloud";
 "Reset" = "Reset";
 "Return sends. The language to read is chosen in Settings (I speak)." = "Return sends. The language to read is chosen in Settings (I speak).";
+"Same as replies (the text model in use)" = "Same as replies (the text model in use)";
 "Same as the Mac" = "Same as the Mac";
 "Save Keys" = "Save Keys";
 "Saved" = "Saved";
@@ -205,10 +218,13 @@
 "Stopped." = "Stopped.";
 "Stronger wording and judgment than Haiku, slower, about 20 times the price; captions rarely need it. Needs an Anthropic API key." = "Stronger wording and judgment than Haiku, slower, about 20 times the price; captions rarely need it. Needs an Anthropic API key.";
 "Subtitles" = "Subtitles";
+"Summarize Whole Meeting" = "Summarize Whole Meeting";
+"Summarize the whole meeting when it ends" = "Summarize the whole meeting when it ends";
 "Summary" = "Summary";
 "Summary & Saving" = "Summary & Saving";
 "Summary failed: %@" = "Summary failed: %@";
 "System" = "System";
+"Tell speakers apart by voice (on this Mac)" = "Tell speakers apart by voice (on this Mac)";
 "Terminal (amber)" = "Terminal (amber)";
 "Terminal (green)" = "Terminal (green)";
 "Text size" = "Text size";
@@ -224,6 +240,9 @@
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "The same price as Haiku; its speed varies more. Needs an OpenAI API key.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
 "The transcript starts a new section from here." = "The transcript starts a new section from here.";
+"The voice models (about 32 MB) are downloaded once." = "The voice models (about 32 MB) are downloaded once.";
+"The voice models could not be downloaded." = "The voice models could not be downloaded.";
+"The voice models could not be loaded; speakers are not told apart." = "The voice models could not be loaded; speakers are not told apart.";
 "Theme" = "Theme";
 "This fork: randyh0329/ownvoice-meet" = "This fork: randyh0329/ownvoice-meet";
 "This month" = "This month";
@@ -248,12 +267,13 @@
 "Use It" = "Use It";
 "Uses the earlier lines and the glossary; shares the key with Gemini recognition." = "Uses the earlier lines and the glossary; shares the key with Gemini recognition.";
 "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key." = "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key.";
-"Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma." = "Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma.";
 "Version" = "Version";
 "Vietnamese" = "Vietnamese";
 "What do you want to say? (Chinese)" = "What do you want to say? (Chinese)";
 "What was said" = "What was said";
+"When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving." = "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.";
 "Who is speaking now: new lines get this name. Right-click a line to change its speaker." = "Who is speaking now: new lines get this name. Right-click a line to change its speaker.";
+"Writing the meeting summary with %@…" = "Writing the meeting summary with %@…";
 "Your Whisper server: fill in its address in Settings first." = "Your Whisper server: fill in its address in Settings first.";
 "Your own Whisper server (OpenAI-compatible, free)" = "Your own Whisper server (OpenAI-compatible, free)";
 "Your own server" = "Your own server";
@@ -264,4 +284,5 @@
 "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages." = "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages.";
 "✓ Ready: %@ → %@ is on this Mac." = "✓ Ready: %@ → %@ is on this Mac.";
 "✓ Ready: Ollama is running and has %@." = "✓ Ready: Ollama is running and has %@.";
+"✓ The voice models are on this Mac." = "✓ The voice models are on this Mac.";
 "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud." = "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud.";
