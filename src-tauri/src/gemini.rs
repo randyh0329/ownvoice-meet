@@ -11,6 +11,9 @@
 // both transcriptions on; serverContent.inputTranscription is what was said and
 // outputTranscription the translation, both as continuous streams (gemini_translate.rs pairs them
 // into caption lines). The translated audio itself is not played.
+// Live Translate following another recognizer and losing its connection: the text model translates
+// until it is back, and the audio that piled up meanwhile is dropped, so the Chinese that comes
+// after it is for what is being said then (gemini_translate.rs, pause and resume).
 // OWNVOICE_DEBUG=1 appends every raw server message to gemini-debug.log in the config folder.
 
 use std::io::Write as _;
@@ -63,15 +66,15 @@ pub struct Translate {
     pub target: String,
     /// System instruction: wording and glossary.
     pub instruction: String,
-    /// Only the Chinese is used, for another recognizer's lines (gemini_translate.rs, following).
-    pub following: bool,
+    /// Only the Chinese is used, for another recognizer's lines (gemini_translate.rs, following):
+    /// the number gemini_translate::follow_on gave the run.
+    pub following: Option<u64>,
 }
 
 /// Run until the audio channel closes (listening stopped), reconnecting as needed.
 pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Receiver<Vec<i16>>) {
-    let following = opts.translate.as_ref().is_some_and(|t| t.following);
     let mut handler = match &opts.translate {
-        Some(t) if t.following => Handler::Follow,
+        Some(Translate { following: Some(run), .. }) => Handler::Follow { run: *run, away: false },
         Some(_) => Handler::Translate(Interp::default()),
         None => Handler::Transcribe(Live::default()),
     };
@@ -83,22 +86,44 @@ pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Recei
         match res {
             Ok(End::AudioClosed) => break,
             Ok(End::Rotate) => backoff = 1,
-            Err(Err2::Fatal(Fatal(msg))) if following => {
-                // Captions go on with the text model.
-                crate::gemini_translate::follow_off(&app);
-                status(&app, format!("Live Translate 拒絕連線：{msg}；字幕改用 {} 翻譯", crate::llm::FALLBACK_LABEL));
-                break;
-            }
             Err(Err2::Fatal(Fatal(msg))) => {
-                status(&app, format!("Gemini 拒絕連線：{msg}（請到設定檢查 key 與模型）"));
+                if let Handler::Follow { run, .. } = handler {
+                    // Captions go on with the text model.
+                    crate::gemini_translate::follow_off(&app, run);
+                    status(&app, format!("Live Translate 拒絕連線：{msg}；字幕改用 {} 翻譯", crate::llm::FALLBACK_LABEL));
+                } else {
+                    status(&app, format!("Gemini 拒絕連線：{msg}（請到設定檢查 key 與模型）"));
+                }
                 break;
             }
             Err(Err2::Retry(msg)) => {
-                let who = if following { "Live Translate" } else { "Gemini" };
-                status(&app, format!("{who} 連線中斷：{msg}；{backoff} 秒後重試"));
-                tokio::time::sleep(Duration::from_secs(backoff)).await;
+                if let Handler::Follow { run, away } = &mut handler {
+                    // Until it is back, the captions are the text model's, and the sound that piles
+                    // up meanwhile is dropped (wait_dropping_audio, and session once connected).
+                    crate::gemini_translate::follow_pause(&app, *run);
+                    *away = true;
+                    status(&app, format!("Live Translate 連線中斷：{msg}；字幕先用 {} 翻譯，{backoff} 秒後重試", crate::llm::FALLBACK_LABEL));
+                    if !wait_dropping_audio(&mut audio, Duration::from_secs(backoff)).await {
+                        break; // listening stopped
+                    }
+                } else {
+                    status(&app, format!("Gemini 連線中斷：{msg}；{backoff} 秒後重試"));
+                    tokio::time::sleep(Duration::from_secs(backoff)).await;
+                }
                 backoff = (backoff * 2).min(30);
             }
+        }
+    }
+}
+
+/// Wait `wait`, dropping the audio that comes meanwhile; false if the audio channel closed first.
+async fn wait_dropping_audio(audio: &mut mpsc::Receiver<Vec<i16>>, wait: Duration) -> bool {
+    let until = tokio::time::sleep(wait);
+    tokio::pin!(until);
+    loop {
+        tokio::select! {
+            _ = &mut until => return true,
+            chunk = audio.recv() => if chunk.is_none() { return false; },
         }
     }
 }
@@ -107,8 +132,9 @@ pub async fn run(app: AppHandle, key: String, opts: Opts, mut audio: mpsc::Recei
 enum Handler {
     Transcribe(Live),
     Translate(Interp),
-    /// Only the Chinese, for the 聽 recognizer's lines.
-    Follow,
+    /// Only the Chinese, for the 聽 recognizer's lines: run `run` of following, `away` while the
+    /// connection is lost.
+    Follow { run: u64, away: bool },
 }
 
 impl Handler {
@@ -125,9 +151,9 @@ impl Handler {
                     interp.translated(t, Instant::now(), &mut sink);
                 }
             }
-            Handler::Follow => {
+            Handler::Follow { run, .. } => {
                 if let Some(t) = v["serverContent"]["outputTranscription"]["text"].as_str() {
-                    crate::gemini_translate::follow_translated(app, t);
+                    crate::gemini_translate::follow_translated(app, *run, t);
                 }
             }
         }
@@ -136,7 +162,7 @@ impl Handler {
     fn tick(&mut self, app: &AppHandle) {
         match self {
             Handler::Translate(interp) => interp.tick(Instant::now(), &mut CaptionSink(app)),
-            Handler::Follow => crate::gemini_translate::follow_tick(app),
+            Handler::Follow { run, .. } => crate::gemini_translate::follow_tick(app, *run),
             Handler::Transcribe(_) => {}
         }
     }
@@ -144,7 +170,7 @@ impl Handler {
     fn flush(&mut self, app: &AppHandle) {
         match self {
             Handler::Translate(interp) => interp.flush(&mut CaptionSink(app)),
-            Handler::Follow => crate::gemini_translate::follow_flush(app),
+            Handler::Follow { run, .. } => crate::gemini_translate::follow_flush(app, *run),
             Handler::Transcribe(_) => {}
         }
     }
@@ -154,7 +180,7 @@ impl Handler {
         match self {
             Handler::Transcribe(live) => live.current.is_none(),
             Handler::Translate(interp) => interp.idle(),
-            Handler::Follow => crate::gemini_translate::follow_idle(app),
+            Handler::Follow { run, .. } => crate::gemini_translate::follow_idle(app, *run),
         }
     }
 }
@@ -246,9 +272,18 @@ async fn session(app: &AppHandle, key: &str, opts: &Opts, audio: &mut mpsc::Rece
     let (mut tx, mut rx) = ws.split();
     // Following, the recognizer's status stays on screen.
     match &opts.translate {
-        Some(t) if t.following => {}
+        Some(Translate { following: Some(_), .. }) => {}
         Some(_) => status(app, "聆聽中（Gemini Live 同步口譯）"),
         None => status(app, "聆聽中（Gemini Live）"),
+    }
+    if let Handler::Follow { run, away } = live {
+        if *away {
+            // Sound from while it was away is dropped: the Chinese from here on is for what is said now.
+            while audio.try_recv().is_ok() {}
+            crate::gemini_translate::follow_resume(app, *run);
+            *away = false;
+            status(app, "Live Translate 已重新連上");
+        }
     }
 
     let started = Instant::now();
@@ -560,7 +595,7 @@ mod tests {
             catalog_id: "gemini-live-translate".into(),
             model: "gemini-3.5-live-translate-preview".into(),
             language: String::new(),
-            translate: Some(Translate { target: TARGET_ZH_TW.into(), instruction: crate::prompts::live_translate_instruction(&[]), following: false }),
+            translate: Some(Translate { target: TARGET_ZH_TW.into(), instruction: crate::prompts::live_translate_instruction(&[]), following: None }),
         }
     }
 
