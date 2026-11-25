@@ -401,8 +401,9 @@ fn with_run(app: &AppHandle, run: u64, f: impl FnOnce(&mut Interp, &mut Translat
 /// Live Translate starts supplying the captions' Chinese; returns the run's number, which its
 /// calls below carry. A run still winding down hands over: lines that ended keep what they have.
 pub fn follow_on(app: &AppHandle) -> u64 {
+    let state = app.state::<Following>();
     let (run, earlier) = {
-        let Ok(mut g) = app.state::<Following>().0.lock() else { return 0 };
+        let Ok(mut g) = state.0.lock() else { return 0 };
         g.run += 1;
         let earlier = g.interp.replace(Interp::following());
         (g.run, earlier)
