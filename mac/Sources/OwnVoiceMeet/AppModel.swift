@@ -487,7 +487,7 @@ final class AppModel {
                 try? await Task.sleep(for: .seconds(5))
                 record?.writeIfChanged()
                 let s = settings
-                if s.summaryAuto, Date().timeIntervalSince(lastSummary) >= Double(s.summaryEveryMinutes * 60), (record?.forSummary.count ?? 0) >= 3 {
+                if let next = nextSummaryAt, Date() >= next, !summaryWaitsForLines {
                     // Its own task: stopping cancels the ticker, not a summary half written.
                     await Task { await self.updateSummary(force: false) }.value
                 }
@@ -694,22 +694,30 @@ final class AppModel {
 
     // MARK: Summary
 
-    /// When the live summary is next brought up to date (nil: not listening, or only when asked).
-    /// It waits for at least three new lines, so a quiet room can push it later.
-    var nextSummaryAt: Date? {
-        guard isListening, settings.summaryAuto else { return nil }
-        return lastSummary.addingTimeInterval(Double(settings.summaryEveryMinutes * 60))
-    }
+    /// An automatic update waits for at least this many new lines, so a quiet room is skipped.
+    static let summaryMinLines = 3
 
-    /// From the Summary window: every `minutes` minutes, or (nil) only on Update Now.
-    func setSummaryInterval(_ minutes: Int?) {
-        if let minutes {
-            settings.summaryEveryMinutes = max(1, min(minutes, 60))
-            settings.summaryAuto = true
-        } else {
-            settings.summaryAuto = false
+    /// The live summary's interval in minutes; nil: only on Update Now. Settings are saved once per change.
+    var summaryInterval: Int? {
+        get { settings.summaryAuto ? settings.summaryEveryMinutes : nil }
+        set {
+            guard newValue != summaryInterval else { return }
+            var s = settings
+            s.summaryAuto = newValue != nil
+            if let newValue { s.summaryEveryMinutes = min(max(newValue, AppSettings.summaryMinutesRange.lowerBound), AppSettings.summaryMinutesRange.upperBound) }
+            settings = s
         }
     }
+
+    /// When the live summary is next due (nil: not listening, or only when asked).
+    /// It also waits for `summaryMinLines` new lines, so a quiet room can push it later.
+    var nextSummaryAt: Date? {
+        guard isListening, let minutes = summaryInterval else { return nil }
+        return lastSummary.addingTimeInterval(Double(minutes * 60))
+    }
+
+    /// Too few new lines for an automatic update yet.
+    var summaryWaitsForLines: Bool { (record?.forSummary.count ?? 0) < Self.summaryMinLines }
 
     /// Bring the summary up to date with the lines since the last time (`force`: even a few).
     func updateSummary(force: Bool) async {
@@ -721,7 +729,7 @@ final class AppModel {
     private func summarize(force: Bool, record: SessionRecord) async {
         guard !summaryWorking else { return }
         let lines = record.takeForSummary()
-        guard !lines.isEmpty, force || lines.count >= 3 else {
+        guard !lines.isEmpty, force || lines.count >= Self.summaryMinLines else {
             record.giveBack(lines)
             return
         }

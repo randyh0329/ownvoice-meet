@@ -68,7 +68,6 @@
 "English (UK)" = "English (UK)";
 "English (US)" = "English (US)";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing.";
-"Every %@ min" = "Every %@ min";
 "Every %@ minutes" = "Every %@ minutes";
 "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "Every line already has both halves." = "Every line already has both halves.";
@@ -136,7 +135,8 @@
 "New segment: %@" = "New segment: %@";
 "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere.";
 "Next update in about %@ min" = "Next update in about %@ min";
-"Next update: when three new lines are in" = "Next update: when three new lines are in";
+"Next update: any moment" = "Next update: any moment";
+"Next update: when %@ new lines are in" = "Next update: when %@ new lines are in";
 "No Speaker" = "No Speaker";
 "No release found on GitHub." = "No release found on GitHub.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
@@ -267,6 +267,7 @@
 "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text." = "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text.";
 "Unpacking Ollama failed." = "Unpacking Ollama failed.";
 "Up to date (%@)." = "Up to date (%@).";
+"Update" = "Update";
 "Update Now" = "Update Now";
 "Update automatically while listening" = "Update automatically while listening";
 "Updated %@" = "Updated %@";

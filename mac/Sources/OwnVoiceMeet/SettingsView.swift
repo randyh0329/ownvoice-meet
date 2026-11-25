@@ -164,7 +164,7 @@ private struct SummarySavingTab: View {
             Section("Live summary") {
                 Toggle("Update automatically while listening", isOn: $model.settings.summaryAuto)
                 if model.settings.summaryAuto {
-                    Stepper(value: $model.settings.summaryEveryMinutes, in: 1...60) {
+                    Stepper(value: $model.settings.summaryEveryMinutes, in: AppSettings.summaryMinutesRange) {
                         Text(verbatim: String(localized: "Every \(String(model.settings.summaryEveryMinutes)) minutes"))
                     }
                 }

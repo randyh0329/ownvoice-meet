@@ -232,11 +232,12 @@ struct SummaryView: View {
                     if !model.summaryUpdated.isEmpty {
                         Text(verbatim: model.summaryUpdated)
                     }
-                    // Refreshed every 15 s, so the countdown keeps up without anything else changing.
-                    TimelineView(.periodic(from: .now, by: 15)) { context in
-                        if let next = model.nextSummaryAt {
-                            let minutes = Int((next.timeIntervalSince(context.date) / 60).rounded(.up))
-                            Text(verbatim: minutes <= 0 ? String(localized: "Next update: when three new lines are in") : String(localized: "Next update in about \(String(minutes)) min"))
+                    if model.nextSummaryAt != nil {
+                        // Refreshed every 15 s, so the countdown keeps up without anything else changing.
+                        TimelineView(.periodic(from: .now, by: 15)) { context in
+                            if let next = model.nextSummaryAt, let note = nextUpdateNote(next, now: context.date) {
+                                Text(verbatim: note)
+                            }
                         }
                     }
                 }
@@ -251,27 +252,47 @@ struct SummaryView: View {
         }
     }
 
+    /// nil: nothing worth saying (an update is being written right now).
+    private func nextUpdateNote(_ next: Date, now: Date) -> String? {
+        let minutes = Int((next.timeIntervalSince(now) / 60).rounded(.up))
+        if minutes > 0 { return String(localized: "Next update in about \(String(minutes)) min") }
+        if model.summaryWorking { return nil }
+        if model.summaryWaitsForLines { return String(localized: "Next update: when \(String(AppModel.summaryMinLines)) new lines are in") }
+        return String(localized: "Next update: any moment")
+    }
+
+    private static let intervalPresets = [1, 2, 3, 5, 10, 15, 30]
+
     /// The live summary's interval, changeable during the meeting.
     private var intervalMenu: some View {
-        Menu {
-            Toggle("Only When I Press Update Now", isOn: Binding(get: { !model.settings.summaryAuto }, set: { if $0 { model.setSummaryInterval(nil) } }))
-            Divider()
-            ForEach([1, 2, 3, 5, 10, 15, 30], id: \.self) { m in
-                Toggle(isOn: Binding(get: { model.settings.summaryAuto && model.settings.summaryEveryMinutes == m }, set: { if $0 { model.setSummaryInterval(m) } })) {
-                    Text(verbatim: String(localized: "Every \(String(m)) minutes"))
+        @Bindable var model = model
+        // A value set in Settings that is not a preset is listed too, so the current one is always checked.
+        let minutes = Set(Self.intervalPresets + [model.summaryInterval].compactMap { $0 }).sorted()
+        return Menu {
+            Picker("Update", selection: $model.summaryInterval) {
+                Text("Only When I Press Update Now").tag(nil as Int?)
+                Divider()
+                ForEach(minutes, id: \.self) { m in
+                    Text(verbatim: String(localized: "Every \(String(m)) minutes")).tag(Optional(m))
                 }
             }
+            .pickerStyle(.inline)
+            .labelsHidden()
         } label: {
-            Label(model.settings.summaryAuto ? String(localized: "Every \(String(model.settings.summaryEveryMinutes)) min") : String(localized: "Only when asked"), systemImage: "clock.arrow.circlepath")
+            Label(intervalLabel, systemImage: "clock.arrow.circlepath")
         }
         .fixedSize()
         .help("How often the live summary brings itself up to date")
     }
 
+    private var intervalLabel: String {
+        guard let m = model.summaryInterval else { return String(localized: "Only when asked") }
+        return String(localized: "Every \(String(m)) minutes")
+    }
+
     private var placeholder: String {
-        model.settings.summaryAuto
-            ? String(localized: "The main points appear here every \(String(model.settings.summaryEveryMinutes)) minutes while listening.")
-            : String(localized: "The main points appear here when you press Update Now.")
+        guard let m = model.summaryInterval else { return String(localized: "The main points appear here when you press Update Now.") }
+        return String(localized: "The main points appear here every \(String(m)) minutes while listening.")
     }
 
     private var meeting: some View {

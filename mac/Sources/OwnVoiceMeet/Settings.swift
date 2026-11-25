@@ -279,8 +279,9 @@ struct AppSettings: Codable, Equatable {
     var speakLanguage = "en"
     /// The live summary brings itself up to date while listening (else only on Update Now)…
     var summaryAuto = true
-    /// …every this many minutes (1–60).
+    /// …every this many minutes (within `summaryMinutesRange`).
     var summaryEveryMinutes = 5
+    static let summaryMinutesRange = 1...60
     var liveSummaryModel: SummaryModelChoice = .auto
     /// Once the meeting ends, the whole transcript goes to `meetingSummaryModel` for the minutes.
     var meetingSummaryOnStop = false
@@ -324,7 +325,7 @@ struct AppSettings: Codable, Equatable {
         // Before there was a switch, 0 minutes meant "only when asked".
         let minutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryEveryMinutes
         summaryAuto = (try? c.decodeIfPresent(Bool.self, forKey: .summaryAuto)) ?? (minutes > 0)
-        summaryEveryMinutes = minutes > 0 ? min(minutes, 60) : d.summaryEveryMinutes
+        summaryEveryMinutes = minutes > 0 ? min(minutes, Self.summaryMinutesRange.upperBound) : d.summaryEveryMinutes
         liveSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .liveSummaryModel)) ?? d.liveSummaryModel
         meetingSummaryOnStop = (try? c.decodeIfPresent(Bool.self, forKey: .meetingSummaryOnStop)) ?? d.meetingSummaryOnStop
         meetingSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .meetingSummaryModel)) ?? d.meetingSummaryModel

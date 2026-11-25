@@ -68,7 +68,6 @@
 "English (UK)" = "英文（英國）";
 "English (US)" = "英文（美國）";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "依各家牌價估算（2026-10-17 查），實際以各家帳單為準。Apple、Gemma、TranslateGemma 和你自己的伺服器不花錢。";
-"Every %@ min" = "每 %@ 分鐘";
 "Every %@ minutes" = "每 %@ 分鐘";
 "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "會議中每隔幾分鐘更新：用又快又便宜的模型就夠了。「跟回覆相同」就是「翻譯」選的模型；選 Apple 翻譯或 TranslateGemma 時，用第一個有金鑰的，都沒有就用 Gemma 4。";
 "Every line already has both halves." = "每一行都已經有對照了。";
@@ -136,7 +135,6 @@
 "New segment: %@" = "新段落：%@";
 "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "新的聲音會自動變成講者 1、2、3…。在某個聲音的任一行按右鍵選名字，這個聲音前後所有的字幕行都會換成那個名字。任何辨識方式都能用；免費，不會送出任何資料。";
 "Next update in about %@ min" = "約 %@ 分鐘後更新";
-"Next update: when three new lines are in" = "下次更新：等有三行新字幕時";
 "No Speaker" = "不標講者";
 "No release found on GitHub." = "GitHub 上找不到發布版本。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "還沒有講稿。按「編輯」直接寫、「開啟…」讀 .md 檔，或「插入範本」從範例開始。只寫一種語言也可以，按「補對照」補上另一半。";
@@ -294,3 +292,6 @@
 "✓ Ready: Ollama is running and has %@." = "✓ 可以用了：Ollama 正在執行，也有 %@。";
 "✓ The voice models are on this Mac." = "✓ 聲紋模型已在這台 Mac 上。";
 "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud." = "補對照：沒有中文意思的句子補上中文；用中文寫的句子補上要唸的外語。";
+"Next update: when %@ new lines are in" = "下次更新：等有 %@ 行新字幕時";
+"Next update: any moment" = "下次更新：隨時";
+"Update" = "更新頻率";
