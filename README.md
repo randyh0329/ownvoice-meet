@@ -6,17 +6,17 @@
 
 開線上會議或聽演講時，即時字幕把別人說的話接上中文意思；想發言時，用中文打出意思，它給你一句說得出口的外語，你照著唸。它不替你作答：話是你自己的，聲音也是你自己的。
 
-**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.5.0/OwnVoice-Meet-0.5.0-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
+**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.0/OwnVoice-Meet-0.6.0-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
 
 這是 [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) 的 fork（`randyh0329/ownvoice-meet`，分支 `main`；開發在 `gemini-transcribe`）。主要多了一個**用 Swift／SwiftUI 重寫的 Mac 原生版**（Apple Silicon、macOS 26 以上），放在 [`mac/`](mac/)；原本跨平台的版本（Tauri，Windows 與 macOS）留在 repo 根目錄，直到原生版的功能追上為止。
 
-> **狀態：Mac 原生版 0.5.0（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音 → Apple 裝置上辨識 → Apple 翻譯。其他選項能建置、CI 通過，還在試用中。
+> **狀態：Mac 原生版 0.6.0（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音、Apple 裝置上辨識、Apple 翻譯、Gemma 4、字幕顏色、存檔。0.6.0 新增的選項能建置、CI 通過，還在試用中。
 
 ## 下載
 
 | 版本 | 適用 | 從哪裡拿 |
 |---|---|---|
-| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.5.0-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.5.0/OwnVoice-Meet-0.5.0-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
+| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.6.0-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.0/OwnVoice-Meet-0.6.0-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
 | 跨平台版（Tauri），Mac | Intel 與 Apple Silicon，macOS 11 以上 | [Actions →「macOS DMG」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml)：最新一次綠色的執行，Artifacts 的 `OwnVoice-Meet-macOS-dmg`。Mac 上只能用麥克風收音。 |
 | 跨平台版，Windows | Windows 10、11 | 原作者的 [0.4.0 發布頁](https://github.com/Zaious/ownvoice-meet/releases/latest)（不含這個分支新增的功能）。 |
 
@@ -25,13 +25,16 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 ## Mac 原生版做什麼
 
 - **聽會議的聲音**：直接聽 Mac 播放的聲音（Core Audio 的 process tap，只需要「僅限系統錄音」權限，不錄螢幕），或用麥克風聽實體會場。
-- **聽（語音辨識）**：Apple 裝置上辨識（SpeechAnalyzer，免費、不上傳），或 Gemini 3.5 Transcribe Live。
-- **翻（翻譯）**：Apple 翻譯（裝置上，免費）、Claude Haiku 5.5、Gemini 3.5 Flash-Lite，或在這台 Mac 上跑的 Gemma 4（Ollama，免費；設定裡按一下就裝好）。
+- **聽（語音辨識）**：Apple 裝置上辨識（免費、不上傳）、Gemini 3.5 Transcribe Live、Gemini 3.5 Live Translate（聽和翻一起做）、Gemini 3.5 Transcribe 或 OpenAI gpt-4o-mini-transcribe（一句一句）、OpenAI gpt-live-transcribe、你自己的 Whisper 伺服器，或只錄音。
+- **翻（翻譯）**：Apple 翻譯（裝置上，免費）、Claude Haiku／Sonnet 5.5、OpenAI gpt-6-luna／gpt-6.1-sol、Gemini 3.5 Flash-Lite／3.8 Flash，或在這台 Mac 上跑的 **TranslateGemma 4B**、**Gemma 4 E4B**、Gemma 4 12B（Ollama，免費；設定裡選一個、按一下就裝好），也可以接你自己的 OpenAI 相容伺服器。
 - **中文要哪一種**：繁體中文（台灣）或简体中文。提示詞、Apple 翻譯的目標語言和字幕的字都跟著換。
 - **回覆**（⌘1）：打中文，變成要唸的外語（設定裡選「我說的語言」），大字顯示。
 - **講稿**（⌘2）：中外對照講稿，分頁、提示、問答、複製區塊；「補對照」幫你補上缺的那一半。字幕翻譯、回覆和摘要都會參考講稿。
 - **即時摘要**（⌘3）：每隔幾分鐘整理成最多 8 點重點。
 - **存檔**（預設關閉）：每次聆聽一個資料夾，裡面是逐字稿、摘要，選了的話還有錄音（.m4a）。
+- **段落**（⌘⇧N）：開始新段落，逐字稿按段落分節。
+- **用量**：估算這次和這個月每個服務的費用。
+- **省錢**：雲端辨識在安靜時自動暫停（不計費），有人說話就恢復；安靜太久自動停止聆聽。
 - **字幕顏色**：跟系統、終端機（綠色／琥珀色）、Solarized、電影字幕，或自訂顏色；原文和中文分開兩種顏色。
 - **介面語言**：English、繁體中文、简体中文，跟著 Mac 或在設定裡指定。
 
@@ -45,24 +48,30 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
    - 辨識選「Apple 裝置上辨識」，會議語言選對方說的語言。
    - 翻譯選一個：
      - **Apple 翻譯**：按「檢查 Apple 翻譯」；缺語言包就按「打開語言與地區」，在「翻譯語言」下載英文和中文。
-     - **Gemma 4**：在「在這台 Mac 上跑 Gemma 4」按「設定 Gemma 4」，會自動裝好 Ollama（從 ollama.com 下載，先檢查簽章）和模型（約 7 GB）。
-     - **Claude 或 Gemini**：到「API 金鑰」分頁填 key（存在鑰匙圈，不寫進檔案）。
+     - **本機模型（TranslateGemma 4B 或 Gemma 4）**：在「在這台 Mac 上跑的本機模型」選一個，按「設定」，會自動裝好 Ollama（從 ollama.com 下載，先檢查簽章）和模型（TranslateGemma 約 3.3 GB、Gemma 4 E4B 約 7 GB）。TranslateGemma 只翻字幕；Gemma 4 也能做回覆和摘要。
+     - **Claude、OpenAI 或 Gemini**：到「API 金鑰」分頁填 key（存在鑰匙圈，不寫進檔案）。
 3. 回到字幕視窗按 **開始**（⌘L）。第一次聽 Mac 的聲音時，macOS 會問要不要允許「系統錄音」：允許之後，結束並重新打開 app。
 
-回覆、摘要和「補對照」需要文字模型：翻譯選 Claude、Gemini 或 Gemma 時就用它；選 Apple 翻譯時，用第一個有 key 的（Claude、Gemini），都沒有就用 Gemma。
+回覆、摘要和「補對照」需要文字模型：翻譯選了文字模型就用它；選 Apple 翻譯或 TranslateGemma 時，用第一個有 key 的（Claude、Gemini、OpenAI），都沒有就用 Gemma 4 E4B。
 
 ## 服務與費用
 
 | | 選項 | 費用（牌價估算） |
 |---|---|---|
 | 聽 | Apple 裝置上辨識 | 免費，聲音不離開 Mac |
+| 聽 | 你自己的 Whisper 伺服器 | 免費 |
+| 聽 | OpenAI gpt-4o-mini-transcribe（一句一句） | 約每小時 US$0.18 |
+| 聽 | Gemini 3.5 Transcribe（一句一句） | 約每小時 US$0.30 |
 | 聽 | Gemini 3.5 Transcribe Live | 約每小時 US$0.54 |
-| 翻 | Apple 翻譯 | 免費，文字不離開 Mac |
-| 翻 | Gemma 4 E4B（Ollama） | 免費，文字不離開 Mac；需要約 10 GB 空間 |
-| 翻 | Claude Haiku 5.5 | 約每小時 US$0.03 |
+| 聽 | OpenAI gpt-live-transcribe | 約每小時 US$1.02 |
+| 聽＋翻 | Gemini 3.5 Live Translate | 約每小時 US$2.2 |
+| 翻 | Apple 翻譯、TranslateGemma 4B、Gemma 4 E4B／12B、你自己的伺服器 | 免費，文字不離開你的機器 |
+| 翻 | Claude Haiku 5.5、OpenAI gpt-6-luna | 約每小時 US$0.03 |
 | 翻 | Gemini 3.5 Flash-Lite | 約每小時 US$0.13 |
+| 翻 | Gemini 3.8 Flash（較慢） | 約每小時 US$0.25 |
+| 翻 | Claude Sonnet 5.5、OpenAI gpt-6.1-sol | 約每小時 US$0.66 |
 
-完全免費、完全不連網的組合：Apple 裝置上辨識＋Apple 翻譯（字幕），回覆和摘要用 Gemma 4。Gemini 的免費層資料會被 Google 用來改進產品，機密會議請用付費層的 key。
+完全免費、完全不連網的組合：Apple 裝置上辨識＋Apple 翻譯或 TranslateGemma（字幕），回覆和摘要用 Gemma 4。Gemini 的免費層資料會被 Google 用來改進產品，機密會議請用付費層的 key。
 
 ## 隱私
 
@@ -70,7 +79,7 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 - **字幕文字、講稿、術語表**：選 Apple 翻譯或 Gemma 時不離開 Mac；選 Claude 或 Gemini 時送到 Anthropic 或 Google。
 - **API key**：存在 macOS 的鑰匙圈，不寫進檔案。
 - **存檔**：預設關閉；打開後逐字稿、摘要和錄音只存在你的 Mac 上。會留下別人的聲音，請先確認大家同意。
-- **網路連線**：只連你選的服務；按「設定 Gemma 4」時從 ollama.com 下載 Ollama 和模型。沒有統計、沒有廣告。
+- **網路連線**：只連你選的服務；設定本機模型時從 ollama.com 下載 Ollama 和模型；按「檢查更新」時問 GitHub。沒有統計、沒有廣告。
 
 ## 從原始碼建置
 

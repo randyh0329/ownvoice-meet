@@ -427,7 +427,9 @@ final class OpenAILiveRecognizer: Recognizer {
 
 /// Gemini Live Translate: hears the speech and gives the Chinese itself, as two streams the
 /// Interpreter pairs into lines. The translated audio it also sends is not played.
-final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink {
+/// Its state is touched only on `queue` (and the socket set once per connection), so it is safe to
+/// hand to the tasks that read the socket and tick the interpreter.
+final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @unchecked Sendable {
     private let key: String
     private let model = "gemini-3.5-live-translate-preview"
     private let target: String
