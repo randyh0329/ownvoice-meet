@@ -82,7 +82,8 @@ final class AppleSpeechRecognizer: Recognizer {
         input?.finish()
         input = nil
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
-        results?.cancel()
+        // The last results come after finalizing: let them arrive (briefly) before ending.
+        if let results { await waitAtMost(seconds: 3, for: results) }
         analyzer = nil
     }
 }
@@ -119,23 +120,12 @@ final class GeminiLiveRecognizer: Recognizer {
         url.queryItems = [URLQueryItem(name: "key", value: key)]
         let socket = URLSession.shared.webSocketTask(with: url.url!)
         socket.resume()
-        try await socket.send(.string(GeminiLive.setupMessage(model: model, language: language)))
-        // A bad key or model closes the socket here.
-        let ready = try await withThrowingTaskGroup(of: Bool.self) { group in
-            group.addTask {
-                while true {
-                    if GeminiLive.parse(try await socket.receive().data).contains(.setupComplete) { return true }
-                }
-            }
-            group.addTask {
-                try await Task.sleep(for: .seconds(10))
-                return false
-            }
-            let first = try await group.next() ?? false
-            group.cancelAll()
-            return first
-        }
-        guard ready else {
+        // A bad key or model closes the socket here; a server that never answers times out.
+        let deadline = Date().addingTimeInterval(10)
+        do {
+            try await socket.send(.string(GeminiLive.setupMessage(model: model, language: language)))
+            while !GeminiLive.parse(try await socket.receive(before: deadline).data).contains(.setupComplete) {}
+        } catch {
             socket.cancel()
             throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
         }
@@ -157,9 +147,8 @@ final class GeminiLiveRecognizer: Recognizer {
                     }
                 } catch {
                     guard running else { return }
-                    onEvent?(.status(String(localized: "Gemini connection dropped; reconnecting…")))
-                    try? await Task.sleep(for: .seconds(1))
-                    do { try await connect() } catch { onEvent?(.status(error.localizedDescription)) }
+                    queue.sync { self.socket = nil }
+                    await reconnectWithBackoff(service: "Gemini", running: { self.running }, onEvent: onEvent, connect: connect)
                     return
                 }
             }
@@ -170,6 +159,11 @@ final class GeminiLiveRecognizer: Recognizer {
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
+            // Disconnected: nothing is sent, and nothing is billed.
+            guard self.socket != nil else {
+                self.pending.removeAll()
+                return
+            }
             self.pending += samples
             while self.pending.count >= GeminiLive.chunkSamples {
                 let chunk = Array(self.pending.prefix(GeminiLive.chunkSamples))
@@ -191,6 +185,41 @@ final class GeminiLiveRecognizer: Recognizer {
         try? await Task.sleep(for: .milliseconds(800))
         socket?.cancel(with: .normalClosure, reason: nil)
         queue.sync { self.socket = nil }
+    }
+}
+
+extension URLSessionWebSocketTask {
+    /// The next message, or an error once `deadline` passes: the socket is cancelled then, which
+    /// is what ends a wait for a server that never answers.
+    func receive(before deadline: Date) async throws -> Message {
+        let left = deadline.timeIntervalSinceNow
+        guard left > 0 else {
+            cancel()
+            throw URLError(.timedOut)
+        }
+        let timer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(left))
+            if !Task.isCancelled { self?.cancel(with: .goingAway, reason: nil) }
+        }
+        defer { timer.cancel() }
+        return try await receive()
+    }
+}
+
+/// After a dropped connection: try again while still listening, waiting 1, 2, 4… up to 30 seconds
+/// between tries, and say so.
+func reconnectWithBackoff(service: String, running: @escaping () -> Bool, onEvent: ((RecognitionEvent) -> Void)?, connect: () async throws -> Void) async {
+    var delay = 1
+    while running() {
+        onEvent?(.status(String(localized: "\(service) connection dropped; trying again in \(String(delay)) s…")))
+        try? await Task.sleep(for: .seconds(delay))
+        guard running() else { return }
+        do {
+            try await connect()
+            return
+        } catch {
+            delay = min(delay * 2, 30)
+        }
     }
 }
 
@@ -239,17 +268,21 @@ final class SentenceRecognizer: Recognizer {
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
-            for event in self.segmenter.push(samples) {
-                switch event {
-                case .start: self.onEvent?(.partial("…"))
-                case .audio: break
-                case .end(let utterance): self.upload(utterance)
-                case .discard: self.onEvent?(.final(""))
-                }
-            }
+            for event in self.segmenter.push(samples) { self.handle(event) }
         }
     }
 
+    /// On `queue`.
+    private func handle(_ event: SegmentEvent) {
+        switch event {
+        case .start: onEvent?(.partial("…"))
+        case .audio: break
+        case .end(let utterance): upload(utterance)
+        case .discard: onEvent?(.final(""))
+        }
+    }
+
+    /// On `queue` (so `uploads` is only touched there).
     private func upload(_ utterance: [Int16]) {
         let previous = uploads
         let wav = WAV.data(utterance, rate: 16_000)
@@ -300,8 +333,14 @@ final class SentenceRecognizer: Recognizer {
         return try Uploads.transcriptionText(data, status: status)
     }
 
+    /// The sentence being spoken when listening stops is sent too (or its gray line dropped), and
+    /// the uploads finish before the session closes.
     func stop() async {
-        await uploads?.value
+        let last: Task<Void, Never>? = queue.sync {
+            if let event = segmenter.finish() { handle(event) }
+            return uploads
+        }
+        await last?.value
     }
 }
 
@@ -339,10 +378,11 @@ final class OpenAILiveRecognizer: Recognizer {
             req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization")
             let socket = URLSession.shared.webSocketTask(with: req)
             socket.resume()
+            let deadline = Date().addingTimeInterval(10)
             do {
                 try await socket.send(.string(OpenAIRealtime.sessionUpdate(model: "gpt-live-transcribe", language: language)))
                 while true {
-                    switch OpenAIRealtime.parse(try await socket.receive().data) {
+                    switch OpenAIRealtime.parse(try await socket.receive(before: deadline).data) {
                     case .accepted?:
                         queue.sync { self.socket = socket }
                         onEvent?(.status(String(localized: "Listening (OpenAI Live)")))
@@ -383,9 +423,8 @@ final class OpenAILiveRecognizer: Recognizer {
                     }
                 } catch {
                     guard running else { return }
-                    onEvent?(.status(String(localized: "OpenAI connection dropped; reconnecting…")))
-                    try? await Task.sleep(for: .seconds(1))
-                    do { try await connect() } catch { onEvent?(.status(error.localizedDescription)) }
+                    queue.sync { self.socket = nil }
+                    await reconnectWithBackoff(service: "OpenAI", running: { self.running }, onEvent: onEvent, connect: connect)
                     return
                 }
             }
@@ -396,17 +435,7 @@ final class OpenAILiveRecognizer: Recognizer {
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
-            for event in self.segmenter.push(samples) {
-                let message: String
-                switch event {
-                case .start(let pcm), .audio(let pcm):
-                    message = OpenAIRealtime.append(pcm)
-                    self.sentSeconds += Double(pcm.count) / Double(OpenAIRealtime.sampleRate)
-                case .end: message = OpenAIRealtime.commit
-                case .discard: message = OpenAIRealtime.clear
-                }
-                self.socket?.send(.string(message)) { _ in }
-            }
+            for event in self.segmenter.push(samples) { self.send(event) }
             if self.sentSeconds >= 5 {
                 self.onEvent?(.audio(self.sentSeconds))
                 self.sentSeconds = 0
@@ -414,9 +443,25 @@ final class OpenAILiveRecognizer: Recognizer {
         }
     }
 
+    /// On `queue`. Disconnected: nothing is sent, and nothing is billed.
+    private func send(_ event: SegmentEvent) {
+        guard let socket else { return }
+        let message: String
+        switch event {
+        case .start(let pcm), .audio(let pcm):
+            message = OpenAIRealtime.append(pcm)
+            sentSeconds += Double(pcm.count) / Double(OpenAIRealtime.sampleRate)
+        case .end: message = OpenAIRealtime.commit
+        case .discard: message = OpenAIRealtime.clear
+        }
+        socket.send(.string(message)) { _ in }
+    }
+
     func stop() async {
+        // The sentence being spoken is committed, and its transcript given a moment to come back.
+        queue.sync { if let event = segmenter.finish() { send(event) } }
+        try? await Task.sleep(for: .milliseconds(1500))
         running = false
-        try? await Task.sleep(for: .milliseconds(800))
         let socket = queue.sync { self.socket }
         socket?.cancel(with: .normalClosure, reason: nil)
         queue.sync { self.socket = nil }
@@ -469,18 +514,17 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
         url.queryItems = [URLQueryItem(name: "key", value: key)]
         let socket = URLSession.shared.webSocketTask(with: url.url!)
         socket.resume()
-        try await socket.send(.string(GeminiLive.translateSetup(model: model, target: target, instruction: instruction)))
         let deadline = Date().addingTimeInterval(10)
-        while Date() < deadline {
-            if GeminiLive.parseTranslate(try await socket.receive().data).contains(.setupComplete) {
-                queue.sync { self.socket = socket }
-                onEvent?(.status(String(localized: "Listening (Gemini Live Translate)")))
-                receive(on: socket)
-                return
-            }
+        do {
+            try await socket.send(.string(GeminiLive.translateSetup(model: model, target: target, instruction: instruction)))
+            while !GeminiLive.parseTranslate(try await socket.receive(before: deadline).data).contains(.setupComplete) {}
+        } catch {
+            socket.cancel()
+            throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
         }
-        socket.cancel()
-        throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
+        queue.sync { self.socket = socket }
+        onEvent?(.status(String(localized: "Listening (Gemini Live Translate)")))
+        receive(on: socket)
     }
 
     private func receive(on socket: URLSessionWebSocketTask) {
@@ -499,10 +543,11 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
                     }
                 } catch {
                     guard running else { return }
-                    queue.async { self.interpreter.flush(sink: self) }
-                    onEvent?(.status(String(localized: "Gemini connection dropped; reconnecting…")))
-                    try? await Task.sleep(for: .seconds(1))
-                    do { try await connect() } catch { onEvent?(.status(error.localizedDescription)) }
+                    queue.sync {
+                        self.interpreter.flush(sink: self)
+                        self.socket = nil
+                    }
+                    await reconnectWithBackoff(service: "Gemini", running: { self.running }, onEvent: onEvent, connect: connect)
                     return
                 }
             }
@@ -513,6 +558,11 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
         guard let converted = converter.convert(buffer) else { return }
         let samples = converted.int16Samples
         queue.async {
+            // Disconnected: nothing is sent, and nothing is billed.
+            guard self.socket != nil else {
+                self.pending.removeAll()
+                return
+            }
             self.pending += samples
             while self.pending.count >= GeminiLive.chunkSamples {
                 let chunk = Array(self.pending.prefix(GeminiLive.chunkSamples))

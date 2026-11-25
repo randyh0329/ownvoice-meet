@@ -32,6 +32,18 @@ public struct Segmenter: Sendable {
         frame = rate * Self.frameMs / 1000
     }
 
+    /// Listening stopped: the utterance still going on ends here (or is discarded when too short);
+    /// nil when nobody was speaking.
+    public mutating func finish() -> SegmentEvent? {
+        pending.removeAll()
+        preroll.removeAll()
+        guard inSpeech else { return nil }
+        inSpeech = false
+        let utt = utterance
+        utterance = []
+        return voicedFrames * Self.frameMs >= Self.minVoicedMs ? .end(utt) : .discard
+    }
+
     public mutating func push(_ chunk: [Int16]) -> [SegmentEvent] {
         pending += chunk
         var events: [SegmentEvent] = []

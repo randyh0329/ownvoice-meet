@@ -78,6 +78,16 @@ final class AppModel {
     private var gate: QuietGate?
     private var lastSummary = Date()
     private var ticker: Task<Void, Never>?
+    /// Bumped by every start and teardown: a start still in progress backs out when it changed.
+    private var generation = 0
+    /// The session whose recognizer events are taken: kept through finishing (the last sentence
+    /// flushed at stop still arrives), cleared once the session has ended.
+    private var eventSession = -1
+    /// The last session is still finishing (final summary, last translations): no new start yet.
+    private(set) var finishing = false
+    /// Translations on their way, waited for (briefly) before the session record closes.
+    private var inFlight: [Int: Task<Void, Never>] = [:]
+    private var usageMonth = UsageBook.month(Date())
     /// Lines whose final translation is in: a late streamed piece must not overwrite it.
     private var translated: Set<Int> = []
     /// Live Translate's own line numbers → caption lines.
@@ -91,6 +101,10 @@ final class AppModel {
 
     func start() {
         guard !isListening else { return }
+        guard !finishing else {
+            status = String(localized: "Still finishing the last session; try again in a moment.")
+            return
+        }
         let s = settings
         let recognizer: Recognizer?
         do {
@@ -107,10 +121,19 @@ final class AppModel {
         }
         self.recognizer = recognizer
         isListening = true
+        generation += 1
+        let session = generation
+        eventSession = session
         status = String(localized: "Starting…")
         segmentName = ""
         lastSummary = Date()
         interpLines.removeAll()
+        inFlight.removeAll()
+        // A new meeting: its summary and its usage start from nothing.
+        summary = ""
+        summaryUpdated = ""
+        summaryError = ""
+        sessionUsage = UsageBook()
         let source = makeAudioSource(s.input)
         self.source = source
         let recorder = record?.audioRecorder
@@ -124,12 +147,25 @@ final class AppModel {
         Task {
             do {
                 try await recognizer?.start { event in
-                    Task { @MainActor in self.handle(event) }
+                    Task { @MainActor in
+                        // Events of a session that has ended (a late status, say) are not shown.
+                        if self.eventSession == session { self.handle(event) }
+                    }
+                }
+                // Stop was pressed while the recognizer was starting (a model download, a prompt).
+                guard generation == session else {
+                    await recognizer?.stop()
+                    return
                 }
                 try await source.start { buffer in
                     silence?.feed(buffer)
                     if gate.admit(buffer) { recognizer?.feed(buffer) }
                     recorder?.write(buffer)
+                }
+                guard generation == session else {
+                    source.stop()
+                    await recognizer?.stop()
+                    return
                 }
                 switch s.listen {
                 case .appleSpeech: status = String(localized: "Listening (on this Mac)")
@@ -139,8 +175,12 @@ final class AppModel {
                 if let folder = record?.folder { status += " · " + String(localized: "Saving to \(folder.path)") }
                 startTicker()
             } catch {
-                status = error.localizedDescription
-                await teardown()
+                source.stop()
+                guard generation == session else { return }
+                let message = error.localizedDescription
+                // The record opened for this session is closed too (its folder, its recording).
+                await finishSession()
+                status = message
             }
         }
     }
@@ -151,10 +191,26 @@ final class AppModel {
         Task { await finishSession() }
     }
 
+    /// Ends the session: stops listening, waits briefly for translations on their way, writes the
+    /// final summary, closes the record. Works on the session's own record even if another starts.
     private func finishSession() async {
+        guard !finishing else { return }
+        finishing = true
+        let record = self.record
         await teardown()
-        await updateSummary(force: true)
+        // The recognizer's last events (dispatched as it stopped) run first, then the translations
+        // they started get up to 8 seconds in all.
+        try? await Task.sleep(for: .milliseconds(300))
+        let deadline = Date().addingTimeInterval(8)
+        while let task = inFlight.values.first, deadline.timeIntervalSinceNow > 0 {
+            await waitAtMost(seconds: deadline.timeIntervalSinceNow, for: task)
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        inFlight.removeAll()
+        if let record { await summarize(force: true, record: record) }
         record?.close()
+        eventSession = -1
+        finishing = false
     }
 
     func clear() {
@@ -167,8 +223,13 @@ final class AppModel {
     }
 
     private func teardown() async {
+        generation += 1
+        // The ticker's sleep is cancelled; a summary it started runs to its end (it does not
+        // inherit the cancellation), and is waited for, so the final summary is not skipped.
+        let ticker = self.ticker
+        self.ticker = nil
         ticker?.cancel()
-        ticker = nil
+        await ticker?.value
         source?.stop()
         source = nil
         await recognizer?.stop()
@@ -205,7 +266,8 @@ final class AppModel {
                 record?.writeIfChanged()
                 let s = settings
                 if s.summaryEveryMinutes > 0, Date().timeIntervalSince(lastSummary) >= Double(s.summaryEveryMinutes * 60), (record?.forSummary.count ?? 0) >= 3 {
-                    await updateSummary(force: false)
+                    // Its own task: stopping cancels the ticker, not a summary half written.
+                    await Task { await self.updateSummary(force: false) }.value
                 }
                 guard let gate else { continue }
                 if gate.takeResumed() {
@@ -218,8 +280,12 @@ final class AppModel {
                 }
                 if s.stopAfterQuietMinutes > 0, quiet >= Double(s.stopAfterQuietMinutes * 60) {
                     let minutes = String(s.stopAfterQuietMinutes)
-                    await finishSession()
-                    status = String(localized: "Stopped after \(minutes) minutes of quiet.")
+                    // From outside this task: finishing cancels the ticker, which must not cancel
+                    // the final summary with it.
+                    Task {
+                        await self.finishSession()
+                        self.status = String(localized: "Stopped after \(minutes) minutes of quiet.")
+                    }
                     return
                 }
             }
@@ -264,7 +330,9 @@ final class AppModel {
     private func translate(_ id: Int) {
         guard let translator, let text = book.heard(id) else { return }
         let context = book.context(before: id)
-        Task {
+        let record = self.record
+        inFlight[id] = Task {
+            defer { inFlight[id] = nil }
             do {
                 let zh = try await translator.translate(text, context: context) { soFar in
                     Task { @MainActor in
@@ -300,13 +368,23 @@ final class AppModel {
 
     // MARK: Usage
 
+    /// A new month starts its record from nothing, even with the app left open across it.
+    private func rollMonth() {
+        let month = UsageBook.month(Date())
+        guard month != usageMonth else { return }
+        usageMonth = month
+        monthUsage = UsageStore.load()
+    }
+
     private func addAudio(_ model: String, _ seconds: Double) {
+        rollMonth()
         sessionUsage.addAudio(model, seconds: seconds)
         monthUsage.addAudio(model, seconds: seconds)
         UsageStore.save(monthUsage)
     }
 
     private func addTokens(_ model: String, _ tokens: Tokens) {
+        rollMonth()
         sessionUsage.addTokens(model, tokens)
         monthUsage.addTokens(model, tokens)
         UsageStore.save(monthUsage)
@@ -387,7 +465,13 @@ final class AppModel {
 
     /// Bring the summary up to date with the lines since the last time (`force`: even a few).
     func updateSummary(force: Bool) async {
-        guard !summaryWorking, let record else { return }
+        guard let record else { return }
+        await summarize(force: force, record: record)
+    }
+
+    /// Bring `record`'s summary up to date with the lines since the last time.
+    private func summarize(force: Bool, record: SessionRecord) async {
+        guard !summaryWorking else { return }
         let lines = record.takeForSummary()
         guard !lines.isEmpty, force || lines.count >= 3 else {
             record.giveBack(lines)
@@ -547,5 +631,35 @@ final class QuietGate: @unchecked Sendable {
         let r = resumed
         resumed = false
         return r
+    }
+}
+
+/// Waits for `task` to finish, but no longer than `seconds`; then cancels it and goes on.
+func waitAtMost(seconds: Double, for task: Task<Void, Never>) async {
+    let once = Once()
+    await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+        Task {
+            await task.value
+            once.run { done.resume() }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            once.run { done.resume() }
+        }
+    }
+    task.cancel()
+}
+
+/// Runs its block the first time only (from any thread).
+final class Once: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    func run(_ block: () -> Void) {
+        lock.lock()
+        let first = !done
+        done = true
+        lock.unlock()
+        if first { block() }
     }
 }

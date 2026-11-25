@@ -1,4 +1,5 @@
 /* 简体中文 */
+"%@ connection dropped; trying again in %@ s…" = "%@ 连接中断，%@ 秒后重试…";
 "%@ is available (this is %@)." = "有新版本 %@（当前是 %@）。";
 "%@ minutes" = "%@ 分钟";
 "%@ minutes of sound" = "%@ 分钟声音";
@@ -69,7 +70,6 @@
 "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)" = "Gemini 3.5 Transcribe，逐句（约每小时 US$0.30）";
 "Gemini 3.8 Flash (about US$0.25 an hour, slow)" = "Gemini 3.8 Flash（约每小时 US$0.25，较慢）";
 "Gemini API key" = "Gemini API 密钥";
-"Gemini connection dropped; reconnecting…" = "Gemini 连接中断，正在重新连接…";
 "Gemini did not answer the setup (check the key)." = "Gemini 没有回应连接设置（请检查密钥）。";
 "Gemma 4 12B (local Ollama, free, needs 16 GB)" = "Gemma 4 12B（本地 Ollama，免费，需 16 GB 内存）";
 "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory" = "Gemma 4 12B：更稳定，约 8 GB，需要 16 GB 内存";
@@ -132,7 +132,6 @@
 "Open Language & Region" = "打开语言与地区";
 "Open the Download Page" = "打开下载页";
 "OpenAI API key" = "OpenAI API 密钥";
-"OpenAI connection dropped; reconnecting…" = "OpenAI 连接中断，正在重新连接…";
 "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)" = "OpenAI gpt-4o-mini-transcribe，逐句（约每小时 US$0.18）";
 "OpenAI gpt-6-luna (about US$0.03 an hour)" = "OpenAI gpt-6-luna（约每小时 US$0.03）";
 "OpenAI gpt-6.1-sol (about US$0.66 an hour)" = "OpenAI gpt-6.1-sol（约每小时 US$0.66）";
@@ -183,6 +182,7 @@
 "Started: %@" = "开始：%@";
 "Starting Ollama… (if macOS asks whether to open it, choose Open)" = "正在启动 Ollama…（如果 macOS 询问是否打开，请选择“打开”）";
 "Starting…" = "正在启动…";
+"Still finishing the last session; try again in a moment." = "上一次聆听还在收尾，请稍后再试。";
 "Stop" = "停止";
 "Stop Listening" = "停止聆听";
 "Stop listening after quiet for" = "安静多久后停止聆听";

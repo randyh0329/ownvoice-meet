@@ -386,3 +386,29 @@ final class UploadTests: XCTestCase {
         XCTAssertEqual(book.lines, [CaptionLine(id: b, heard: "There.", translation: "那裡。", isFinal: true)])
     }
 }
+
+final class ReviewFixTests: XCTestCase {
+    func testSessionFoldersNeverCollide() {
+        var taken: Set<String> = ["2026-11-25 1405"]
+        let second = SessionFiles.uniqueName("2026-11-25 1405") { taken.contains($0) }
+        XCTAssertEqual(second, "2026-11-25 1405 2")
+        taken.insert(second)
+        XCTAssertEqual(SessionFiles.uniqueName("2026-11-25 1405") { taken.contains($0) }, "2026-11-25 1405 3")
+        XCTAssertEqual(SessionFiles.uniqueName("2026-11-25 1406") { taken.contains($0) }, "2026-11-25 1406")
+    }
+
+    func testStoppingMidSentenceEndsTheUtterance() {
+        let rate = 16_000
+        let tone = (0..<(rate * 800 / 1000)).map { Int16(sin(Double($0) * 0.3) * 8000) }
+        var seg = Segmenter(rate: rate)
+        _ = seg.push(tone)
+        XCTAssertTrue(seg.inSpeech)
+        guard case let .end(audio)? = seg.finish() else { return XCTFail("the sentence being spoken ends") }
+        XCTAssertGreaterThan(audio.count, rate / 2)
+        XCTAssertFalse(seg.inSpeech)
+        XCTAssertNil(seg.finish(), "nothing more")
+        var click = Segmenter(rate: rate)
+        _ = click.push(Array(tone.prefix(rate / 10)))
+        XCTAssertEqual(click.finish(), .discard, "too short to be speech")
+    }
+}

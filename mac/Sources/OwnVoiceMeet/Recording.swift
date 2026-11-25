@@ -14,6 +14,8 @@ final class SessionRecord {
     private var entries: [Int: Entry] = [:]
     private var order: [Int] = []
     private var dirty = false
+    /// Closed: a translation that still arrives is written at once (no ticker any more).
+    private var closed = false
     private var audio: AudioRecorder?
     private var segments = [Segment(name: String(localized: "Start"), offset: 0)]
     /// Finished, translated lines the summary has not taken in yet.
@@ -40,7 +42,9 @@ final class SessionRecord {
             folder = nil
             return
         }
-        let dir = s.saveFolderURL.appendingPathComponent(SessionFiles.folderName(started))
+        // Two sessions in the same minute get two folders ("… 1405", "… 1405 2").
+        let name = SessionFiles.uniqueName(SessionFiles.folderName(started)) { FileManager.default.fileExists(atPath: s.saveFolderURL.appendingPathComponent($0).path) }
+        let dir = s.saveFolderURL.appendingPathComponent(name)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         } catch {
@@ -75,6 +79,7 @@ final class SessionRecord {
         entries[id] = e
         dirty = true
         if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment)) }
+        if closed { writeIfChanged() }
     }
 
     /// A new segment from now on; returns its name ("Segment 2" when none was given).
@@ -120,6 +125,7 @@ final class SessionRecord {
         audio = nil
         dirty = true
         writeIfChanged()
+        closed = true
     }
 
     private func write(_ text: String, to url: URL) {

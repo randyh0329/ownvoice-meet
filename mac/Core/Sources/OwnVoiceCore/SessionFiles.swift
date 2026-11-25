@@ -36,6 +36,14 @@ public enum SessionFiles {
         return String(format: "%04d-%02d-%02d %02d%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0)
     }
 
+    /// `base`, or "base 2", "base 3"… when that name is taken.
+    public static func uniqueName(_ base: String, exists: (String) -> Bool) -> String {
+        guard exists(base) else { return base }
+        var n = 2
+        while exists("\(base) \(n)") { n += 1 }
+        return "\(base) \(n)"
+    }
+
     public static func hms(_ t: TimeInterval) -> String {
         let s = max(0, Int(t))
         return String(format: "%02d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)

@@ -1,4 +1,5 @@
 /* English: generated from the code by scripts/check-strings.py --write-en */
+"%@ connection dropped; trying again in %@ s…" = "%@ connection dropped; trying again in %@ s…";
 "%@ is available (this is %@)." = "%@ is available (this is %@).";
 "%@ minutes" = "%@ minutes";
 "%@ minutes of sound" = "%@ minutes of sound";
@@ -69,7 +70,6 @@
 "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)" = "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)";
 "Gemini 3.8 Flash (about US$0.25 an hour, slow)" = "Gemini 3.8 Flash (about US$0.25 an hour, slow)";
 "Gemini API key" = "Gemini API key";
-"Gemini connection dropped; reconnecting…" = "Gemini connection dropped; reconnecting…";
 "Gemini did not answer the setup (check the key)." = "Gemini did not answer the setup (check the key).";
 "Gemma 4 12B (local Ollama, free, needs 16 GB)" = "Gemma 4 12B (local Ollama, free, needs 16 GB)";
 "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory" = "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory";
@@ -132,7 +132,6 @@
 "Open Language & Region" = "Open Language & Region";
 "Open the Download Page" = "Open the Download Page";
 "OpenAI API key" = "OpenAI API key";
-"OpenAI connection dropped; reconnecting…" = "OpenAI connection dropped; reconnecting…";
 "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)" = "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)";
 "OpenAI gpt-6-luna (about US$0.03 an hour)" = "OpenAI gpt-6-luna (about US$0.03 an hour)";
 "OpenAI gpt-6.1-sol (about US$0.66 an hour)" = "OpenAI gpt-6.1-sol (about US$0.66 an hour)";
@@ -183,6 +182,7 @@
 "Started: %@" = "Started: %@";
 "Starting Ollama… (if macOS asks whether to open it, choose Open)" = "Starting Ollama… (if macOS asks whether to open it, choose Open)";
 "Starting…" = "Starting…";
+"Still finishing the last session; try again in a moment." = "Still finishing the last session; try again in a moment.";
 "Stop" = "Stop";
 "Stop Listening" = "Stop Listening";
 "Stop listening after quiet for" = "Stop listening after quiet for";
