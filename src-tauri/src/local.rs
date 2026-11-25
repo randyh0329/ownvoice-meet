@@ -77,10 +77,11 @@ pub async fn ollama_check(client: &reqwest::Client, model: &str) -> Result<Strin
     }
 }
 
-/// Ollama lists `gemma4:latest` for a plain `ollama pull gemma4`, which is the E4B model.
+/// The exact tag only. Requests name the model by that tag, and Ollama answers "model not found" for
+/// `gemma4:e4b` when it only has `gemma4:latest` (a plain `ollama pull gemma4`), even though the two
+/// are the same weights. Pulling the exact tag then is quick: the layers are already there.
 fn has_model(ids: &[String], model: &str) -> bool {
-    let latest = model == "gemma4:e4b";
-    ids.iter().any(|id| id == model || (latest && id == "gemma4:latest"))
+    ids.iter().any(|id| id == model)
 }
 
 /// Download `model` into Ollama; `progress(status, done_bytes, total_bytes)` follows each step.
@@ -141,7 +142,7 @@ mod tests {
     fn ollama_model_names() {
         let ids = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
         assert!(has_model(&ids(&["gemma4:e4b"]), "gemma4:e4b"));
-        assert!(has_model(&ids(&["gemma4:latest"]), "gemma4:e4b"), "a plain `ollama pull gemma4` is E4B");
+        assert!(!has_model(&ids(&["gemma4:latest"]), "gemma4:e4b"), "requests name gemma4:e4b, which Ollama does not find as gemma4:latest");
         assert!(!has_model(&ids(&["gemma4:latest"]), "gemma4:12b"));
         assert!(!has_model(&ids(&["gemma4:e2b", "qwen3:8b"]), "gemma4:e4b"));
     }

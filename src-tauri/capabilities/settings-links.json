@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings-links",
-  "description": "The settings window may open the providers' API key pages and ChatGPT's usage page in the browser, and nothing else.",
+  "description": "The settings window may open the providers' API key pages, ChatGPT's usage page and Ollama's download page in the browser, and nothing else.",
   "windows": ["settings"],
   "permissions": [
     {
@@ -10,7 +10,8 @@
         { "url": "https://platform.claude.com/settings/keys" },
         { "url": "https://platform.openai.com/settings/organization/api-keys" },
         { "url": "https://aistudio.google.com/api-keys" },
-        { "url": "https://chatgpt.com/settings/usage" }
+        { "url": "https://chatgpt.com/settings/usage" },
+        { "url": "https://ollama.com/download" }
       ]
     }
   ]
