@@ -42,9 +42,16 @@ struct OwnVoiceMeetApp: App {
 struct AppCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
+        CommandGroup(after: .appSettings) {
+            Button("Set Up Gemma 4 (Free, Offline)…") {
+                model.settingsTab = .listen
+                openSettings()
+            }
+        }
         CommandMenu("Listening") {
             Button(model.isListening ? LocalizedStringKey("Stop Listening") : LocalizedStringKey("Start Listening")) { model.toggle() }
                 .keyboardShortcut("l")

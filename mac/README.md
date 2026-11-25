@@ -32,6 +32,15 @@ does; then the other is retired.
 - Replies, the summary and 補對照 use the text model chosen under Translation; with Apple
   Translation, the first with a key (Claude, Gemini), else Gemma in Ollama.
 
+## Gemma 4 in one click
+
+Settings → Listen & Translate → **Gemma 4 on this Mac** (also in the app menu: Set Up Gemma 4…):
+one button installs whatever is missing. Ollama comes from ollama.com (Ollama-darwin.zip, unpacked
+with ditto, its Developer ID signature checked before anything is installed, marked as downloaded so
+Gatekeeper checks it on first open, into /Applications or ~/Applications), is started, and the
+Gemma 4 E4B model is pulled through Ollama's API with progress. Then Gemma 4 is chosen under
+Translation.
+
 Not yet: speaker labels, segments, usage costs, idle pause and auto-end, OpenAI and the ChatGPT
 plan, Gemini Transcribe and Live Translate, updates.
 

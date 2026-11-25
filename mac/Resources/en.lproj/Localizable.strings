@@ -15,7 +15,9 @@
 "Apple recognition stopped: %@" = "Apple recognition stopped: %@";
 "Captions" = "Captions";
 "Captions appear here: what is said, and its Chinese under it." = "Captions appear here: what is said, and its Chinese under it.";
+"Check Again" = "Check Again";
 "Check Apple Translation" = "Check Apple Translation";
+"Checking…" = "Checking…";
 "Chinese" = "Chinese";
 "Choose…" = "Choose…";
 "Claude Haiku 5.5 (about US$0.03 an hour)" = "Claude Haiku 5.5 (about US$0.03 an hour)";
@@ -25,6 +27,9 @@
 "Could not start the recording: %@" = "Could not start the recording: %@";
 "Don't save" = "Don't save";
 "Downloading Apple's speech model…" = "Downloading Apple's speech model…";
+"Downloading Gemma 4 E4B (about 7 GB)…" = "Downloading Gemma 4 E4B (about 7 GB)…";
+"Downloading Gemma 4 E4B… %@ / %@ GB" = "Downloading Gemma 4 E4B… %@ / %@ GB";
+"Downloading Ollama…" = "Downloading Ollama…";
 "Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees.";
 "Edit" = "Edit";
 "English" = "English";
@@ -42,13 +47,16 @@
 "Gemini connection dropped; reconnecting…" = "Gemini connection dropped; reconnecting…";
 "Gemini did not answer the setup (check the key)." = "Gemini did not answer the setup (check the key).";
 "Gemma 4 E4B (local Ollama, free)" = "Gemma 4 E4B (local Ollama, free)";
+"Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4." = "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4.";
+"Gemma 4 on this Mac (free, offline)" = "Gemma 4 on this Mac (free, offline)";
 "German" = "German";
 "Glossary" = "Glossary";
 "Google's live transcription, steadier in a noisy room. Needs a Gemini API key (use the paid tier: free-tier data is used to improve Google's products)." = "Google's live transcription, steadier in a noisy room. Needs a Gemini API key (use the paid tier: free-tier data is used to improve Google's products).";
-"Google's open model running on the Mac: free, text stays on the computer. Install Ollama and run ollama pull gemma4:e4b first. A small model: wording is rougher than the cloud models." = "Google's open model running on the Mac: free, text stays on the computer. Install Ollama and run ollama pull gemma4:e4b first. A small model: wording is rougher than the cloud models.";
+"Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models." = "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.";
 "I speak" = "I speak";
 "Indonesian" = "Indonesian";
 "Insert Template" = "Insert Template";
+"Installing Ollama…" = "Installing Ollama…";
 "Interface" = "Interface";
 "Japanese" = "Japanese";
 "Keep" = "Keep";
@@ -69,7 +77,13 @@
 "No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again." = "No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "Not downloaded yet: open Language & Region → Translation Languages and download both languages.";
-"Ollama is not running: install it from ollama.com and open it once." = "Ollama is not running: install it from ollama.com and open it once.";
+"Ollama could not be downloaded from ollama.com." = "Ollama could not be downloaded from ollama.com.";
+"Ollama could not download the model: %@" = "Ollama could not download the model: %@";
+"Ollama did not start. Open Ollama from Applications once, then press Set Up Gemma 4 again." = "Ollama did not start. Open Ollama from Applications once, then press Set Up Gemma 4 again.";
+"Ollama is installed but not running." = "Ollama is installed but not running.";
+"Ollama is not installed." = "Ollama is not installed.";
+"Ollama is running; the Gemma 4 model is not downloaded yet." = "Ollama is running; the Gemma 4 model is not downloaded yet.";
+"One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the Gemma 4 E4B model (about 7 GB). Needs about 10 GB free. Then choose Gemma 4 under Translation; text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the Gemma 4 E4B model (about 7 GB). Needs about 10 GB free. Then choose Gemma 4 under Translation; text never leaves this Mac.";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma.";
 "Only when asked" = "Only when asked";
 "Open Language & Region" = "Open Language & Region";
@@ -90,6 +104,8 @@
 "Saving to %@" = "Saving to %@";
 "Script" = "Script";
 "Send" = "Send";
+"Set Up Gemma 4" = "Set Up Gemma 4";
+"Set Up Gemma 4 (Free, Offline)…" = "Set Up Gemma 4 (Free, Offline)…";
 "Settings" = "Settings";
 "Show in Finder" = "Show in Finder";
 "Sound" = "Sound";
@@ -99,6 +115,7 @@
 "Start" = "Start";
 "Start Listening" = "Start Listening";
 "Started: %@" = "Started: %@";
+"Starting Ollama… (if macOS asks whether to open it, choose Open)" = "Starting Ollama… (if macOS asks whether to open it, choose Open)";
 "Starting…" = "Starting…";
 "Stop" = "Stop";
 "Stop Listening" = "Stop Listening";
@@ -108,9 +125,12 @@
 "Summary failed: %@" = "Summary failed: %@";
 "Text size" = "Text size";
 "Thai" = "Thai";
+"The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
+"The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
 "The main points appear here every few minutes while listening (Settings → Summary & Saving)." = "The main points appear here every few minutes while listening (Settings → Summary & Saving).";
 "The model answered the wrong number of lines; try again." = "The model answered the wrong number of lines; try again.";
 "The model did not answer with a list; try again." = "The model did not answer with a list; try again.";
+"The model download stopped before it finished; press Set Up Gemma 4 to go on." = "The model download stopped before it finished; press Set Up Gemma 4 to go on.";
 "The model returned nothing." = "The model returned nothing.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
 "Transcript" = "Transcript";
@@ -120,6 +140,7 @@
 "Translation" = "Translation";
 "Translation: %@" = "Translation: %@";
 "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text." = "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text.";
+"Unpacking Ollama failed." = "Unpacking Ollama failed.";
 "Update Now" = "Update Now";
 "Update every" = "Update every";
 "Updated %@" = "Updated %@";
@@ -132,4 +153,5 @@
 "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen." = "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen.";
 "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages." = "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages.";
 "✓ Ready: %@ → %@ is on this Mac." = "✓ Ready: %@ → %@ is on this Mac.";
+"✓ Ready: Ollama is running and has Gemma 4 E4B." = "✓ Ready: Ollama is running and has Gemma 4 E4B.";
 "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud." = "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud.";

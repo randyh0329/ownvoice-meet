@@ -6,13 +6,20 @@ import OwnVoiceCore
 import SwiftUI
 import Translation
 
+enum SettingsTab: Hashable {
+    case listen, summary, keys, appearance
+}
+
 struct SettingsView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
-        TabView {
-            Tab("Listen & Translate", systemImage: "waveform") { ListenTranslateTab() }
-            Tab("Summary & Saving", systemImage: "square.and.arrow.down") { SummarySavingTab() }
-            Tab("API Keys", systemImage: "key") { KeysTab() }
-            Tab("Appearance", systemImage: "textformat.size") { AppearanceTab() }
+        @Bindable var model = model
+        TabView(selection: $model.settingsTab) {
+            Tab("Listen & Translate", systemImage: "waveform", value: SettingsTab.listen) { ListenTranslateTab() }
+            Tab("Summary & Saving", systemImage: "square.and.arrow.down", value: SettingsTab.summary) { SummarySavingTab() }
+            Tab("API Keys", systemImage: "key", value: SettingsTab.keys) { KeysTab() }
+            Tab("Appearance", systemImage: "textformat.size", value: SettingsTab.appearance) { AppearanceTab() }
         }
         .frame(width: 600, height: 560)
     }
@@ -64,6 +71,7 @@ private struct ListenTranslateTab: View {
                     }
                 }
             }
+            GemmaSection()
             Section("Glossary") {
                 TextEditor(text: $model.settings.glossary)
                     .font(.body.monospaced())
@@ -85,6 +93,37 @@ private struct ListenTranslateTab: View {
         case .supported: model.appleCheck = String(localized: "Not downloaded yet: open Language & Region → Translation Languages and download both languages.")
         default: model.appleCheck = String(localized: "Apple Translation does not offer this pair.")
         }
+    }
+}
+
+/// Gemma 4 on this Mac: what is there, and one button for whatever is missing.
+private struct GemmaSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let setup = model.gemma
+        Section("Gemma 4 on this Mac (free, offline)") {
+            Text(verbatim: setup.message.isEmpty ? String(localized: "Checking…") : setup.message)
+            if let p = setup.progress {
+                ProgressView(value: p)
+            }
+            HStack {
+                Button("Set Up Gemma 4") {
+                    Task {
+                        await setup.setUp()
+                        if setup.state == .ready { model.settings.translate = .gemma }
+                    }
+                }
+                .disabled(setup.state == .working || setup.state == .checking || setup.state == .ready)
+                Button("Check Again") { Task { await setup.check() } }
+                    .disabled(setup.state == .working)
+                if setup.state == .working { ProgressView().controlSize(.small) }
+            }
+            Text("One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the Gemma 4 E4B model (about 7 GB). Needs about 10 GB free. Then choose Gemma 4 under Translation; text never leaves this Mac.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .task { await setup.check() }
     }
 }
 

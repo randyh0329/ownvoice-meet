@@ -22,6 +22,8 @@ final class AppModel {
     private(set) var status = String(localized: "Press Start to listen.")
 
     // Settings window
+    var settingsTab: SettingsTab = .listen
+    let gemma = GemmaSetup()
     var appleCheck = ""
     var geminiKeyDraft = Keychain.get("gemini") ?? ""
     var anthropicKeyDraft = Keychain.get("anthropic") ?? ""

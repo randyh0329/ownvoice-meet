@@ -71,7 +71,7 @@ struct ChatModel: TextModel {
         do {
             return try await read(req, parse: Streaming.chat, failure: Requests.chatText, onText: onText)
         } catch let error as URLError where url == Requests.ollamaURL && error.code == .cannotConnectToHost {
-            throw AppError(String(localized: "Ollama is not running: install it from ollama.com and open it once."))
+            throw AppError(String(localized: "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4."))
         }
     }
 }

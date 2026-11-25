@@ -47,7 +47,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .apple: String(localized: "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages.")
         case .haiku: String(localized: "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key.")
         case .geminiFlashLite: String(localized: "Uses the earlier lines and the glossary; shares the key with Gemini recognition.")
-        case .gemma: String(localized: "Google's open model running on the Mac: free, text stays on the computer. Install Ollama and run ollama pull gemma4:e4b first. A small model: wording is rougher than the cloud models.")
+        case .gemma: String(localized: "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.")
         }
     }
 }

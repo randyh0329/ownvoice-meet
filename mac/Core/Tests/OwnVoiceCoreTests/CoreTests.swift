@@ -202,3 +202,17 @@ final class SessionFileTests: XCTestCase {
         XCTAssertEqual(SessionFiles.forSummary([TranscriptLine(offset: 0, heard: "Hi.", translation: "嗨。")], clock: { _ in "14:05" }), "[14:05] Hi.\n  （嗨。）")
     }
 }
+
+final class OllamaTests: XCTestCase {
+    func testModelListAndPullLines() {
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b","model":"gemma4:e4b"}]}"#.utf8)))
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"}]}"#.utf8)), "a plain pull of gemma4 is E4B")
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"qwen3:8b"}]}"#.utf8)))
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[]}"#.utf8)))
+        XCTAssertEqual(Ollama.pullStep(#"{"status":"pulling manifest"}"#), .progress(status: "pulling manifest", done: 0, total: 0))
+        XCTAssertEqual(Ollama.pullStep(#"{"status":"pulling 4c27","total":6600000000,"completed":1200000000}"#), .progress(status: "pulling 4c27", done: 1_200_000_000, total: 6_600_000_000))
+        XCTAssertEqual(Ollama.pullStep(#"{"status":"success"}"#), .done)
+        XCTAssertEqual(Ollama.pullStep(#"{"error":"file does not exist"}"#), .error("file does not exist"))
+        XCTAssertNil(Ollama.pullStep(""))
+    }
+}
