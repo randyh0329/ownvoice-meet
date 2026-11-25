@@ -410,7 +410,7 @@ async fn run_stt(a: AppHandle, m: catalog::Model, key: Option<String>, s: settin
             let translate = gemini::Translate {
                 target: gemini::TARGET_ZH_TW.into(),
                 instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
-                following: false,
+                following: None,
             };
             let opts = gemini::Opts { catalog_id: m.id.into(), model: m.api_model.into(), language, translate: Some(translate) };
             gemini::run(a, key.unwrap_or_default(), opts, rx).await
@@ -446,7 +446,9 @@ async fn run_following(
 ) {
     let (to_stt, stt_rx) = mpsc::channel::<Vec<i16>>(64);
     let (to_lt, lt_rx) = mpsc::channel::<Vec<i16>>(256);
-    gemini_translate::follow_on(&a);
+    // Calls from an earlier run still winding down (stopped and started again quickly) carry an older
+    // number and leave this run's pairing alone.
+    let run = gemini_translate::follow_on(&a);
     let forward = async move {
         let mut to_lt = Some(to_lt);
         let mut resample = audio::Resample::new(rate, gemini::RATE);
@@ -464,11 +466,11 @@ async fn run_following(
     let translate = gemini::Translate {
         target: gemini::TARGET_ZH_TW.into(),
         instruction: prompts::live_translate_instruction(&prompts::parse_glossary(&s.glossary)),
-        following: true,
+        following: Some(run),
     };
     let opts = gemini::Opts { catalog_id: lt.id.into(), model: lt.api_model.into(), language: String::new(), translate: Some(translate) };
     tokio::join!(forward, run_stt(a.clone(), m, key, s, stt_rx), gemini::run(a.clone(), lt_key, opts, lt_rx));
-    gemini_translate::follow_off(&a);
+    gemini_translate::follow_off(&a, run);
 }
 
 /// Quiet for longer than Settings allows: stop as ■ 停止 would, and say why.

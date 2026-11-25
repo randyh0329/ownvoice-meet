@@ -174,21 +174,24 @@ pub fn finish(app: &AppHandle, id: u64, text: &str) {
     idle::touch(app);
     debug_log(app, &format!("line {id} ended: {text}"));
     let now = Instant::now();
-    // Live Translate, hearing the same audio, brings this line's Chinese.
-    if gemini_translate::following(app) {
-        let opened = app.state::<Lines>().0.lock().ok().and_then(|l| l.get(&id).map(|l| l.opened)).unwrap_or(now);
-        crate::speakers::label_later(app, id, opened, now);
-        gemini_translate::line_ended(app, id, text);
+    let opened = app.state::<Lines>().0.lock().ok().and_then(|l| l.get(&id).map(|l| l.opened)).unwrap_or(now);
+    crate::speakers::label_later(app, id, opened, now);
+    // Live Translate, hearing the same audio, brings this line's Chinese when it heard all of it.
+    if gemini_translate::line_ended(app, id, text) {
         return;
     }
-    let (req, opened) = {
+    translate_with_text_model(app, id, text);
+}
+
+/// The final translation of a finished line, by the text model chosen under 翻 (or the fallback
+/// when that is Live Translate).
+pub fn translate_with_text_model(app: &AppHandle, id: u64, text: &str) {
+    let now = Instant::now();
+    let req = {
         let state = app.state::<Lines>();
         let Ok(mut lines) = state.0.lock() else { return };
-        let line = lines.entry(id).or_insert_with(|| Line::new(now));
-        let opened = line.opened;
-        (line.start(text, false, now), opened)
+        lines.entry(id).or_insert_with(|| Line::new(now)).start(text, false, now)
     };
-    crate::speakers::label_later(app, id, opened, now);
     spawn_translate(app.clone(), id, text.to_string(), req.0, req.1, false);
 }
 

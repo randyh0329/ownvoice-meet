@@ -157,10 +157,13 @@ pub(crate) async fn transcribe_gemini(client: &reqwest::Client, url: &str, cfg: 
 
 /// The request: the sentence inline as WAV, verbatim mode (Smart mode would act on spoken
 /// "actually no, …" corrections, which in a meeting are the speaker's words, not instructions).
+/// store false: the Interactions API keeps every interaction unless told not to, and meeting
+/// audio and its transcript should not stay on Google's side after the reply.
 fn gemini_body(model: &str, language: &str, wav: &[u8]) -> Value {
     let languages: Vec<&str> = if language.trim().is_empty() { vec![] } else { vec![language.trim()] };
     json!({
         "model": model,
+        "store": false,
         "input": [{
             "type": "audio",
             "data": base64::engine::general_purpose::STANDARD.encode(wav),
@@ -199,6 +202,7 @@ mod tests {
     fn gemini_request_carries_the_sentence_inline_with_a_language_hint() {
         let b = gemini_body("gemini-3.5-transcribe", "en-US", b"RIFF");
         assert_eq!(b["model"], "gemini-3.5-transcribe");
+        assert_eq!(b["store"].as_bool(), Some(false), "the meeting audio is not kept by Google");
         assert_eq!(b["input"][0]["type"], "audio");
         assert_eq!(b["input"][0]["mime_type"], "audio/wav");
         assert_eq!(b["input"][0]["data"], "UklGRg==");
