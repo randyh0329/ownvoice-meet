@@ -14,6 +14,7 @@
 "Add an Anthropic API key in Settings first." = "请先在“设置”中填写 Anthropic API 密钥。";
 "Add an OpenAI API key in Settings first." = "请先在“设置”中填写 OpenAI API 密钥。";
 "Add speaker" = "添加讲者";
+"An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting." = "每次更新要等到至少有三行新的字幕，所以安静的时段会跳过。摘要窗口的“立即更新”随时都能点按，会议中也可以在那里修改更新频率。";
 "Anthropic API key" = "Anthropic API 密钥";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "任何你自己部署的、提供 OpenAI Chat Completions API 的服务器。在下面填写地址和模型。";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0。这个 fork 的修改不是原作者做的。翻译是你选择的模型当场生成的，照着念之前请自己看一眼。";
@@ -67,6 +68,8 @@
 "English (UK)" = "英语（英国）";
 "English (US)" = "英语（美国）";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "按各家标价估算（2026-10-17 查询），实际以各家账单为准。Apple、Gemma、TranslateGemma 和你自己的服务器不花钱。";
+"Every %@ min" = "每 %@ 分钟";
+"Every %@ minutes" = "每 %@ 分钟";
 "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "会议中每隔几分钟更新：用又快又便宜的模型就够了。“与回复相同”就是“翻译”中选择的模型；选择 Apple 翻译或 TranslateGemma 时，使用第一个有密钥的，都没有则用 Gemma 4。";
 "Every line already has both halves." = "每一行都已经有对照了。";
 "Fill In Missing Halves" = "补对照";
@@ -94,6 +97,7 @@
 "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below." = "Google 专门做翻译的模型（55 种语言），比 Gemma 4 E4B 更小更快。逐句翻译，不看上文和术语表；回复和摘要会用其他模型。在下面设置。";
 "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key." = "Google 最新的 Flash；每句 4–7 秒（思考无法关闭），对实时字幕太慢。需要 Gemini API 密钥。";
 "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models." = "Google 的开放模型在 Mac 上运行：免费，文字不离开电脑。在下面的“在这台 Mac 上运行 Gemma 4”点一下就能装好。这是小模型，措辞不如云端模型准确。";
+"How often the live summary brings itself up to date" = "实时摘要多久自动更新一次";
 "I speak" = "我说的语言";
 "Indonesian" = "印尼语";
 "Insert Template" = "插入模板";
@@ -131,6 +135,8 @@
 "New segment" = "新段落";
 "New segment: %@" = "新段落：%@";
 "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "新的声音会自动变成讲者 1、2、3…。在某个声音的任一行右键选择名字，这个声音前后所有的字幕行都会换成那个名字。任何识别方式都能用；免费，不会发送任何数据。";
+"Next update in about %@ min" = "约 %@ 分钟后更新";
+"Next update: when three new lines are in" = "下次更新：等有三行新字幕时";
 "No Speaker" = "不标讲者";
 "No release found on GitHub." = "GitHub 上找不到发布版本。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "还没有讲稿。按“编辑”直接写、“打开…”读取 .md 文件，或“插入模板”从示例开始。只写一种语言也可以，按“补对照”补上另一半。";
@@ -148,6 +154,7 @@
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "会议结束时一次：整份逐字稿（含讲者和翻译）发送给这个模型写成会议纪要——要点、决议、待办事项、待厘清问题——显示在摘要窗口，并保存为 minutes.md。用 Claude Opus 5.5 这类强大的云端模型效果好，一小时约 US$0.10–0.50。逐字稿会发送到该服务。也可以随时在摘要窗口点按“摘要整场会议”。";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "点一下就会装好缺少的部分：从 ollama.com 下载 Ollama（约 230 MB，会检查签名）和所选模型。TranslateGemma 只翻译字幕（回复和摘要会用其他模型）；Gemma 4 也能做回复和摘要。文字不会离开这台 Mac。";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "每行一个词：中文 = English。Claude、Gemini 和 Gemma 会使用。";
+"Only When I Press Update Now" = "仅在我点按“立即更新”时";
 "Only when asked" = "仅在点按时更新";
 "Open Language & Region" = "打开语言与地区";
 "Open Script" = "打开讲稿";
@@ -232,7 +239,8 @@
 "The Ollama download did not contain Ollama.app." = "下载的 Ollama 中没有 Ollama.app。";
 "The Ollama download failed its signature check, so it was not installed." = "下载的 Ollama 未通过签名检查，因此没有安装。";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "更大的 Gemma 4：翻译更稳定、更慢，需要 16 GB 以上内存。在下面设置。";
-"The main points appear here every few minutes while listening (Settings → Summary & Saving)." = "聆听时每隔几分钟，要点会显示在这里（设置 → 摘要与保存）。";
+"The main points appear here every %@ minutes while listening." = "聆听时每 %@ 分钟，要点会显示在这里。";
+"The main points appear here when you press Update Now." = "点按“立即更新”时，要点会显示在这里。";
 "The model answered the wrong number of lines; try again." = "模型返回的行数不对，请再试一次。";
 "The model did not answer with a list; try again." = "模型没有返回列表，请再试一次。";
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "模型尚未下载完就中断了，按“设置 Gemma 4”继续。";
@@ -260,7 +268,7 @@
 "Unpacking Ollama failed." = "解压 Ollama 失败。";
 "Up to date (%@)." = "已是最新版本（%@）。";
 "Update Now" = "立即更新";
-"Update every" = "更新频率";
+"Update automatically while listening" = "聆听时自动更新";
 "Updated %@" = "%@ 更新";
 "Usage" = "用量";
 "Use Documents" = "改回“文稿”";

@@ -14,6 +14,7 @@
 "Add an Anthropic API key in Settings first." = "Add an Anthropic API key in Settings first.";
 "Add an OpenAI API key in Settings first." = "Add an OpenAI API key in Settings first.";
 "Add speaker" = "Add speaker";
+"An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting." = "An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting.";
 "Anthropic API key" = "Anthropic API key";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them.";
@@ -67,6 +68,8 @@
 "English (UK)" = "English (UK)";
 "English (US)" = "English (US)";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing.";
+"Every %@ min" = "Every %@ min";
+"Every %@ minutes" = "Every %@ minutes";
 "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "Every line already has both halves." = "Every line already has both halves.";
 "Fill In Missing Halves" = "Fill In Missing Halves";
@@ -94,6 +97,7 @@
 "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below." = "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.";
 "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key." = "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key.";
 "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models." = "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.";
+"How often the live summary brings itself up to date" = "How often the live summary brings itself up to date";
 "I speak" = "I speak";
 "Indonesian" = "Indonesian";
 "Insert Template" = "Insert Template";
@@ -131,6 +135,8 @@
 "New segment" = "New segment";
 "New segment: %@" = "New segment: %@";
 "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere.";
+"Next update in about %@ min" = "Next update in about %@ min";
+"Next update: when three new lines are in" = "Next update: when three new lines are in";
 "No Speaker" = "No Speaker";
 "No release found on GitHub." = "No release found on GitHub.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
@@ -148,6 +154,7 @@
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time.";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma.";
+"Only When I Press Update Now" = "Only When I Press Update Now";
 "Only when asked" = "Only when asked";
 "Open Language & Region" = "Open Language & Region";
 "Open Script" = "Open Script";
@@ -232,7 +239,8 @@
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
-"The main points appear here every few minutes while listening (Settings → Summary & Saving)." = "The main points appear here every few minutes while listening (Settings → Summary & Saving).";
+"The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
+"The main points appear here when you press Update Now." = "The main points appear here when you press Update Now.";
 "The model answered the wrong number of lines; try again." = "The model answered the wrong number of lines; try again.";
 "The model did not answer with a list; try again." = "The model did not answer with a list; try again.";
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "The model download stopped before it finished; press Set Up Gemma 4 to go on.";
@@ -260,7 +268,7 @@
 "Unpacking Ollama failed." = "Unpacking Ollama failed.";
 "Up to date (%@)." = "Up to date (%@).";
 "Update Now" = "Update Now";
-"Update every" = "Update every";
+"Update automatically while listening" = "Update automatically while listening";
 "Updated %@" = "Updated %@";
 "Usage" = "Usage";
 "Use Documents" = "Use Documents";

@@ -218,7 +218,7 @@ struct SummaryView: View {
     private var live: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
-                Text(verbatim: model.summary.isEmpty ? String(localized: "The main points appear here every few minutes while listening (Settings → Summary & Saving).") : model.summary)
+                Text(verbatim: model.summary.isEmpty ? placeholder : model.summary)
                     .font(.system(size: model.settings.fontSize * 0.85))
                     .foregroundStyle(model.summary.isEmpty ? .secondary : .primary)
                     .textSelection(.enabled)
@@ -228,13 +228,50 @@ struct SummaryView: View {
                 Text(verbatim: model.summaryError).font(.caption).foregroundStyle(.red)
             }
             HStack {
-                Text(verbatim: model.summaryUpdated).font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    if !model.summaryUpdated.isEmpty {
+                        Text(verbatim: model.summaryUpdated)
+                    }
+                    // Refreshed every 15 s, so the countdown keeps up without anything else changing.
+                    TimelineView(.periodic(from: .now, by: 15)) { context in
+                        if let next = model.nextSummaryAt {
+                            let minutes = Int((next.timeIntervalSince(context.date) / 60).rounded(.up))
+                            Text(verbatim: minutes <= 0 ? String(localized: "Next update: when three new lines are in") : String(localized: "Next update in about \(String(minutes)) min"))
+                        }
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Spacer()
+                intervalMenu
                 if model.summaryWorking { ProgressView().controlSize(.small) }
                 Button("Update Now") { Task { await model.updateSummary(force: true) } }
                     .disabled(model.summaryWorking || model.record == nil)
             }
         }
+    }
+
+    /// The live summary's interval, changeable during the meeting.
+    private var intervalMenu: some View {
+        Menu {
+            Toggle("Only When I Press Update Now", isOn: Binding(get: { !model.settings.summaryAuto }, set: { if $0 { model.setSummaryInterval(nil) } }))
+            Divider()
+            ForEach([1, 2, 3, 5, 10, 15, 30], id: \.self) { m in
+                Toggle(isOn: Binding(get: { model.settings.summaryAuto && model.settings.summaryEveryMinutes == m }, set: { if $0 { model.setSummaryInterval(m) } })) {
+                    Text(verbatim: String(localized: "Every \(String(m)) minutes"))
+                }
+            }
+        } label: {
+            Label(model.settings.summaryAuto ? String(localized: "Every \(String(model.settings.summaryEveryMinutes)) min") : String(localized: "Only when asked"), systemImage: "clock.arrow.circlepath")
+        }
+        .fixedSize()
+        .help("How often the live summary brings itself up to date")
+    }
+
+    private var placeholder: String {
+        model.settings.summaryAuto
+            ? String(localized: "The main points appear here every \(String(model.settings.summaryEveryMinutes)) minutes while listening.")
+            : String(localized: "The main points appear here when you press Update Now.")
     }
 
     private var meeting: some View {

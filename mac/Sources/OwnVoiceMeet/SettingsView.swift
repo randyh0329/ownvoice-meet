@@ -162,10 +162,15 @@ private struct SummarySavingTab: View {
         @Bindable var model = model
         Form {
             Section("Live summary") {
-                Picker("Update every", selection: $model.settings.summaryEveryMinutes) {
-                    Text("Only when asked").tag(0)
-                    ForEach([2, 5, 10, 15], id: \.self) { m in Text(verbatim: String(localized: "\(String(m)) minutes")).tag(m) }
+                Toggle("Update automatically while listening", isOn: $model.settings.summaryAuto)
+                if model.settings.summaryAuto {
+                    Stepper(value: $model.settings.summaryEveryMinutes, in: 1...60) {
+                        Text(verbatim: String(localized: "Every \(String(model.settings.summaryEveryMinutes)) minutes"))
+                    }
                 }
+                Text("An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Picker("Model", selection: $model.settings.liveSummaryModel) {
                     ForEach(SummaryModelChoice.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
