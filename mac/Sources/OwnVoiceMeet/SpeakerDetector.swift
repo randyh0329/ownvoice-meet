@@ -15,13 +15,14 @@ import OwnVoiceCore
 @MainActor
 @Observable
 final class SpeakerModels {
-    struct File {
+    struct File: Sendable {
         let name: String
         let url: URL
         let sha256: String
     }
 
-    static let files = [
+    // Constant paths, read from the detector's own queue too.
+    nonisolated static let files = [
         File(name: "silero_vad_v5.onnx",
              url: URL(string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad_v5.onnx")!,
              sha256: "6b99cbfd39246b6706f98ec13c7c50c6b299181f2474fa05cbc8046acc274396"),
@@ -30,18 +31,18 @@ final class SpeakerModels {
              sha256: "98daf9bcf1c8abf3db374fec4c27a5eda7c58705bb3f180d057b085a72a88bb5"),
     ]
 
-    static var folder: URL {
+    nonisolated static var folder: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("OwnVoice Meet/models")
     }
 
-    static func path(_ file: File) -> URL { folder.appendingPathComponent(file.name) }
+    nonisolated static func path(_ file: File) -> URL { folder.appendingPathComponent(file.name) }
 
     private(set) var ready = SpeakerModels.allPresent()
     private(set) var downloading = false
     private(set) var message = ""
 
-    private static func allPresent() -> Bool {
+    nonisolated private static func allPresent() -> Bool {
         files.allSatisfy { FileManager.default.fileExists(atPath: path($0).path) }
     }
 
