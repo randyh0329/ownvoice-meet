@@ -1,5 +1,6 @@
-// OwnVoice Meet for the Mac: a caption window that floats over the meeting, and Settings.
-// Every word of the interface comes from Localizable.strings (en, zh-Hant, zh-Hans).
+// OwnVoice Meet for the Mac: a caption window that floats over the meeting; Reply, Script and
+// Summary windows around it; Settings. Every word of the interface comes from
+// Localizable.strings (en, zh-Hant, zh-Hans).
 // No @State anywhere: with the macOS 27 SDK it is a macro whose plugin ships only with Xcode, and
 // the app also builds with the Command Line Tools. State lives in AppModel (Observation's macros
 // are in both).
@@ -12,25 +13,56 @@ struct OwnVoiceMeetApp: App {
 
     var body: some Scene {
         Window("OwnVoice Meet", id: "captions") {
-            CaptionsView()
-                .environment(model)
+            CaptionsView().environment(model)
         }
         .defaultSize(width: 760, height: 440)
-        .commands {
-            CommandGroup(replacing: .newItem) {}
-            CommandMenu("Listening") {
-                Button(model.isListening ? LocalizedStringKey("Stop Listening") : LocalizedStringKey("Start Listening")) { model.toggle() }
-                    .keyboardShortcut("l")
-                Button("Clear Captions") { model.clear() }
-                    .keyboardShortcut("k")
-                Divider()
-                Toggle("Keep Window on Top", isOn: Bindable(model).settings.alwaysOnTop)
-            }
+        .commands { AppCommands(model: model) }
+
+        Window("Reply", id: "reply") {
+            ReplyView().environment(model)
         }
+        .defaultSize(width: 620, height: 360)
+
+        Window("Script", id: "script") {
+            ScriptView().environment(model)
+        }
+        .defaultSize(width: 640, height: 640)
+
+        Window("Summary", id: "summary") {
+            SummaryView().environment(model)
+        }
+        .defaultSize(width: 460, height: 420)
 
         Settings {
-            SettingsView()
-                .environment(model)
+            SettingsView().environment(model)
+        }
+    }
+}
+
+struct AppCommands: Commands {
+    let model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {}
+        CommandMenu("Listening") {
+            Button(model.isListening ? LocalizedStringKey("Stop Listening") : LocalizedStringKey("Start Listening")) { model.toggle() }
+                .keyboardShortcut("l")
+            Button("Clear Captions") { model.clear() }
+                .keyboardShortcut("k")
+            Divider()
+            Toggle("Keep Window on Top", isOn: Bindable(model).settings.alwaysOnTop)
+        }
+        CommandGroup(before: .windowList) {
+            Button("Captions") { openWindow(id: "captions") }
+                .keyboardShortcut("0")
+            Button("Reply") { openWindow(id: "reply") }
+                .keyboardShortcut("1")
+            Button("Script") { openWindow(id: "script") }
+                .keyboardShortcut("2")
+            Button("Summary") { openWindow(id: "summary") }
+                .keyboardShortcut("3")
+            Divider()
         }
     }
 }

@@ -47,10 +47,14 @@ Your entire output is shown as a subtitle: output only the Chinese translation, 
 
     /// The caption system prompt for `variant`, with the glossary appended.
     public static func system(glossary: String, variant: ChineseVariant = .traditionalTaiwan) -> String {
-        let base = listenSystem(variant)
+        withGlossary(listenSystem(variant), glossary: glossary)
+    }
+
+    /// Any instructions with the glossary appended (captions, replies, the summary).
+    public static func withGlossary(_ instructions: String, glossary: String) -> String {
         let terms = parseGlossary(glossary)
-        guard !terms.isEmpty else { return base }
+        guard !terms.isEmpty else { return instructions }
         let list = terms.map { "- \($0.zh) = \($0.en)" }.joined(separator: "\n")
-        return base + "\n\nGlossary (always use these renderings):\n" + list
+        return instructions + "\n\nGlossary (always use these renderings):\n" + list
     }
 }

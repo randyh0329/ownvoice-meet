@@ -119,3 +119,86 @@ final class RequestTests: XCTestCase {
         }
     }
 }
+
+final class AssistantTests: XCTestCase {
+    func testRepliesSummaryAndGlossFollowTheVariantAndLanguage() {
+        let reply = Assistants.replySystem(language: "Japanese")
+        XCTAssertTrue(reply.contains("Japanese-language meeting") && reply.contains("Output only the Japanese script"))
+        XCTAssertTrue(Assistants.summarySystem(.traditionalTaiwan).contains("繁體中文"))
+        let cn = Assistants.summarySystem(.simplified)
+        XCTAssertTrue(cn.contains("简体中文") && !cn.contains("Traditional") && !cn.contains("Taiwanese"), cn)
+        XCTAssertFalse(Assistants.glossSystem(language: "English", variant: .simplified).contains("Traditional"))
+        XCTAssertEqual(Assistants.languageName("ja-JP"), "Japanese")
+        XCTAssertEqual(Assistants.languageName(""), "English")
+        XCTAssertEqual(Assistants.languageName("Swahili"), "Swahili")
+        XCTAssertNil(Assistants.scriptBlock("  \n"))
+        XCTAssertTrue(Assistants.summaryUser(before: "", transcript: "x").contains("(none yet)"))
+    }
+
+    func testTheScriptGoesInItsOwnCachedBlockOrTheSystemMessage() throws {
+        let a = try JSONSerialization.jsonObject(with: Requests.anthropicBody(model: "m", system: "S", user: "U", effort: "", script: "# Talk", stream: true)) as! [String: Any]
+        let blocks = a["system"] as! [[String: Any]]
+        XCTAssertEqual(blocks.count, 2)
+        XCTAssertNotNil(blocks[1]["cache_control"])
+        XCTAssertEqual(a["stream"] as? Bool, true)
+        let c = try JSONSerialization.jsonObject(with: Requests.chatBody(model: "m", system: "S", user: "U", effort: "", script: "# Talk")) as! [String: Any]
+        let system = (c["messages"] as! [[String: Any]])[0]["content"] as! String
+        XCTAssertTrue(system.hasPrefix("S\n\n") && system.contains("<script>\n# Talk\n</script>"))
+    }
+}
+
+final class ScriptTests: XCTestCase {
+    func testTheFormat() {
+        let items = Script.parse("# Opening\n! next slide\nHi all.\n> 大家好。\nQ: Why?\n## Spare\n```copy:link\nhttps://x\n```\n\n# Q&A\n```copy:open\nunclosed")
+        XCTAssertEqual(items, [
+            .section("Opening", index: 0), .cue("next slide"), .line("Hi all."), .gloss("大家好。"), .question("Why?"),
+            .sub("Spare"), .copy(name: "link", text: "https://x"), .section("Q&A", index: 1), .copy(name: "open", text: "unclosed"),
+        ])
+        XCTAssertEqual(Script.sections(items), ["Opening", "Q&A"])
+        XCTAssertEqual(Script.sections(Script.parse(Script.template)), ["開場", "Q&A"])
+    }
+
+    func testPlanFindsOnlyLinesMissingTheirOtherHalf() {
+        let script = "# T\nHi all.\n> 大家好。\nThanks for coming.\n謝謝大家。\nQ: 問題是什麼？\n! cue\n```copy:x\nno\n```\n"
+        let needs = Script.plan(script)
+        XCTAssertEqual(needs.map(\.text), ["Thanks for coming.", "謝謝大家。", "問題是什麼？"])
+        XCTAssertEqual(needs.map(\.direction), [.toChinese, .toSpoken, .toSpoken])
+        XCTAssertFalse(Script.isChinese("こんにちは世界"), "kana makes it Japanese")
+    }
+
+    func testMergeFillsBothDirectionsAndKeepsTheRest() throws {
+        let script = "# T\nThanks for coming.\n謝謝大家。\nQ: 問題是什麼？\n"
+        let needs = Script.plan(script)
+        let answers = try Script.answers("```json\n[\"谢谢光临。\", \"Thank you all.\", \"What is the question?\"]\n```", expect: 3)
+        XCTAssertEqual(Script.merge(script, needs: needs, answers: answers),
+                       "# T\nThanks for coming.\n> 謝謝光臨。\nThank you all.\n> 謝謝大家。\nQ: What is the question?\n> 問題是什麼？\n")
+        XCTAssertThrowsError(try Script.answers("[\"a\"]", expect: 2))
+        XCTAssertTrue(Script.request(needs).contains("\"to\":\"speak\""))
+    }
+}
+
+final class StreamingTests: XCTestCase {
+    func testBothStreamFormats() {
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"你"}}"#), .text("你"))
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"message_stop"}"#), .done)
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"error","error":{"message":"overloaded"}}"#), .error("overloaded"))
+        XCTAssertNil(Streaming.anthropic("event: ping"))
+        XCTAssertEqual(Streaming.chat(#"data: {"choices":[{"delta":{"content":"好"}}]}"#), .text("好"))
+        XCTAssertEqual(Streaming.chat("data: [DONE]"), .done)
+        XCTAssertNil(Streaming.chat(#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#))
+    }
+}
+
+final class SessionFileTests: XCTestCase {
+    func testTranscriptAndNames() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        XCTAssertEqual(SessionFiles.folderName(Date(timeIntervalSince1970: 0), calendar: cal), "1970-01-01 0000")
+        XCTAssertEqual(SessionFiles.hms(3725), "01:02:05")
+        let md = SessionFiles.transcript(title: "Transcript", header: ["Started: 14:05"], lines: [
+            TranscriptLine(offset: 5, heard: "Hello.", translation: "你好。"), TranscriptLine(offset: 9, heard: " ", translation: ""),
+        ])
+        XCTAssertEqual(md, "# Transcript\n\n- Started: 14:05\n\n[00:00:05] Hello.\n　你好。\n\n")
+        XCTAssertEqual(SessionFiles.forSummary([TranscriptLine(offset: 0, heard: "Hi.", translation: "嗨。")], clock: { _ in "14:05" }), "[14:05] Hi.\n  （嗨。）")
+    }
+}

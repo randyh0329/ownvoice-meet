@@ -10,10 +10,11 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Tab("Listen & Translate", systemImage: "waveform") { ListenTranslateTab() }
+            Tab("Summary & Saving", systemImage: "square.and.arrow.down") { SummarySavingTab() }
             Tab("API Keys", systemImage: "key") { KeysTab() }
             Tab("Appearance", systemImage: "textformat.size") { AppearanceTab() }
         }
-        .frame(width: 560, height: 520)
+        .frame(width: 600, height: 560)
     }
 }
 
@@ -47,6 +48,10 @@ private struct ListenTranslateTab: View {
                 Picker("Chinese", selection: $model.settings.chinese) {
                     ForEach(ChineseVariant.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
+                Picker("I speak", selection: $model.settings.speakLanguage) {
+                    ForEach(SpeakLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
+                }
+                .help("Replies and Fill In Missing Halves write in this language.")
                 if model.settings.translate == .apple {
                     HStack {
                         Button("Check Apple Translation") { Task { await checkApple() } }
@@ -80,6 +85,57 @@ private struct ListenTranslateTab: View {
         case .supported: model.appleCheck = String(localized: "Not downloaded yet: open Language & Region → Translation Languages and download both languages.")
         default: model.appleCheck = String(localized: "Apple Translation does not offer this pair.")
         }
+    }
+}
+
+private struct SummarySavingTab: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        Form {
+            Section("Live summary") {
+                Picker("Update every", selection: $model.settings.summaryEveryMinutes) {
+                    Text("Only when asked").tag(0)
+                    ForEach([2, 5, 10, 15], id: \.self) { m in Text(verbatim: String(localized: "\(String(m)) minutes")).tag(m) }
+                }
+                Text("Uses the text model: the one chosen under Translation, or with Apple Translation the first with a key (Claude, Gemini), else Gemma.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Saving") {
+                Picker("Keep", selection: $model.settings.saveMode) {
+                    ForEach(SaveMode.allCases) { Text(verbatim: $0.label).tag($0) }
+                }
+                LabeledContent("Folder") {
+                    Text(verbatim: model.settings.saveFolderURL.path)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                HStack {
+                    Button("Choose…") { chooseFolder() }
+                    Button("Show in Finder") {
+                        try? FileManager.default.createDirectory(at: model.settings.saveFolderURL, withIntermediateDirectories: true)
+                        NSWorkspace.shared.open(model.settings.saveFolderURL)
+                    }
+                    if !model.settings.saveFolder.isEmpty {
+                        Button("Use Documents") { model.settings.saveFolder = "" }
+                    }
+                }
+                Text("Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        if panel.runModal() == .OK, let url = panel.url { model.settings.saveFolder = url.path }
     }
 }
 

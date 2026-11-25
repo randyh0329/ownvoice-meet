@@ -7,6 +7,7 @@ import SwiftUI
 
 struct CaptionsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +43,15 @@ struct CaptionsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer()
+                Button("Reply", systemImage: "text.bubble") { openWindow(id: "reply") }
+                    .labelStyle(.iconOnly)
+                    .help("Reply: type Chinese, read the words aloud")
+                Button("Script", systemImage: "doc.text") { openWindow(id: "script") }
+                    .labelStyle(.iconOnly)
+                    .help("Script")
+                Button("Summary", systemImage: "list.bullet.rectangle") { openWindow(id: "summary") }
+                    .labelStyle(.iconOnly)
+                    .help("Summary")
                 SettingsLink {
                     Image(systemName: "gearshape")
                 }

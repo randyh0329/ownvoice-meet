@@ -66,6 +66,42 @@ enum AudioInput: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+/// What a session leaves on disk. Off unless the user chooses: other people's voices are kept.
+enum SaveMode: String, CaseIterable, Codable, Identifiable {
+    case off
+    case transcript
+    case transcriptAndAudio = "transcript-audio"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .off: String(localized: "Don't save")
+        case .transcript: String(localized: "Transcript and summary")
+        case .transcriptAndAudio: String(localized: "Transcript, summary and recording")
+        }
+    }
+}
+
+/// The language the user speaks in the meeting: replies and 補對照 write in it.
+struct SpeakLanguage: Identifiable {
+    let code: String
+    let name: String
+    var id: String { code }
+
+    static let all = [
+        SpeakLanguage(code: "en", name: String(localized: "English")),
+        SpeakLanguage(code: "ja", name: String(localized: "Japanese")),
+        SpeakLanguage(code: "ko", name: String(localized: "Korean")),
+        SpeakLanguage(code: "de", name: String(localized: "German")),
+        SpeakLanguage(code: "fr", name: String(localized: "French")),
+        SpeakLanguage(code: "es", name: String(localized: "Spanish")),
+        SpeakLanguage(code: "vi", name: String(localized: "Vietnamese")),
+        SpeakLanguage(code: "th", name: String(localized: "Thai")),
+        SpeakLanguage(code: "id", name: String(localized: "Indonesian")),
+    ]
+}
+
 /// The interface language: the Mac's, or one chosen here (AppleLanguages, read at launch).
 enum InterfaceLanguage: String, CaseIterable, Identifiable {
     case system = ""
@@ -124,6 +160,12 @@ struct AppSettings: Codable, Equatable {
     var input: AudioInput = .system
     var meetingLanguage = "en-US"
     var chinese: ChineseVariant = .traditionalTaiwan
+    var speakLanguage = "en"
+    /// Minutes between summary updates; 0 = only when asked.
+    var summaryEveryMinutes = 5
+    var saveMode: SaveMode = .off
+    /// Empty: Documents/OwnVoice Meet.
+    var saveFolder = ""
     var glossary = ""
     var alwaysOnTop = true
     var fontSize = 20.0
@@ -139,9 +181,20 @@ struct AppSettings: Codable, Equatable {
         input = (try? c.decodeIfPresent(AudioInput.self, forKey: .input)) ?? d.input
         meetingLanguage = (try? c.decodeIfPresent(String.self, forKey: .meetingLanguage)) ?? d.meetingLanguage
         chinese = (try? c.decodeIfPresent(ChineseVariant.self, forKey: .chinese)) ?? d.chinese
+        speakLanguage = (try? c.decodeIfPresent(String.self, forKey: .speakLanguage)) ?? d.speakLanguage
+        summaryEveryMinutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryEveryMinutes
+        saveMode = (try? c.decodeIfPresent(SaveMode.self, forKey: .saveMode)) ?? d.saveMode
+        saveFolder = (try? c.decodeIfPresent(String.self, forKey: .saveFolder)) ?? d.saveFolder
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize
+    }
+
+    /// Where sessions are saved.
+    var saveFolderURL: URL {
+        saveFolder.isEmpty
+            ? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("OwnVoice Meet")
+            : URL(fileURLWithPath: saveFolder)
     }
 
     private static let key = "settings"

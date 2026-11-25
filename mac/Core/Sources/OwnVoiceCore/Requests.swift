@@ -14,23 +14,33 @@ public enum Requests {
     public static let geminiCompatURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!
     public static let ollamaURL = URL(string: "http://localhost:11434/v1/chat/completions")!
 
-    /// `effort`: the lowest thinking setting the model takes ("" leaves the default).
-    public static func anthropicBody(model: String, system: String, user: String, effort: String, maxTokens: Int = 1000) throws -> Data {
+    /// `effort`: the lowest thinking setting the model takes ("" leaves the default). `script`: the
+    /// prepared script, sent as its own cached block after the instructions (it is the same on
+    /// every call).
+    public static func anthropicBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false, maxTokens: Int = 1000) throws -> Data {
+        var blocks: [[String: Any]] = [["type": "text", "text": system]]
+        if let block = Assistants.scriptBlock(script) {
+            blocks.append(["type": "text", "text": block, "cache_control": ["type": "ephemeral"]])
+        }
         var body: [String: Any] = [
             "model": model,
             "max_tokens": maxTokens,
-            "system": system,
+            "system": blocks,
             "messages": [["role": "user", "content": user]],
         ]
+        if stream { body["stream"] = true }
         if !effort.isEmpty { body["output_config"] = ["effort": effort] }
         return try JSONSerialization.data(withJSONObject: body)
     }
 
-    public static func chatBody(model: String, system: String, user: String, effort: String) throws -> Data {
+    /// Chat Completions has no cache marks: the script joins the system message.
+    public static func chatBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false) throws -> Data {
+        let full = [system, Assistants.scriptBlock(script)].compactMap { $0 }.joined(separator: "\n\n")
         var body: [String: Any] = [
             "model": model,
-            "messages": [["role": "system", "content": system], ["role": "user", "content": user]],
+            "messages": [["role": "system", "content": full], ["role": "user", "content": user]],
         ]
+        if stream { body["stream"] = true }
         if !effort.isEmpty { body["reasoning_effort"] = effort }
         return try JSONSerialization.data(withJSONObject: body)
     }

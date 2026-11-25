@@ -16,8 +16,24 @@ does; then the other is retired.
   Appearance. Strings live in `Resources/*.lproj/Localizable.strings`, keyed by the English text in
   the code; `scripts/check-strings.py` fails the build when one is missing.
 
-Not yet: the reply window and script, the live summary, recordings and transcripts, speaker labels,
-usage costs, OpenAI and the ChatGPT plan, Gemini Live Translate, updates.
+## Stage 2
+
+- **Reply** (⌘1): type Chinese, get the words to read aloud in the language you speak (Settings →
+  I speak), streamed in large text, with the recent captions, the glossary and the script as context.
+- **Script** (⌘2): the bilingual script format (sections as tabs, cues, Q:, `>` meanings, copy
+  blocks), edited in place, opened from a .md file or started from the template, kept between
+  launches. **Fill In Missing Halves** (補對照) adds the missing half of each line. Captions, replies
+  and the summary all read the script as context.
+- **Summary** (⌘3): at most 8 points in the chosen Chinese, brought up to date every few minutes
+  (Settings → Summary & Saving) and when listening stops, or on Update Now.
+- **Saving** (off unless chosen): each session a folder with transcript.md and summary.md, and
+  recording.m4a if chosen.
+- Captions stream: the Chinese grows as the model writes it.
+- Replies, the summary and 補對照 use the text model chosen under Translation; with Apple
+  Translation, the first with a key (Claude, Gemini), else Gemma in Ollama.
+
+Not yet: speaker labels, segments, usage costs, idle pause and auto-end, OpenAI and the ChatGPT
+plan, Gemini Transcribe and Live Translate, updates.
 
 ## Layout
 
