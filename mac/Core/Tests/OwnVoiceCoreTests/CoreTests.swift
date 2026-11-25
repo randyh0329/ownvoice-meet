@@ -111,6 +111,8 @@ final class RequestTests: XCTestCase {
         let c = try JSONSerialization.jsonObject(with: Requests.chatBody(model: "gemma4:e4b", system: "S", user: "U", effort: "none")) as! [String: Any]
         XCTAssertEqual(c["reasoning_effort"] as? String, "none")
         XCTAssertEqual((c["messages"] as? [[String: Any]])?.count, 2)
+        let single = try JSONSerialization.jsonObject(with: Requests.chatBody(model: "translategemma:4b", system: "", user: "U", effort: "")) as! [String: Any]
+        XCTAssertEqual((single["messages"] as? [[String: Any]])?.count, 1, "TranslateGemma: one user message")
 
         XCTAssertEqual(try Requests.anthropicText(Data(#"{"content":[{"type":"text","text":" 你好 "}]}"#.utf8), status: 200), "你好")
         XCTAssertEqual(try Requests.chatText(Data(#"{"choices":[{"message":{"content":"好。"}}]}"#.utf8), status: 200), "好。")
@@ -205,14 +207,182 @@ final class SessionFileTests: XCTestCase {
 
 final class OllamaTests: XCTestCase {
     func testModelListAndPullLines() {
-        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b","model":"gemma4:e4b"}]}"#.utf8)))
-        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"}]}"#.utf8)), "a plain pull of gemma4 is E4B")
-        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"qwen3:8b"}]}"#.utf8)))
-        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[]}"#.utf8)))
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b","model":"gemma4:e4b"}]}"#.utf8), model: "gemma4:e4b"))
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:latest"}]}"#.utf8), model: "gemma4:e4b"), "a plain pull of gemma4 is E4B")
+        XCTAssertTrue(Ollama.hasModel(tags: Data(#"{"models":[{"name":"translategemma:latest"}]}"#.utf8), model: "translategemma:4b"))
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[{"name":"gemma4:e4b"}]}"#.utf8), model: "translategemma:4b"))
+        XCTAssertFalse(Ollama.hasModel(tags: Data(#"{"models":[]}"#.utf8), model: "gemma4:e4b"))
         XCTAssertEqual(Ollama.pullStep(#"{"status":"pulling manifest"}"#), .progress(status: "pulling manifest", done: 0, total: 0))
         XCTAssertEqual(Ollama.pullStep(#"{"status":"pulling 4c27","total":6600000000,"completed":1200000000}"#), .progress(status: "pulling 4c27", done: 1_200_000_000, total: 6_600_000_000))
         XCTAssertEqual(Ollama.pullStep(#"{"status":"success"}"#), .done)
         XCTAssertEqual(Ollama.pullStep(#"{"error":"file does not exist"}"#), .error("file does not exist"))
         XCTAssertNil(Ollama.pullStep(""))
+    }
+}
+
+final class SegmenterTests: XCTestCase {
+    let rate = 16_000
+    func tone(_ ms: Int) -> [Int16] { (0..<(rate * ms / 1000)).map { Int16(sin(Double($0) * 0.3) * 8000) } }
+    func silence(_ ms: Int) -> [Int16] { Array(repeating: 0, count: rate * ms / 1000) }
+    func run(_ seg: inout Segmenter, _ audio: [Int16]) -> [SegmentEvent] {
+        stride(from: 0, to: audio.count, by: 1600).flatMap { seg.push(Array(audio[$0..<min($0 + 1600, audio.count)])) }
+    }
+
+    func testOneSentenceWithPreroll() {
+        var seg = Segmenter(rate: rate)
+        let ev = run(&seg, silence(600) + tone(1500) + silence(900))
+        if case .start = ev.first {} else { XCTFail("starts with start: \(ev.count)") }
+        let ends = ev.compactMap { if case let .end(a) = $0 { a.count } else { nil } }
+        XCTAssertEqual(ends.count, 1)
+        XCTAssertLessThanOrEqual(abs(ends[0] - rate * 2500 / 1000), 480, "300 ms preroll + 1.5 s + 700 ms")
+        XCTAssertFalse(seg.inSpeech)
+    }
+
+    func testAClickIsDiscardedAndLongSpeechIsCut() {
+        var seg = Segmenter(rate: rate)
+        XCTAssertTrue(run(&seg, tone(120) + silence(900)).contains(.discard))
+        var seg2 = Segmenter(rate: rate)
+        XCTAssertEqual(run(&seg2, tone(13_000)).filter { if case .end = $0 { true } else { false } }.count, 1)
+    }
+
+    func testWavHeader() {
+        let w = WAV.data([0, 1, -1], rate: rate)
+        XCTAssertEqual(String(decoding: w.prefix(4), as: UTF8.self), "RIFF")
+        XCTAssertEqual(w.count, 50)
+        XCTAssertEqual(w[24..<28].withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }.littleEndian, UInt32(rate))
+    }
+}
+
+final class UsageTests: XCTestCase {
+    func testCostsAndStreamUsage() {
+        var book = UsageBook()
+        book.addAudio("gemini-live", seconds: 3600)
+        book.addTokens("claude-haiku-5-5", Tokens(input: 180_000, output: 30_000))
+        book.addAudio("apple-speech", seconds: 3600)
+        XCTAssertEqual(book.total, 0.54 + 0.033, accuracy: 1e-9)
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"message_start","message":{"usage":{"input_tokens":120,"cache_read_input_tokens":900,"output_tokens":1}}}"#), .usage(Tokens(input: 120, cached: 900, output: 0)))
+        XCTAssertEqual(Streaming.anthropic(#"data: {"type":"message_delta","usage":{"output_tokens":42}}"#), .usage(Tokens(output: 42)))
+        XCTAssertEqual(Streaming.chat(#"data: {"choices":[],"usage":{"prompt_tokens":1200,"completion_tokens":30,"prompt_tokens_details":{"cached_tokens":1000}}}"#), .usage(Tokens(input: 200, cached: 1000, output: 30)))
+        var t = Tokens(input: 120, cached: 900)
+        t.merge(Tokens(output: 42))
+        XCTAssertEqual(t, Tokens(input: 120, cached: 900, output: 42))
+        XCTAssertTrue(Version.isNewer("mac-v0.6.0", than: "0.5.0"))
+        XCTAssertFalse(Version.isNewer("mac-v0.5.0", than: "0.5.0"))
+        XCTAssertFalse(Version.isNewer("v0.4.9", than: "0.5"))
+        XCTAssertTrue(Version.isNewer("0.5.1", than: "0.5"))
+    }
+
+    func testTranscriptSegmentsAndTranslateGemma() {
+        let md = SessionFiles.transcript(title: "T", header: [], segments: [Segment(name: "Start", offset: 0), Segment(name: "Q&A", offset: 70)], lines: [
+            TranscriptLine(offset: 5, heard: "Hi.", translation: "", segment: 0), TranscriptLine(offset: 80, heard: "Why?", translation: "", segment: 1),
+        ])
+        XCTAssertEqual(md, "# T\n\n\n## 01 · Start (00:00:00)\n\n[00:00:05] Hi.\n\n## 02 · Q&A (00:01:10)\n\n[00:01:20] Why?\n\n")
+        let p = Assistants.translateGemma(text: "Hello.", sourceCode: "en-US", variant: .traditionalTaiwan)
+        XCTAssertTrue(p.hasPrefix("You are a professional English (en) to Chinese (zh-TW) translator."))
+        XCTAssertTrue(p.hasSuffix("into Chinese:\n\n\nHello."))
+        XCTAssertTrue(Assistants.translateGemma(text: "x", sourceCode: "ja", variant: .simplified).contains("Japanese (ja) to Chinese (zh-Hans)"))
+    }
+}
+
+final class RealtimeTests: XCTestCase {
+    func testOpenAIAndLiveTranslateMessages() throws {
+        let v = try JSONSerialization.jsonObject(with: Data(OpenAIRealtime.sessionUpdate(model: "gpt-live-transcribe", language: "en").utf8)) as! [String: Any]
+        let input = (((v["session"] as! [String: Any])["audio"] as! [String: Any])["input"] as! [String: Any])
+        XCTAssertEqual((input["format"] as! [String: Any])["rate"] as? Int, 24_000)
+        XCTAssertTrue(input["turn_detection"] is NSNull)
+        XCTAssertEqual((input["transcription"] as! [String: Any])["languages"] as? [String], ["en"])
+        XCTAssertEqual(OpenAIRealtime.parse(Data(#"{"type":"conversation.item.input_audio_transcription.delta","item_id":"a","delta":"Hel"}"#.utf8)), .delta(item: "a", text: "Hel"))
+        XCTAssertEqual(OpenAIRealtime.parse(Data(#"{"type":"session.updated"}"#.utf8)), .accepted)
+        let t = try JSONSerialization.jsonObject(with: Data(GeminiLive.translateSetup(model: "m", target: "zh-TW", instruction: "I").utf8)) as! [String: Any]
+        let s = t["setup"] as! [String: Any]
+        XCTAssertEqual(((s["generationConfig"] as! [String: Any])["translationConfig"] as! [String: Any])["targetLanguageCode"] as? String, "zh-TW")
+        XCTAssertEqual(GeminiLive.parseTranslate(Data(#"{"serverContent":{"inputTranscription":{"text":" Hi"},"outputTranscription":{"text":"嗨"}}}"#.utf8)), [.heard(" Hi"), .translated("嗨")])
+    }
+}
+
+final class InterpreterTests: XCTestCase {
+    final class Screen: InterpreterSink {
+        var lines: [(heard: String, heardDone: Bool, zh: String, zhDone: Bool)] = []
+        var dropped: [Int] = []
+        func open() -> Int { lines.append(("", false, "", false)); return lines.count - 1 }
+        func heard(_ id: Int, _ text: String, done: Bool) { lines[id].heard = text; lines[id].heardDone = done }
+        func translated(_ id: Int, _ text: String, done: Bool) { lines[id].zh = text; lines[id].zhDone = done }
+        func drop(_ id: Int) { dropped.append(id) }
+    }
+    let t0 = Date(timeIntervalSince1970: 0)
+    func ms(_ n: Double) -> Date { t0.addingTimeInterval(n / 1000) }
+
+    func testASentenceAndItsTranslationMakeOneLine() {
+        var i = Interpreter()
+        let s = Screen()
+        i.heard("Welcome to", now: ms(0), sink: s)
+        i.heard(" the panel.", now: ms(300), sink: s)
+        i.translated("歡迎來到", now: ms(600), sink: s)
+        i.tick(now: ms(1400), sink: s)
+        XCTAssertTrue(s.lines[0].heardDone)
+        i.translated("座談會。", now: ms(1500), sink: s)
+        XCTAssertEqual(s.lines[0].heard, "Welcome to the panel.")
+        XCTAssertEqual(s.lines[0].zh, "歡迎來到座談會。")
+        XCTAssertTrue(s.lines[0].zhDone)
+        XCTAssertTrue(i.idle)
+    }
+
+    func testChineseThatRunsIntoTheNextLineIsSplit() {
+        var i = Interpreter()
+        let s = Screen()
+        i.heard("I am the moderator.", now: ms(0), sink: s)
+        i.tick(now: ms(1100), sink: s)
+        i.heard("Our first panelist is here.", now: ms(1300), sink: s)
+        i.translated("我是主持人。我們的第一位", now: ms(1500), sink: s)
+        XCTAssertEqual(s.lines[0].zh, "我是主持人。")
+        XCTAssertTrue(s.lines[0].zhDone)
+        XCTAssertEqual(s.lines[1].zh, "我們的第一位")
+        XCTAssertFalse(s.lines[1].zhDone)
+    }
+
+    func testALineWithoutTranslationEndsAfterAWhile() {
+        var i = Interpreter()
+        let s = Screen()
+        i.heard("大家好。", now: ms(0), sink: s)
+        i.tick(now: ms(1000), sink: s)
+        i.tick(now: ms(3500), sink: s)
+        XCTAssertFalse(s.lines[0].zhDone)
+        i.tick(now: ms(4000), sink: s)
+        XCTAssertTrue(s.lines[0].zhDone)
+        XCTAssertTrue(i.idle)
+    }
+
+    func testFlushEndsEveryLine() {
+        var i = Interpreter()
+        let s = Screen()
+        i.heard("We will", now: ms(0), sink: s)
+        i.translated("我們會", now: ms(100), sink: s)
+        i.flush(sink: s)
+        XCTAssertTrue(s.lines[0].heardDone && s.lines[0].zhDone)
+        XCTAssertTrue(i.idle)
+    }
+}
+
+final class UploadTests: XCTestCase {
+    func testFormsAndAnswers() throws {
+        let (body, type) = Uploads.transcriptionForm(wav: Data("RIFF".utf8), model: "gpt-4o-mini-transcribe", language: "en-US", boundary: "B")
+        let text = String(decoding: body, as: UTF8.self)
+        XCTAssertEqual(type, "multipart/form-data; boundary=B")
+        XCTAssertTrue(text.contains("name=\"file\"; filename=\"speech.wav\"") && text.contains("name=\"language\"\r\n\r\nen\r\n") && text.hasSuffix("--B--\r\n"))
+        XCTAssertEqual(try Uploads.transcriptionText(Data(#"{"text":" Hello. "}"#.utf8), status: 200), "Hello.")
+        let g = try JSONSerialization.jsonObject(with: Uploads.geminiBody(model: "gemini-3.5-transcribe", language: "en-US", wav: Data("RIFF".utf8))) as! [String: Any]
+        XCTAssertEqual(((g["input"] as! [[String: Any]])[0])["data"] as? String, "UklGRg==")
+        XCTAssertEqual(try Uploads.geminiText(Data(#"{"status":"completed","steps":[{"type":"model_output","content":[{"type":"text","text":"Hello world"}]}]}"#.utf8), status: 200), "Hello world")
+        XCTAssertThrowsError(try Uploads.geminiText(Data(#"{"status":"failed"}"#.utf8), status: 200))
+    }
+
+    func testLinesARecognizerManages() {
+        var book = CaptionBook()
+        let a = book.openLine(), b = book.openLine()
+        book.setHeard("Hi", for: a, final: false)
+        book.setHeard("There.", for: b, final: true)
+        book.setTranslation("那裡。", for: b)
+        book.removeLine(a)
+        XCTAssertEqual(book.lines, [CaptionLine(id: b, heard: "There.", translation: "那裡。", isFinal: true)])
     }
 }

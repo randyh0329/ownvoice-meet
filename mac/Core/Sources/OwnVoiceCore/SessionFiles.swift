@@ -7,11 +7,25 @@ public struct TranscriptLine: Equatable, Sendable {
     public let offset: TimeInterval
     public let heard: String
     public let translation: String
+    /// Which segment it belongs to (0 = the first).
+    public let segment: Int
 
-    public init(offset: TimeInterval, heard: String, translation: String) {
+    public init(offset: TimeInterval, heard: String, translation: String, segment: Int = 0) {
         self.offset = offset
         self.heard = heard
         self.translation = translation
+        self.segment = segment
+    }
+}
+
+/// A stretch of the session the user marked ("New Segment"), from `offset` on.
+public struct Segment: Equatable, Sendable {
+    public let name: String
+    public let offset: TimeInterval
+
+    public init(name: String, offset: TimeInterval) {
+        self.name = name
+        self.offset = offset
     }
 }
 
@@ -28,9 +42,15 @@ public enum SessionFiles {
     }
 
     /// `header`: lines like "Started: …", "Recognition: …", each written as a list item.
-    public static func transcript(title: String, header: [String], lines: [TranscriptLine]) -> String {
+    /// With more than one segment, each gets a heading: "## 02 · Q&A (00:41:10)".
+    public static func transcript(title: String, header: [String], segments: [Segment] = [], lines: [TranscriptLine]) -> String {
         var out = "# \(title)\n\n" + header.map { "- \($0)\n" }.joined() + "\n"
+        var current = -1
         for l in lines where !l.heard.trimmingCharacters(in: .whitespaces).isEmpty {
+            if segments.count > 1, l.segment != current, l.segment < segments.count {
+                current = l.segment
+                out += "## \(String(format: "%02d", current + 1)) · \(segments[current].name) (\(hms(segments[current].offset)))\n\n"
+            }
             out += "[\(hms(l.offset))] \(l.heard.trimmingCharacters(in: .whitespacesAndNewlines))\n"
             let zh = l.translation.trimmingCharacters(in: .whitespacesAndNewlines)
             if !zh.isEmpty { out += "　\(zh)\n" }

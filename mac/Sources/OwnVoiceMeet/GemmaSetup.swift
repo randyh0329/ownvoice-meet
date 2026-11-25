@@ -1,10 +1,11 @@
-// Gemma 4 on this Mac in one click: whatever is missing, in order.
+// A local model (Gemma 4 or TranslateGemma) on this Mac in one click: whatever is missing, in order.
 //   1. Ollama not installed: download Ollama-darwin.zip from ollama.com, unpack it with ditto,
 //      check that Ollama.app carries a valid Developer ID signature (nothing is installed if not),
 //      mark it as downloaded from the internet so Gatekeeper checks it on first open, and put it in
 //      /Applications (~/Applications when that is not writable).
 //   2. Ollama not running: open it, and wait until its API answers.
-//   3. The Gemma 4 E4B model missing: download it through Ollama's /api/pull, with progress.
+//   3. The chosen model missing (TranslateGemma 4B, Gemma 4 E4B or 12B): download it through
+//      Ollama's /api/pull, with progress.
 
 import AppKit
 import Foundation
@@ -21,6 +22,10 @@ final class GemmaSetup {
 
     private(set) var state: State = .unknown
     private(set) var message = ""
+    /// Which model to have in Ollama (Settings picks it).
+    var model: LocalModel = AppSettings.load().translate.ollamaModel ?? .gemmaE4B {
+        didSet { if model != oldValue { Task { await check() } } }
+    }
     /// 0…1 while something downloads.
     private(set) var progress: Double?
 
@@ -29,7 +34,7 @@ final class GemmaSetup {
         guard state != .working else { return }
         state = .checking
         if let tags = await Self.tags() {
-            state = Ollama.hasModel(tags: tags) ? .ready : .noModel
+            state = Ollama.hasModel(tags: tags, model: model.rawValue) ? .ready : .noModel
         } else {
             state = Self.installedApp() == nil ? .noOllama : .notRunning
         }
@@ -47,7 +52,7 @@ final class GemmaSetup {
                 if let installed = Self.installedApp() { app = installed } else { app = try await install() }
                 tags = try await start(app)
             }
-            if let tags, !Ollama.hasModel(tags: tags) {
+            if let tags, !Ollama.hasModel(tags: tags, model: model.rawValue) {
                 try await pull()
             }
             progress = nil
@@ -62,8 +67,8 @@ final class GemmaSetup {
 
     private func describe(_ state: State) -> String {
         switch state {
-        case .ready: String(localized: "✓ Ready: Ollama is running and has Gemma 4 E4B.")
-        case .noModel: String(localized: "Ollama is running; the Gemma 4 model is not downloaded yet.")
+        case .ready: String(localized: "✓ Ready: Ollama is running and has \(model.rawValue).")
+        case .noModel: String(localized: "Ollama is running; \(model.rawValue) is not downloaded yet.")
         case .notRunning: String(localized: "Ollama is installed but not running.")
         case .noOllama: String(localized: "Ollama is not installed.")
         case .unknown, .checking, .working: String(localized: "Checking…")
@@ -109,12 +114,12 @@ final class GemmaSetup {
     }
 
     private func pull() async throws {
-        message = String(localized: "Downloading Gemma 4 E4B (about 7 GB)…")
+        message = String(localized: "Downloading \(model.rawValue)…")
         progress = 0
         var req = URLRequest(url: Ollama.base.appendingPathComponent("api/pull"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "content-type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: ["model": Ollama.model, "stream": true])
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["model": model.rawValue, "stream": true])
         req.timeoutInterval = 3600
         let (bytes, _) = try await URLSession.shared.bytes(for: req)
         for try await line in bytes.lines {
@@ -122,7 +127,8 @@ final class GemmaSetup {
             case .progress(_, let done, let total)? where total > 0:
                 progress = Double(done) / Double(total)
                 let gb = { (n: Int64) in String(format: "%.1f", Double(n) / 1e9) }
-                message = String(localized: "Downloading Gemma 4 E4B… \(gb(done)) / \(gb(total)) GB")
+                let name = model.rawValue
+                message = String(localized: "Downloading \(name)… \(gb(done)) / \(gb(total)) GB")
             case .done?:
                 return
             case .error(let e)?:

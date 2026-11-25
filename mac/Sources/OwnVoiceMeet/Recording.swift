@@ -15,17 +15,20 @@ final class SessionRecord {
     private var order: [Int] = []
     private var dirty = false
     private var audio: AudioRecorder?
+    private var segments = [Segment(name: String(localized: "Start"), offset: 0)]
     /// Finished, translated lines the summary has not taken in yet.
     private(set) var forSummary: [TranscriptLine] = []
 
     private struct Entry {
         var offset: TimeInterval
+        var segment: Int
         var heard = ""
         var translation = ""
         var finished = false
     }
 
-    init(settings s: AppSettings, recognition: String, translation: String) throws {
+    /// `keepSound`: record the sound even if saving is off (record only).
+    init(settings s: AppSettings, recognition: String, translation: String, keepSound: Bool = false) throws {
         let start = DateFormatter.localizedString(from: started, dateStyle: .medium, timeStyle: .short)
         header = [
             String(localized: "Started: \(start)"),
@@ -33,7 +36,7 @@ final class SessionRecord {
             String(localized: "Recognition: \(recognition)"),
             String(localized: "Translation: \(translation)"),
         ]
-        guard s.saveMode != .off else {
+        guard s.saveMode != .off || keepSound else {
             folder = nil
             return
         }
@@ -44,7 +47,7 @@ final class SessionRecord {
             throw AppError(String(localized: "Could not make the session folder: \(error.localizedDescription)"))
         }
         folder = dir
-        if s.saveMode == .transcriptAndAudio {
+        if s.saveMode == .transcriptAndAudio || keepSound {
             audio = try AudioRecorder(url: dir.appendingPathComponent("recording.m4a"))
         }
     }
@@ -55,7 +58,7 @@ final class SessionRecord {
 
     func opened(_ id: Int) {
         guard entries[id] == nil else { return }
-        entries[id] = Entry(offset: Date().timeIntervalSince(started))
+        entries[id] = Entry(offset: Date().timeIntervalSince(started), segment: segments.count - 1)
         order.append(id)
     }
 
@@ -71,7 +74,16 @@ final class SessionRecord {
         e.translation = zh
         entries[id] = e
         dirty = true
-        if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh)) }
+        if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment)) }
+    }
+
+    /// A new segment from now on; returns its name ("Segment 2" when none was given).
+    @discardableResult
+    func newSegment(_ name: String) -> String {
+        let n = name.isEmpty ? String(localized: "Segment \(String(segments.count + 1))") : name
+        segments.append(Segment(name: n, offset: Date().timeIntervalSince(started)))
+        dirty = true
+        return n
     }
 
     func takeForSummary() -> [TranscriptLine] {
@@ -94,8 +106,8 @@ final class SessionRecord {
     func writeIfChanged() {
         guard dirty, let folder else { return }
         dirty = false
-        let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation) }
-        write(SessionFiles.transcript(title: String(localized: "Transcript"), header: header, lines: lines), to: folder.appendingPathComponent("transcript.md"))
+        let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment) }
+        write(SessionFiles.transcript(title: String(localized: "Transcript"), header: header, segments: segments, lines: lines), to: folder.appendingPathComponent("transcript.md"))
     }
 
     func writeSummary(_ text: String, updated: String) {

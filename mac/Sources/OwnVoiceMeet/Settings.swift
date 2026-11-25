@@ -7,6 +7,12 @@ import Security
 enum ListenOption: String, CaseIterable, Codable, Identifiable {
     case appleSpeech = "apple-speech"
     case geminiLive = "gemini-live"
+    case geminiLiveTranslate = "gemini-live-translate"
+    case geminiTranscribe = "gemini-transcribe"
+    case openaiLive = "openai-live"
+    case openaiMini = "openai-mini"
+    case localWhisper = "local-whisper"
+    case recordOnly = "record-only"
 
     var id: String { rawValue }
 
@@ -14,6 +20,12 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .appleSpeech: String(localized: "Apple on-device recognition (free, stays on the Mac)")
         case .geminiLive: String(localized: "Gemini 3.5 Transcribe Live (about US$0.54 an hour)")
+        case .geminiLiveTranslate: String(localized: "Gemini 3.5 Live Translate: hears and translates in one (about US$2.2 an hour)")
+        case .geminiTranscribe: String(localized: "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)")
+        case .openaiLive: String(localized: "OpenAI gpt-live-transcribe (about US$1.02 an hour)")
+        case .openaiMini: String(localized: "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)")
+        case .localWhisper: String(localized: "Your own Whisper server (OpenAI-compatible, free)")
+        case .recordOnly: String(localized: "Record only, no captions")
         }
     }
 
@@ -21,6 +33,20 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .appleSpeech: String(localized: "macOS's own SpeechAnalyzer: recognized on the Mac, with gray text while someone speaks. The first time, the language's model is downloaded. Needs the meeting language chosen.")
         case .geminiLive: String(localized: "Google's live transcription, steadier in a noisy room. Needs a Gemini API key (use the paid tier: free-tier data is used to improve Google's products).")
+        case .geminiLiveTranslate: String(localized: "Google's interpreter model hears the speech and gives the Chinese itself; the caption translation model is not used. A preview model. Needs a Gemini API key.")
+        case .geminiTranscribe: String(localized: "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key.")
+        case .openaiLive: String(localized: "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key.")
+        case .openaiMini: String(localized: "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.")
+        case .localWhisper: String(localized: "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.")
+        case .recordOnly: String(localized: "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated.")
+        }
+    }
+
+    /// Recognition that costs money while it runs (paused when the room is quiet).
+    var isCloud: Bool {
+        switch self {
+        case .geminiLive, .geminiLiveTranslate, .geminiTranscribe, .openaiLive, .openaiMini: true
+        case .appleSpeech, .localWhisper, .recordOnly: false
         }
     }
 }
@@ -28,8 +54,15 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
 enum TranslateOption: String, CaseIterable, Codable, Identifiable {
     case apple = "apple-translate"
     case haiku = "claude-haiku-5-5"
+    case sonnet = "claude-sonnet-5-5"
+    case luna = "gpt-6-luna"
+    case sol = "gpt-6.1-sol"
     case geminiFlashLite = "gemini-3.5-flash-lite"
+    case geminiFlash = "gemini-3.8-flash"
     case gemma = "gemma4-e4b"
+    case gemma12 = "gemma4-12b"
+    case translateGemma = "translategemma-4b"
+    case localServer = "local-llm"
 
     var id: String { rawValue }
 
@@ -37,8 +70,15 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .apple: String(localized: "Apple Translation (on-device, free)")
         case .haiku: String(localized: "Claude Haiku 5.5 (about US$0.03 an hour)")
+        case .sonnet: String(localized: "Claude Sonnet 5.5 (about US$0.66 an hour)")
+        case .luna: String(localized: "OpenAI gpt-6-luna (about US$0.03 an hour)")
+        case .sol: String(localized: "OpenAI gpt-6.1-sol (about US$0.66 an hour)")
         case .geminiFlashLite: String(localized: "Gemini 3.5 Flash-Lite (about US$0.13 an hour)")
+        case .geminiFlash: String(localized: "Gemini 3.8 Flash (about US$0.25 an hour, slow)")
         case .gemma: String(localized: "Gemma 4 E4B (local Ollama, free)")
+        case .gemma12: String(localized: "Gemma 4 12B (local Ollama, free, needs 16 GB)")
+        case .translateGemma: String(localized: "TranslateGemma 4B (local Ollama, free, translation only)")
+        case .localServer: String(localized: "Your own server (OpenAI-compatible: vLLM, LM Studio…)")
         }
     }
 
@@ -46,8 +86,50 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .apple: String(localized: "macOS's own translation: Chinese appears almost at once. Line by line, without the earlier lines or the glossary. Download the languages first in System Settings → General → Language & Region → Translation Languages.")
         case .haiku: String(localized: "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key.")
+        case .sonnet: String(localized: "Stronger wording and judgment than Haiku, slower, about 20 times the price; captions rarely need it. Needs an Anthropic API key.")
+        case .luna: String(localized: "The same price as Haiku; its speed varies more. Needs an OpenAI API key.")
+        case .sol: String(localized: "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key.")
         case .geminiFlashLite: String(localized: "Uses the earlier lines and the glossary; shares the key with Gemini recognition.")
+        case .geminiFlash: String(localized: "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key.")
         case .gemma: String(localized: "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.")
+        case .gemma12: String(localized: "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.")
+        case .translateGemma: String(localized: "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.")
+        case .localServer: String(localized: "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.")
+        }
+    }
+
+    /// The Ollama model this option runs, for the setup section.
+    var ollamaModel: LocalModel? {
+        switch self {
+        case .gemma: .gemmaE4B
+        case .gemma12: .gemma12B
+        case .translateGemma: .translateGemma4B
+        default: nil
+        }
+    }
+}
+
+/// The models Settings can set up in Ollama.
+enum LocalModel: String, CaseIterable, Identifiable {
+    case translateGemma4B = "translategemma:4b"
+    case gemmaE4B = "gemma4:e4b"
+    case gemma12B = "gemma4:12b"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .translateGemma4B: String(localized: "TranslateGemma 4B: translation only, about 3.3 GB")
+        case .gemmaE4B: String(localized: "Gemma 4 E4B: also replies and summaries, about 7 GB")
+        case .gemma12B: String(localized: "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory")
+        }
+    }
+
+    var option: TranslateOption {
+        switch self {
+        case .translateGemma4B: .translateGemma
+        case .gemmaE4B: .gemma
+        case .gemma12B: .gemma12
         }
     }
 }
@@ -166,6 +248,14 @@ struct AppSettings: Codable, Equatable {
     var saveMode: SaveMode = .off
     /// Empty: Documents/OwnVoice Meet.
     var saveFolder = ""
+    var localServerURL = "http://localhost:8000/v1"
+    var localServerModel = ""
+    var whisperURL = "http://localhost:8790/v1"
+    var whisperModel = "large-v3"
+    /// Cloud recognition stops sending sound after a quiet minute, and starts again on speech.
+    var pauseWhenQuiet = true
+    /// Minutes of quiet after which listening stops; 0 = never.
+    var stopAfterQuietMinutes = 30
     var glossary = ""
     var alwaysOnTop = true
     var fontSize = 20.0
@@ -190,6 +280,12 @@ struct AppSettings: Codable, Equatable {
         summaryEveryMinutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryEveryMinutes
         saveMode = (try? c.decodeIfPresent(SaveMode.self, forKey: .saveMode)) ?? d.saveMode
         saveFolder = (try? c.decodeIfPresent(String.self, forKey: .saveFolder)) ?? d.saveFolder
+        localServerURL = (try? c.decodeIfPresent(String.self, forKey: .localServerURL)) ?? d.localServerURL
+        localServerModel = (try? c.decodeIfPresent(String.self, forKey: .localServerModel)) ?? d.localServerModel
+        whisperURL = (try? c.decodeIfPresent(String.self, forKey: .whisperURL)) ?? d.whisperURL
+        whisperModel = (try? c.decodeIfPresent(String.self, forKey: .whisperModel)) ?? d.whisperModel
+        pauseWhenQuiet = (try? c.decodeIfPresent(Bool.self, forKey: .pauseWhenQuiet)) ?? d.pauseWhenQuiet
+        stopAfterQuietMinutes = (try? c.decodeIfPresent(Int.self, forKey: .stopAfterQuietMinutes)) ?? d.stopAfterQuietMinutes
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize

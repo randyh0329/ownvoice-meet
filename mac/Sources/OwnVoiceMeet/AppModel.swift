@@ -1,7 +1,9 @@
 // The app's state: settings, caption lines, listening, and the windows around them (reply,
-// script, summary). Listening wires an audio source to a recognizer; each finished line goes to
-// the translator, into the session record (transcript, summary, recording) and the summary.
-// No @State in the views (see App.swift): what a window keeps lives here.
+// script, summary, usage). Listening wires an audio source to a recognizer; each finished line goes
+// to the translator (or comes translated, with Live Translate), into the session record (transcript,
+// summary, recording) and the summary. Cloud recognition pauses while the room is quiet, and
+// listening stops after a long quiet. No @State in the views (see App.swift): what a window keeps
+// lives here.
 
 import AVFoundation
 import Foundation
@@ -27,6 +29,8 @@ final class AppModel {
     var appleCheck = ""
     var geminiKeyDraft = Keychain.get("gemini") ?? ""
     var anthropicKeyDraft = Keychain.get("anthropic") ?? ""
+    var openAIKeyDraft = Keychain.get("openai") ?? ""
+    var localKeyDraft = Keychain.get("local") ?? ""
     var keysSaved = false
     var interfaceLanguage = InterfaceLanguage.current {
         didSet {
@@ -35,6 +39,17 @@ final class AppModel {
         }
     }
     var languageChanged = false
+    var updateMessage = ""
+    var updateURL: URL?
+
+    // Usage: this session's, and this month's (kept between launches).
+    private(set) var sessionUsage = UsageBook()
+    private(set) var monthUsage = UsageStore.load()
+
+    // Segments
+    var segmentPrompt = false
+    var segmentDraft = ""
+    private(set) var segmentName = ""
 
     // Reply window
     var replyInput = ""
@@ -60,10 +75,13 @@ final class AppModel {
     private var recognizer: Recognizer?
     private var translator: Translator?
     private(set) var record: SessionRecord?
+    private var gate: QuietGate?
     private var lastSummary = Date()
     private var ticker: Task<Void, Never>?
     /// Lines whose final translation is in: a late streamed piece must not overwrite it.
     private var translated: Set<Int> = []
+    /// Live Translate's own line numbers → caption lines.
+    private var interpLines: [Int: Int] = [:]
 
     // MARK: Listening
 
@@ -74,11 +92,15 @@ final class AppModel {
     func start() {
         guard !isListening else { return }
         let s = settings
-        let recognizer: Recognizer
+        let recognizer: Recognizer?
         do {
-            translator = try makeTranslator(s, script: script)
+            // Live Translate translates itself; record-only translates nothing.
+            let translatesItself = s.listen == .geminiLiveTranslate || s.listen == .recordOnly
+            translator = translatesItself ? nil : try makeTranslator(s, script: script) { model, tokens in
+                Task { @MainActor in self.addTokens(model, tokens) }
+            }
             recognizer = try makeRecognizer(s)
-            record = try SessionRecord(settings: s, recognition: s.listen.label, translation: s.translate.label)
+            record = try SessionRecord(settings: s, recognition: s.listen.label, translation: translatesItself ? s.listen.label : s.translate.label, keepSound: s.listen == .recordOnly)
         } catch {
             status = error.localizedDescription
             return
@@ -86,10 +108,14 @@ final class AppModel {
         self.recognizer = recognizer
         isListening = true
         status = String(localized: "Starting…")
+        segmentName = ""
         lastSummary = Date()
+        interpLines.removeAll()
         let source = makeAudioSource(s.input)
         self.source = source
         let recorder = record?.audioRecorder
+        let gate = QuietGate()
+        self.gate = gate
         let silence = s.input == .system ? SilenceWatch(after: 10) {
             Task { @MainActor in
                 self.status = String(localized: "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.")
@@ -97,15 +123,19 @@ final class AppModel {
         } : nil
         Task {
             do {
-                try await recognizer.start { event in
+                try await recognizer?.start { event in
                     Task { @MainActor in self.handle(event) }
                 }
                 try await source.start { buffer in
                     silence?.feed(buffer)
-                    recognizer.feed(buffer)
+                    if gate.admit(buffer) { recognizer?.feed(buffer) }
                     recorder?.write(buffer)
                 }
-                if case .appleSpeech = s.listen { status = String(localized: "Listening (on this Mac)") }
+                switch s.listen {
+                case .appleSpeech: status = String(localized: "Listening (on this Mac)")
+                case .recordOnly: status = String(localized: "Recording only, no captions")
+                default: break
+                }
                 if let folder = record?.folder { status += " · " + String(localized: "Saving to \(folder.path)") }
                 startTicker()
             } catch {
@@ -118,16 +148,19 @@ final class AppModel {
     func stop() {
         guard isListening else { return }
         status = String(localized: "Stopped.")
-        Task {
-            await teardown()
-            await updateSummary(force: true)
-            record?.close()
-        }
+        Task { await finishSession() }
+    }
+
+    private func finishSession() async {
+        await teardown()
+        await updateSummary(force: true)
+        record?.close()
     }
 
     func clear() {
         book.clear()
         translated.removeAll()
+        interpLines.removeAll()
         summary = ""
         summaryUpdated = ""
         summaryError = ""
@@ -140,29 +173,54 @@ final class AppModel {
         source = nil
         await recognizer?.stop()
         recognizer = nil
+        gate = nil
         isListening = false
     }
 
-    private func makeRecognizer(_ s: AppSettings) throws -> Recognizer {
+    private func makeRecognizer(_ s: AppSettings) throws -> Recognizer? {
+        func key(_ provider: String, _ missing: String) throws -> String {
+            guard let k = Keychain.get(provider) else { throw AppError(missing) }
+            return k
+        }
+        let gemini = String(localized: "Add a Gemini API key in Settings first.")
+        let openAI = String(localized: "Add an OpenAI API key in Settings first.")
         switch s.listen {
-        case .appleSpeech:
-            return AppleSpeechRecognizer(language: s.meetingLanguage)
-        case .geminiLive:
-            guard let key = Keychain.get("gemini") else { throw AppError(String(localized: "Add a Gemini API key in Settings first.")) }
-            return GeminiLiveRecognizer(key: key, language: s.meetingLanguage)
+        case .appleSpeech: return AppleSpeechRecognizer(language: s.meetingLanguage)
+        case .geminiLive: return GeminiLiveRecognizer(key: try key("gemini", gemini), language: s.meetingLanguage)
+        case .geminiLiveTranslate: return GeminiLiveTranslateRecognizer(key: try key("gemini", gemini), chinese: s.chinese, glossary: s.glossary)
+        case .geminiTranscribe: return SentenceRecognizer(service: .gemini(key: try key("gemini", gemini)), language: s.meetingLanguage)
+        case .openaiLive: return OpenAILiveRecognizer(key: try key("openai", openAI), language: s.meetingLanguage)
+        case .openaiMini: return SentenceRecognizer(service: .openAI(key: try key("openai", openAI)), language: s.meetingLanguage)
+        case .localWhisper: return SentenceRecognizer(service: .whisper(base: s.whisperURL, model: s.whisperModel, key: Keychain.get("local")), language: s.meetingLanguage)
+        case .recordOnly: return nil
         }
     }
 
-    /// Every few seconds while listening: write the transcript, and bring the summary up to date
-    /// when its interval has passed.
+    /// Every few seconds while listening: write the transcript; bring the summary up to date when
+    /// its interval has passed; pause cloud recognition in a quiet room; stop after a long quiet.
     private func startTicker() {
         ticker = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
                 record?.writeIfChanged()
-                let every = settings.summaryEveryMinutes
-                if every > 0, Date().timeIntervalSince(lastSummary) >= Double(every * 60), (record?.forSummary.count ?? 0) >= 3 {
+                let s = settings
+                if s.summaryEveryMinutes > 0, Date().timeIntervalSince(lastSummary) >= Double(s.summaryEveryMinutes * 60), (record?.forSummary.count ?? 0) >= 3 {
                     await updateSummary(force: false)
+                }
+                guard let gate else { continue }
+                if gate.takeResumed() {
+                    status = String(localized: "Someone is speaking: recognition is back on.")
+                }
+                let quiet = gate.quietFor
+                if s.listen.isCloud, s.pauseWhenQuiet, quiet >= 60, !gate.isPaused {
+                    gate.pause()
+                    status = String(localized: "Quiet: recognition paused (nothing is billed); it comes back when someone speaks.")
+                }
+                if s.stopAfterQuietMinutes > 0, quiet >= Double(s.stopAfterQuietMinutes * 60) {
+                    let minutes = String(s.stopAfterQuietMinutes)
+                    await finishSession()
+                    status = String(localized: "Stopped after \(minutes) minutes of quiet.")
+                    return
                 }
             }
         }
@@ -179,6 +237,27 @@ final class AppModel {
             }
         case .status(let message):
             status = message
+        case .audio(let seconds):
+            addAudio(settings.listen.rawValue, seconds)
+        case .lineOpened(let n):
+            let id = book.openLine()
+            interpLines[n] = id
+            record?.opened(id)
+        case let .lineHeard(n, text, done):
+            guard let id = interpLines[n] else { return }
+            book.setHeard(text, for: id, final: done)
+            if done { record?.finished(id, heard: text) }
+        case let .lineTranslated(n, text, done):
+            guard let id = interpLines[n] else { return }
+            let zh = settings.chinese.fix(text)
+            book.setTranslation(zh, for: id)
+            if done {
+                translated.insert(id)
+                record?.translated(id, zh)
+                interpLines[n] = nil
+            }
+        case .lineDropped(let n):
+            if let id = interpLines.removeValue(forKey: n) { book.removeLine(id) }
         }
     }
 
@@ -200,6 +279,70 @@ final class AppModel {
                 book.setTranslation("〔\(error.localizedDescription)〕", for: id)
                 record?.translated(id, "")
             }
+        }
+    }
+
+    // MARK: Segments
+
+    func askNewSegment() {
+        guard isListening else { return }
+        segmentDraft = ""
+        segmentPrompt = true
+    }
+
+    func confirmSegment() {
+        let name = segmentDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let record else { return }
+        let n = record.newSegment(name)
+        segmentName = n
+        status = String(localized: "New segment: \(n)")
+    }
+
+    // MARK: Usage
+
+    private func addAudio(_ model: String, _ seconds: Double) {
+        sessionUsage.addAudio(model, seconds: seconds)
+        monthUsage.addAudio(model, seconds: seconds)
+        UsageStore.save(monthUsage)
+    }
+
+    private func addTokens(_ model: String, _ tokens: Tokens) {
+        sessionUsage.addTokens(model, tokens)
+        monthUsage.addTokens(model, tokens)
+        UsageStore.save(monthUsage)
+    }
+
+    func resetUsage() {
+        sessionUsage = UsageBook()
+        monthUsage = UsageBook()
+        UsageStore.save(monthUsage)
+    }
+
+    // MARK: Updates
+
+    /// Asks GitHub (only when the user presses the button) for this fork's latest release.
+    func checkForUpdates() async {
+        updateMessage = String(localized: "Checking…")
+        updateURL = nil
+        let local = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        var req = URLRequest(url: URL(string: "https://api.github.com/repos/randyh0329/ownvoice-meet/releases/latest")!, timeoutInterval: 15)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "accept")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard status == 200, let v = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tag = v["tag_name"] as? String else {
+                updateMessage = String(localized: "No release found on GitHub.")
+                return
+            }
+            if Version.isNewer(tag, than: local) {
+                updateMessage = String(localized: "\(tag) is available (this is \(local)).")
+                updateURL = (v["html_url"] as? String).flatMap(URL.init(string:))
+            } else {
+                updateMessage = String(localized: "Up to date (\(local)).")
+            }
+        } catch {
+            updateMessage = error.localizedDescription
         }
     }
 
@@ -228,10 +371,11 @@ final class AppModel {
         let script = self.script
         Task {
             do {
-                let text = try await model.stream(system: system, user: user, script: script, maxTokens: 800) { soFar in
+                let reply = try await model.stream(system: system, user: user, script: script, maxTokens: 800) { soFar in
                     Task { @MainActor in if self.replyChinese == zh && self.replyWorking { self.replyText = soFar } }
                 }
-                if replyChinese == zh { replyText = text }
+                addTokens(model.id, reply.tokens)
+                if replyChinese == zh { replyText = reply.text }
             } catch {
                 if replyChinese == zh { replyText = "〔\(error.localizedDescription)〕" }
             }
@@ -262,7 +406,9 @@ final class AppModel {
         let system = Prompts.withGlossary(Assistants.summarySystem(s.chinese), glossary: s.glossary)
         let user = Assistants.summaryUser(before: summary, transcript: SessionFiles.forSummary(lines, clock: record.clock))
         do {
-            let text = s.chinese.fix(try await model.stream(system: system, user: user, script: script, maxTokens: 1500) { _ in })
+            let reply = try await model.stream(system: system, user: user, script: script, maxTokens: 1500) { _ in }
+            addTokens(model.id, reply.tokens)
+            let text = s.chinese.fix(reply.text)
             guard !text.isEmpty else { throw AppError(String(localized: "The model returned nothing.")) }
             summary = text
             let time = record.clock(Date().timeIntervalSince(record.started))
@@ -303,8 +449,9 @@ final class AppModel {
             var answers: [String] = []
             for start in stride(from: 0, to: needs.count, by: 40) {
                 let batch = Array(needs[start..<min(start + 40, needs.count)])
-                let text = try await model.stream(system: system, user: Script.request(batch), script: "", maxTokens: 4000) { _ in }
-                answers += try Script.answers(text, expect: batch.count)
+                let reply = try await model.stream(system: system, user: Script.request(batch), script: "", maxTokens: 4000) { _ in }
+                addTokens(model.id, reply.tokens)
+                answers += try Script.answers(reply.text, expect: batch.count)
             }
             guard script == original else {
                 throw AppError(String(localized: "The script changed while filling in; try again."))
@@ -336,5 +483,69 @@ enum ScriptFile {
 
     static func save(_ text: String) {
         try? Data(text.utf8).write(to: url, options: .atomic)
+    }
+}
+
+/// This month's usage, kept in UserDefaults; a new month starts from nothing.
+enum UsageStore {
+    private static var key: String { "usage-" + UsageBook.month(Date()) }
+
+    static func load() -> UsageBook {
+        guard let data = UserDefaults.standard.data(forKey: key), let book = try? JSONDecoder().decode(UsageBook.self, from: data) else { return UsageBook() }
+        return book
+    }
+
+    static func save(_ book: UsageBook) {
+        if let data = try? JSONEncoder().encode(book) { UserDefaults.standard.set(data, forKey: key) }
+    }
+}
+
+/// Whether the room is quiet, from the sound itself (called on the audio thread): cloud recognition
+/// gets no sound while paused, and the first sound with any level brings it back.
+final class QuietGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastSound = Date()
+    private var paused = false
+    private var resumed = false
+
+    func admit(_ buffer: AVAudioPCMBuffer) -> Bool {
+        let loud = buffer.peak > 0.003
+        lock.lock()
+        defer { lock.unlock() }
+        if loud {
+            lastSound = Date()
+            if paused {
+                paused = false
+                resumed = true
+            }
+        }
+        return !paused
+    }
+
+    var quietFor: TimeInterval {
+        lock.lock()
+        defer { lock.unlock() }
+        return Date().timeIntervalSince(lastSound)
+    }
+
+    var isPaused: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return paused
+    }
+
+    func pause() {
+        lock.lock()
+        paused = true
+        lock.unlock()
+    }
+
+    /// Whether recognition came back since the last call.
+    func takeResumed() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let r = resumed
+        resumed = false
+        return r
     }
 }

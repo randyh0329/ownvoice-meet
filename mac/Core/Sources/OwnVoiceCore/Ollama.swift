@@ -6,17 +6,21 @@ import Foundation
 
 public enum Ollama {
     public static let base = URL(string: "http://localhost:11434")!
-    public static let model = "gemma4:e4b"
     /// Ollama for macOS, as ollama.com offers it (a zip holding Ollama.app).
     public static let appDownload = URL(string: "https://ollama.com/download/Ollama-darwin.zip")!
 
     /// Whether the /api/tags answer lists `model`. A plain `ollama pull gemma4` is E4B, listed as
     /// gemma4:latest.
-    public static func hasModel(tags: Data, model: String = model) -> Bool {
+    public static func hasModel(tags: Data, model: String) -> Bool {
         guard let v = (try? JSONSerialization.jsonObject(with: tags)) as? [String: Any],
               let models = v["models"] as? [[String: Any]] else { return false }
         let names = models.flatMap { [$0["name"] as? String, $0["model"] as? String].compactMap { $0 } }
-        return names.contains(model) || (model == "gemma4:e4b" && names.contains("gemma4:latest"))
+        return names.contains(model) || (latestAlias(model).map(names.contains) ?? false)
+    }
+
+    /// A plain `ollama pull gemma4` is E4B and `translategemma` is 4B: both listed as `:latest`.
+    static func latestAlias(_ model: String) -> String? {
+        ["gemma4:e4b": "gemma4:latest", "translategemma:4b": "translategemma:latest"][model]
     }
 
     public enum PullStep: Equatable, Sendable {

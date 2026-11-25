@@ -11,10 +11,17 @@ protocol Translator: Sendable {
     func translate(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String
 }
 
-func makeTranslator(_ s: AppSettings, script: String) throws -> Translator {
+/// Usage of a text model: its pricing id and the tokens one request used.
+typealias UsageReport = @Sendable (String, Tokens) -> Void
+
+func makeTranslator(_ s: AppSettings, script: String, onUsage: @escaping UsageReport) throws -> Translator {
     switch s.translate {
-    case .apple: AppleTranslator(source: s.meetingLanguage, chinese: s.chinese)
-    case .haiku, .geminiFlashLite, .gemma: ModelTranslator(model: try makeTextModel(s), glossary: s.glossary, script: script, chinese: s.chinese)
+    case .apple:
+        return AppleTranslator(source: s.meetingLanguage, chinese: s.chinese)
+    case .translateGemma:
+        return TranslateGemmaTranslator(model: try makeModel(.translateGemma, s), source: s.meetingLanguage, chinese: s.chinese)
+    default:
+        return ModelTranslator(model: try makeTextModel(s), glossary: s.glossary, script: script, chinese: s.chinese, onUsage: onUsage)
     }
 }
 
@@ -75,21 +82,41 @@ actor AppleTranslator: Translator {
 
 // MARK: - Text models
 
-/// Claude, Gemini or Gemma, with the earlier lines, the glossary and the script.
+/// A text model, with the earlier lines, the glossary and the script.
 struct ModelTranslator: Translator {
     let model: TextModel
     let glossary: String
     let script: String
     let chinese: ChineseVariant
+    let onUsage: UsageReport
 
     func translate(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String {
         let variant = chinese
-        let zh = try await model.stream(
+        let reply = try await model.stream(
             system: Prompts.system(glossary: glossary, variant: variant),
             user: Prompts.listenUser(context: context, utterance: text, variant: variant),
             script: script,
             maxTokens: 1000
         ) { soFar in partial(variant.fix(soFar)) }
-        return variant.fix(zh)
+        onUsage(model.id, reply.tokens)
+        return variant.fix(reply.text)
+    }
+}
+
+/// TranslateGemma in Ollama, with its own one-message prompt (no context, no glossary). An empty
+/// meeting language is detected per line; Chinese speech is only put into the chosen script.
+struct TranslateGemmaTranslator: Translator {
+    let model: TextModel
+    let source: String
+    let chinese: ChineseVariant
+
+    func translate(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        let src = source.isEmpty ? (NLLanguageRecognizer.dominantLanguage(for: text)?.rawValue ?? "en") : source
+        if src.hasPrefix("zh") { return chinese.fix(text) }
+        let variant = chinese
+        let reply = try await model.stream(system: "", user: Assistants.translateGemma(text: text, sourceCode: src, variant: variant), script: "", maxTokens: 1000) { soFar in
+            partial(variant.fix(soFar))
+        }
+        return variant.fix(reply.text)
     }
 }

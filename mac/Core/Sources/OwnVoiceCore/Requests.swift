@@ -13,6 +13,7 @@ public enum Requests {
     public static let anthropicURL = URL(string: "https://api.anthropic.com/v1/messages")!
     public static let geminiCompatURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!
     public static let ollamaURL = URL(string: "http://localhost:11434/v1/chat/completions")!
+    public static let openAIURL = URL(string: "https://api.openai.com/v1/chat/completions")!
 
     /// `effort`: the lowest thinking setting the model takes ("" leaves the default). `script`: the
     /// prepared script, sent as its own cached block after the instructions (it is the same on
@@ -36,11 +37,13 @@ public enum Requests {
     /// Chat Completions has no cache marks: the script joins the system message.
     public static func chatBody(model: String, system: String, user: String, effort: String, script: String = "", stream: Bool = false) throws -> Data {
         let full = [system, Assistants.scriptBlock(script)].compactMap { $0 }.joined(separator: "\n\n")
-        var body: [String: Any] = [
-            "model": model,
-            "messages": [["role": "system", "content": full], ["role": "user", "content": user]],
-        ]
-        if stream { body["stream"] = true }
+        // TranslateGemma takes a single user message: no system message when there is none.
+        let messages: [[String: Any]] = full.isEmpty ? [["role": "user", "content": user]] : [["role": "system", "content": full], ["role": "user", "content": user]]
+        var body: [String: Any] = ["model": model, "messages": messages]
+        if stream {
+            body["stream"] = true
+            body["stream_options"] = ["include_usage": true]
+        }
         if !effort.isEmpty { body["reasoning_effort"] = effort }
         return try JSONSerialization.data(withJSONObject: body)
     }
@@ -60,7 +63,7 @@ public enum Requests {
     }
 
     /// The JSON answer, or the service's own error message.
-    static func object(_ data: Data, status: Int) throws -> [String: Any] {
+    public static func object(_ data: Data, status: Int) throws -> [String: Any] {
         let v = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         guard (200..<300).contains(status), let v else {
             let error = v?["error"]

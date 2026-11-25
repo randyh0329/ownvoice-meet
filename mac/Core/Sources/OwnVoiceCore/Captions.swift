@@ -67,6 +67,27 @@ public struct CaptionBook: Sendable {
         return id
     }
 
+    // Lines a recognizer manages itself (Live Translate keeps several open at once).
+
+    /// A new gray line, not the "open" one partial/finish work on.
+    public mutating func openLine() -> Int {
+        let id = take()
+        lines.append(CaptionLine(id: id, heard: ""))
+        trim()
+        return id
+    }
+
+    public mutating func setHeard(_ text: String, for id: Int, final: Bool) {
+        guard let i = index(of: id) else { return }
+        lines[i].heard = text
+        if final { lines[i].isFinal = true }
+    }
+
+    public mutating func removeLine(_ id: Int) {
+        if let i = index(of: id) { lines.remove(at: i) }
+        if openID == id { openID = nil }
+    }
+
     public mutating func setTranslation(_ text: String, for id: Int) {
         if let i = index(of: id) { lines[i].translation = text }
     }

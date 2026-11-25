@@ -7,7 +7,7 @@ import SwiftUI
 import Translation
 
 enum SettingsTab: Hashable {
-    case listen, summary, keys, appearance
+    case listen, summary, keys, appearance, usage, about
 }
 
 struct SettingsView: View {
@@ -20,8 +20,10 @@ struct SettingsView: View {
             Tab("Summary & Saving", systemImage: "square.and.arrow.down", value: SettingsTab.summary) { SummarySavingTab() }
             Tab("API Keys", systemImage: "key", value: SettingsTab.keys) { KeysTab() }
             Tab("Appearance", systemImage: "textformat.size", value: SettingsTab.appearance) { AppearanceTab() }
+            Tab("Usage", systemImage: "chart.bar", value: SettingsTab.usage) { UsageTab() }
+            Tab("About", systemImage: "info.circle", value: SettingsTab.about) { AboutTab() }
         }
-        .frame(width: 600, height: 560)
+        .frame(width: 640, height: 600)
     }
 }
 
@@ -44,8 +46,24 @@ private struct ListenTranslateTab: View {
                 Picker("Meeting language", selection: $model.settings.meetingLanguage) {
                     ForEach(MeetingLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
                 }
+                if model.settings.listen == .localWhisper {
+                    TextField("Server address (up to /v1)", text: $model.settings.whisperURL)
+                    TextField("Model", text: $model.settings.whisperModel)
+                }
+                if model.settings.listen.isCloud {
+                    Toggle("Pause recognition while the room is quiet (nothing is billed)", isOn: $model.settings.pauseWhenQuiet)
+                }
+                Picker("Stop listening after quiet for", selection: $model.settings.stopAfterQuietMinutes) {
+                    Text("Never").tag(0)
+                    ForEach([10, 20, 30, 60], id: \.self) { m in Text(verbatim: String(localized: "\(String(m)) minutes")).tag(m) }
+                }
             }
             Section("Translate") {
+                if model.settings.listen == .geminiLiveTranslate || model.settings.listen == .recordOnly {
+                    Text("Captions do not use the translation model with this recognition; replies and the summary still do.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Picker("Translation", selection: $model.settings.translate) {
                     ForEach(TranslateOption.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
@@ -59,6 +77,10 @@ private struct ListenTranslateTab: View {
                     ForEach(SpeakLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
                 }
                 .help("Replies and Fill In Missing Halves write in this language.")
+                if model.settings.translate == .localServer {
+                    TextField("Server address (up to /v1)", text: $model.settings.localServerURL)
+                    TextField("Model", text: $model.settings.localServerModel)
+                }
                 if model.settings.translate == .apple {
                     HStack {
                         Button("Check Apple Translation") { Task { await checkApple() } }
@@ -96,30 +118,35 @@ private struct ListenTranslateTab: View {
     }
 }
 
-/// Gemma 4 on this Mac: what is there, and one button for whatever is missing.
+/// A local model on this Mac: which one, what is there, and one button for whatever is missing.
 private struct GemmaSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let setup = model.gemma
-        Section("Gemma 4 on this Mac (free, offline)") {
+        @Bindable var setup = model.gemma
+        Section("Local model on this Mac (free, offline)") {
+            Picker("Model", selection: $setup.model) {
+                ForEach(LocalModel.allCases) { Text(verbatim: $0.label).tag($0) }
+            }
             Text(verbatim: setup.message.isEmpty ? String(localized: "Checking…") : setup.message)
             if let p = setup.progress {
                 ProgressView(value: p)
             }
             HStack {
-                Button("Set Up Gemma 4") {
+                Button("Set Up") {
                     Task {
                         await setup.setUp()
-                        if setup.state == .ready { model.settings.translate = .gemma }
+                        if setup.state == .ready { model.settings.translate = setup.model.option }
                     }
                 }
                 .disabled(setup.state == .working || setup.state == .checking || setup.state == .ready)
+                Button("Use It") { model.settings.translate = setup.model.option }
+                    .disabled(setup.state != .ready || model.settings.translate == setup.model.option)
                 Button("Check Again") { Task { await setup.check() } }
                     .disabled(setup.state == .working)
                 if setup.state == .working { ProgressView().controlSize(.small) }
             }
-            Text("One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the Gemma 4 E4B model (about 7 GB). Needs about 10 GB free. Then choose Gemma 4 under Translation; text never leaves this Mac.")
+            Text("One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -187,6 +214,8 @@ private struct KeysTab: View {
             Section {
                 SecureField("Gemini API key", text: $model.geminiKeyDraft)
                 SecureField("Anthropic API key", text: $model.anthropicKeyDraft)
+                SecureField("OpenAI API key", text: $model.openAIKeyDraft)
+                SecureField("Your own server's key (if it needs one)", text: $model.localKeyDraft)
             } footer: {
                 Text("Kept in your login Keychain, never in a file. Apple recognition, Apple Translation and Gemma need no key.")
             }
@@ -196,6 +225,8 @@ private struct KeysTab: View {
                 Button("Save Keys") {
                     Keychain.set("gemini", model.geminiKeyDraft)
                     Keychain.set("anthropic", model.anthropicKeyDraft)
+                    Keychain.set("openai", model.openAIKeyDraft)
+                    Keychain.set("local", model.localKeyDraft)
                     model.keysSaved = true
                 }
                 .keyboardShortcut(.defaultAction)
@@ -261,5 +292,87 @@ private struct ThemePreview: View {
         }
         .padding(12)
         .background(style.background ?? Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+/// Estimated cost at list prices, for this session and this month, per service.
+private struct UsageTab: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Form {
+            UsageSection(title: String(localized: "This session"), book: model.sessionUsage)
+            UsageSection(title: String(localized: "This month"), book: model.monthUsage)
+            Section {
+                Button("Reset", role: .destructive) { model.resetUsage() }
+            } footer: {
+                Text("Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+private struct UsageSection: View {
+    let title: String
+    let book: UsageBook
+
+    static func detail(_ t: UsageTally) -> String {
+        if t.audioSeconds > 0 {
+            let minutes = String(format: "%.1f", t.audioSeconds / 60)
+            return String(localized: "\(minutes) minutes of sound")
+        }
+        let requests = String(t.requests), input = String(t.tokens.input + t.tokens.cached), output = String(t.tokens.output)
+        return String(localized: "\(requests) requests, \(input) tokens in, \(output) out")
+    }
+
+    var body: some View {
+        Section(title) {
+            let rows = book.models.sorted { $0.key < $1.key }
+            if rows.isEmpty {
+                Text("Nothing yet.").foregroundStyle(.secondary)
+            }
+            ForEach(rows, id: \.key) { id, tally in
+                LabeledContent {
+                    Text(verbatim: String(format: "US$%.3f", tally.cost(id)))
+                } label: {
+                    Text(verbatim: id)
+                    Text(verbatim: Self.detail(tally))
+                }
+            }
+            LabeledContent(String(localized: "Total")) {
+                Text(verbatim: String(format: "US$%.3f", book.total)).bold()
+            }
+        }
+    }
+}
+
+private struct AboutTab: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        Form {
+            Section {
+                LabeledContent(String(localized: "Version")) { Text(verbatim: version) }
+                HStack {
+                    Button("Check for Updates") { Task { await model.checkForUpdates() } }
+                    if let url = model.updateURL {
+                        Button("Open the Download Page") { NSWorkspace.shared.open(url) }
+                    }
+                }
+                if !model.updateMessage.isEmpty { Text(verbatim: model.updateMessage) }
+            } footer: {
+                Text("Checking asks GitHub (api.github.com) for this fork's latest release, only when you press the button.")
+            }
+            Section("Sources") {
+                Link("This fork: randyh0329/ownvoice-meet", destination: URL(string: "https://github.com/randyh0329/ownvoice-meet")!)
+                Link("Original project by Zaious: Zaious/ownvoice-meet", destination: URL(string: "https://github.com/Zaious/ownvoice-meet")!)
+                Text("Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }

@@ -63,6 +63,13 @@ struct CaptionsView: View {
             .padding(10)
         }
         .frame(minWidth: 420, minHeight: 220)
+        .alert("New segment", isPresented: Bindable(model).segmentPrompt) {
+            TextField("Name (optional)", text: Bindable(model).segmentDraft)
+            Button("Start Segment") { model.confirmSegment() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The transcript starts a new section from here.")
+        }
         .background(WindowLevel(floating: model.settings.alwaysOnTop))
     }
 }

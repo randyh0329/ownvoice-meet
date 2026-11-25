@@ -56,6 +56,32 @@ Answer with only a JSON array of strings, one per item, in the same order. No ot
 """, variant)
     }
 
+    // MARK: TranslateGemma
+
+    /// TranslateGemma's own prompt, a single user message (per its model card): source and target
+    /// by name and code, then two blank lines before the text. It takes no context or glossary.
+    public static func translateGemma(text: String, sourceCode: String, variant: ChineseVariant) -> String {
+        let code = sourceCode.split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map { $0.lowercased() } ?? "en"
+        let source = languageName(code)
+        let target = variant == .traditionalTaiwan ? "zh-TW" : "zh-Hans"
+        return "You are a professional \(source) (\(code)) to Chinese (\(target)) translator. Your goal is to accurately convey the meaning and nuances of the original \(source) text while adhering to Chinese grammar, vocabulary, and cultural sensitivities. Produce only the Chinese translation, without any additional explanations or commentary. Please translate the following \(source) text into Chinese:\n\n\n\(text)"
+    }
+
+    // MARK: Gemini Live Translate
+
+    /// Live Translate's system instruction: only wording, register and terms (Google ignores
+    /// instructions beyond translating into the target language).
+    public static func liveTranslateInstruction(glossary: String, variant: ChineseVariant) -> String {
+        var text = variant == .traditionalTaiwan
+            ? "Translate for a Taiwanese participant following a meeting. Use Traditional Chinese as used in Taiwan (臺灣繁體中文), with Taiwan vocabulary: 軟體, 網路, 影片, 資料, 品質, 專案, 伺服器, 程式, not their Mainland forms. Natural, concise meeting register. Keep names, product names and acronyms as spoken."
+            : "Translate for a participant following a meeting. Use Simplified Chinese as used in mainland China (简体中文). Natural, concise meeting register. Keep names, product names and acronyms as spoken."
+        let terms = Prompts.parseGlossary(glossary)
+        if !terms.isEmpty {
+            text += "\nAlways translate these terms this way:\n" + terms.map { "- \($0.en) → \($0.zh)" }.joined(separator: "\n")
+        }
+        return text
+    }
+
     // MARK: The script as context
 
     /// The prepared script, appended to a system prompt as reference material.

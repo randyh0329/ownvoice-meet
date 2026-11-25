@@ -47,7 +47,7 @@ struct AppCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {}
         CommandGroup(after: .appSettings) {
-            Button("Set Up Gemma 4 (Free, Offline)…") {
+            Button("Set Up a Local Model (Free, Offline)…") {
                 model.settingsTab = .listen
                 openSettings()
             }
@@ -57,6 +57,9 @@ struct AppCommands: Commands {
                 .keyboardShortcut("l")
             Button("Clear Captions") { model.clear() }
                 .keyboardShortcut("k")
+            Button("New Segment…") { model.askNewSegment() }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .disabled(!model.isListening)
             Divider()
             Toggle("Keep Window on Top", isOn: Bindable(model).settings.alwaysOnTop)
         }
