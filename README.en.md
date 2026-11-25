@@ -6,19 +6,21 @@
 
 In an online meeting or a talk, live captions put the meaning of what others say under it in Chinese; when you want to speak, you type what you mean in Chinese and get a sentence you can say in the meeting's language, which you read aloud. It does not answer for you: the words are yours, and so is the voice.
 
-This is a fork of [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) (`randyh0329/ownvoice-meet`, branch `gemini-transcribe`). Its main addition is a **native Mac app rewritten in Swift and SwiftUI** (Apple Silicon, macOS 26 or later) in [`mac/`](mac/); the original cross-platform app (Tauri, Windows and macOS) stays at the repo root until the native app does everything it does.
+**[Download the native Mac app (.dmg, Apple Silicon, macOS 26 or later)](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.5.0/OwnVoice-Meet-0.5.0-mac-arm64.dmg)** · [All releases](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [First use](#first-use)
 
-> **Status: native Mac app 0.5.0, in development.** It builds and CI passes; it is being tried on a real Mac and has no release yet.
+This is a fork of [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) (`randyh0329/ownvoice-meet`, branch `main`; development on `gemini-transcribe`). Its main addition is a **native Mac app rewritten in Swift and SwiftUI** (Apple Silicon, macOS 26 or later) in [`mac/`](mac/); the original cross-platform app (Tauri, Windows and macOS) stays at the repo root until the native app does everything it does.
+
+> **Status: native Mac app 0.5.0 (preview).** Tested on an Apple M5: the Mac's sound → Apple on-device recognition → Apple Translation. The other options build and pass CI, and are still being tried.
 
 ## Download
 
 | Version | For | Where |
 |---|---|---|
-| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=branch%3Agemini-transcribe+is%3Asuccess): open the newest run with a green check, then `OwnVoice-Meet-Mac-native` under **Artifacts** at the bottom (sign in to GitHub). Or [build it](#build-from-source). |
+| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | **[OwnVoice-Meet-0.5.0-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.5.0/OwnVoice-Meet-0.5.0-mac-arm64.dmg)** ([release page](https://github.com/randyh0329/ownvoice-meet/releases/latest)). Open the .dmg and drag OwnVoice Meet to Applications. The newest development build is under [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess) (sign in to GitHub), or [build it](#build-from-source). |
 | Cross-platform app (Tauri), Mac | Intel and Apple Silicon, macOS 11 or later | [Actions → "macOS DMG"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml): the newest green run, `OwnVoice-Meet-macOS-dmg` under Artifacts. Listens through a microphone only on the Mac. |
 | Cross-platform app, Windows | Windows 10 and 11 | The original author's [0.4.0 release](https://github.com/Zaious/ownvoice-meet/releases/latest) (without this branch's additions). |
 
-Actions keeps the files for 90 days. The downloaded app is not notarized by Apple, so macOS blocks it the first time: choose Open Anyway in System Settings → Privacy & Security.
+Actions keeps its files for 90 days; release files stay. The downloaded app is not notarized by Apple, so macOS blocks it the first time: choose Open Anyway in System Settings → Privacy & Security.
 
 ## What the native Mac app does
 
@@ -75,7 +77,7 @@ Entirely free and offline: Apple recognition plus Apple Translation for captions
 The native Mac app (Xcode 26 or later, or just the Command Line Tools: `xcode-select --install`):
 
 ```bash
-git clone -b gemini-transcribe https://github.com/randyh0329/ownvoice-meet.git
+git clone https://github.com/randyh0329/ownvoice-meet.git
 cd ownvoice-meet/mac && ./scripts/build-app.sh
 open "build/OwnVoice Meet.app"
 ```
