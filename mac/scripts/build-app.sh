@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds OwnVoice Meet.app (Apple Silicon, macOS 26+) and a .dmg into mac/build/.
-# Signs with $SIGN_IDENTITY (a Developer ID) when set, ad hoc otherwise.
+# Signs with $SIGN_IDENTITY (a Developer ID) when set, else a local certificate that stays the same
+# between builds (so macOS keeps the app's permissions), ad hoc on CI.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,8 +19,16 @@ cp Resources/AppIcon.icns "$app/Contents/Resources/"
 cp -R Resources/*.lproj "$app/Contents/Resources/"
 plutil -lint "$app/Contents/Info.plist" "$app"/Contents/Resources/*.lproj/*.strings
 
+# A signature that stays the same between builds, so macOS keeps the permissions it granted:
+# $SIGN_IDENTITY (a Developer ID) when set, else this Mac's own local certificate
+# (scripts/signing-identity.sh makes it once); ad hoc on CI, which has no keychain.
+identity="${SIGN_IDENTITY:-}"
+if [ -z "$identity" ] && [ -z "${CI:-}" ]; then
+  identity=$(scripts/signing-identity.sh) || identity=""
+fi
+echo "signing with: ${identity:-ad hoc}"
 codesign --force --options runtime --entitlements Resources/OwnVoiceMeet.entitlements \
-  --sign "${SIGN_IDENTITY:--}" "$app"
+  --sign "${identity:--}" "$app"
 codesign --verify --strict "$app"
 
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)

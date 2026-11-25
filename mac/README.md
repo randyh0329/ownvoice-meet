@@ -6,8 +6,8 @@ does; then the other is retired.
 
 ## Stage 1 (this)
 
-- **Sound**: what the Mac plays (ScreenCaptureKit; asks once for Screen & System Audio Recording)
-  or a microphone.
+- **Sound**: what the Mac plays (a Core Audio process tap; asks once for System Audio Recording
+  Only, never for screen recording) or a microphone.
 - **Listen**: Apple on-device recognition (SpeechAnalyzer, free) or Gemini 3.5 Transcribe Live.
 - **Translate**: Apple Translation (on-device, free), Claude Haiku 5.5, Gemini 3.5 Flash-Lite, or
   Gemma 4 E4B in a local Ollama; into **繁體中文（台灣）** or **简体中文** (Settings).
@@ -62,7 +62,10 @@ cd mac && scripts/build-app.sh
 open "build/OwnVoice Meet.app"
 ```
 
-The ad hoc signed app: the first time, allow it in System Settings → Privacy & Security.
+The build is signed with a local certificate that `scripts/signing-identity.sh` makes once in the
+login keychain (macOS may ask once to let codesign use it: Always Allow). The signature stays the
+same between builds, so macOS keeps the permissions it granted; an ad hoc signature changed every
+build and every rebuild asked again. Set `SIGN_IDENTITY` to sign with a Developer ID instead.
 
 The code avoids SwiftUI's `@State`: in the macOS 27 SDK it became a macro whose plugin ships only
 with Xcode, so the Command Line Tools could not build it. State lives in the observable `AppModel`

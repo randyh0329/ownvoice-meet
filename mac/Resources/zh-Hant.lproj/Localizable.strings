@@ -25,7 +25,9 @@
 "Clear Captions" = "清除字幕";
 "Colors" = "顏色";
 "Copy" = "複製";
+"Could not listen to the Mac's sound (error %@): allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "無法聽 Mac 播放的聲音（錯誤 %@）：到「系統設定 → 隱私權與安全性 → 螢幕與系統錄音」的「僅限系統錄音」允許 OwnVoice Meet，然後結束並重新打開它。";
 "Could not make the session folder: %@" = "無法建立這次的資料夾：%@";
+"Could not read the format of the Mac's sound." = "讀不到 Mac 聲音的格式。";
 "Could not start the recording: %@" = "無法開始錄音：%@";
 "Custom" = "自訂";
 "Don't save" = "不存檔";
@@ -77,9 +79,9 @@
 "Microphone (in the room)" = "麥克風（實體會場）";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "麥克風權限沒開：到「系統設定 → 隱私權與安全性 → 麥克風」打開 OwnVoice Meet。";
 "Monospaced font" = "等寬字型";
-"No display found to capture sound from." = "找不到可以擷取聲音的螢幕。";
-"No permission to hear the Mac's sound: turn on OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording, then start again." = "沒有權限聽 Mac 播放的聲音：到「系統設定 → 隱私權與安全性 → 螢幕與系統錄音」打開 OwnVoice Meet，再重新開始。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "還沒有講稿。按「編輯」直接寫、「開啟…」讀 .md 檔，或「插入範本」從範例開始。只寫一種語言也可以，按「補對照」補上另一半。";
+"No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "還沒聽到 Mac 的聲音。請播放一點聲音；如果一直沒聲音，到「系統設定 → 隱私權與安全性 → 螢幕與系統錄音」的「僅限系統錄音」允許 OwnVoice Meet，然後結束並重新打開它。";
+"No sound output device found." = "找不到聲音輸出裝置。";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "還沒下載：打開「語言與地區 → 翻譯語言」，下載這兩個語言。";
 "Ollama could not be downloaded from ollama.com." = "無法從 ollama.com 下載 Ollama。";
 "Ollama could not download the model: %@" = "Ollama 下載模型失敗：%@";

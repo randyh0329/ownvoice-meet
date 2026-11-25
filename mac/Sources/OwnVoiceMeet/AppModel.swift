@@ -90,12 +90,18 @@ final class AppModel {
         let source = makeAudioSource(s.input)
         self.source = source
         let recorder = record?.audioRecorder
+        let silence = s.input == .system ? SilenceWatch(after: 10) {
+            Task { @MainActor in
+                self.status = String(localized: "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.")
+            }
+        } : nil
         Task {
             do {
                 try await recognizer.start { event in
                     Task { @MainActor in self.handle(event) }
                 }
                 try await source.start { buffer in
+                    silence?.feed(buffer)
                     recognizer.feed(buffer)
                     recorder?.write(buffer)
                 }
