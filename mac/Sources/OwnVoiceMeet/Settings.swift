@@ -278,10 +278,20 @@ struct AppSettings: Codable, Equatable {
     var chinese: ChineseVariant = .traditionalTaiwan
     var speakLanguage = "en"
     /// The live summary brings itself up to date while listening (else only on Update Now)…
-    var summaryAuto = true
-    /// …every this many minutes (within `summaryMinutesRange`).
-    var summaryEveryMinutes = 5
+    var summaryAuto = true { didSet { summaryEveryMinutes = summaryAuto ? summaryMinutes : 0 } }
+    /// …every this many minutes (within `summaryMinutesRange`), counted from the last update.
+    var summaryMinutes = 5 { didSet { summaryEveryMinutes = summaryAuto ? summaryMinutes : 0 } }
+    /// What builds before 0.7.1 read (0 meant only when asked), kept in step so going back to one
+    /// keeps the choice. Not read by this build.
+    private(set) var summaryEveryMinutes = 5
     static let summaryMinutesRange = 1...60
+    static func clampedMinutes(_ m: Int) -> Int {
+        min(max(m, summaryMinutesRange.lowerBound), summaryMinutesRange.upperBound)
+    }
+    /// "Every minute" / "Every 5 minutes".
+    static func everyMinutes(_ m: Int) -> String {
+        m == 1 ? String(localized: "Every minute") : String(localized: "Every \(String(m)) minutes")
+    }
     var liveSummaryModel: SummaryModelChoice = .auto
     /// Once the meeting ends, the whole transcript goes to `meetingSummaryModel` for the minutes.
     var meetingSummaryOnStop = false
@@ -322,10 +332,13 @@ struct AppSettings: Codable, Equatable {
         meetingLanguage = (try? c.decodeIfPresent(String.self, forKey: .meetingLanguage)) ?? d.meetingLanguage
         chinese = (try? c.decodeIfPresent(ChineseVariant.self, forKey: .chinese)) ?? d.chinese
         speakLanguage = (try? c.decodeIfPresent(String.self, forKey: .speakLanguage)) ?? d.speakLanguage
-        // Before there was a switch, 0 minutes meant "only when asked".
-        let minutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryEveryMinutes
-        summaryAuto = (try? c.decodeIfPresent(Bool.self, forKey: .summaryAuto)) ?? (minutes > 0)
-        summaryEveryMinutes = minutes > 0 ? min(minutes, Self.summaryMinutesRange.upperBound) : d.summaryEveryMinutes
+        // Before 0.7.1 there was only summaryEveryMinutes, with 0 meaning "only when asked"; such
+        // a build drops the newer keys when it saves, so the old one decides when they are missing.
+        let legacy = (try? c.decodeIfPresent(Int.self, forKey: .summaryEveryMinutes)) ?? d.summaryMinutes
+        let minutes = (try? c.decodeIfPresent(Int.self, forKey: .summaryMinutes)) ?? (legacy > 0 ? legacy : d.summaryMinutes)
+        summaryMinutes = Self.clampedMinutes(minutes)
+        summaryAuto = (try? c.decodeIfPresent(Bool.self, forKey: .summaryAuto)) ?? (legacy > 0)
+        summaryEveryMinutes = summaryAuto ? summaryMinutes : 0
         liveSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .liveSummaryModel)) ?? d.liveSummaryModel
         meetingSummaryOnStop = (try? c.decodeIfPresent(Bool.self, forKey: .meetingSummaryOnStop)) ?? d.meetingSummaryOnStop
         meetingSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .meetingSummaryModel)) ?? d.meetingSummaryModel

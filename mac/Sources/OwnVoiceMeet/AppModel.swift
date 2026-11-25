@@ -103,7 +103,10 @@ final class AppModel {
     private var translator: Translator?
     private(set) var record: SessionRecord?
     private var gate: QuietGate?
+    /// When the live summary was last brought up to date (or the session started).
     private var lastSummary = Date()
+    /// After a failed update: when to try again, sooner than a whole interval.
+    private var summaryRetryAt: Date?
     private var ticker: Task<Void, Never>?
     /// Bumped by every start and teardown: a start still in progress backs out when it changed.
     private var generation = 0
@@ -155,6 +158,7 @@ final class AppModel {
         status = String(localized: "Starting…")
         segmentName = ""
         lastSummary = Date()
+        summaryRetryAt = nil
         interpLines.removeAll()
         inFlight.removeAll()
         book.speaker = currentSpeaker
@@ -251,7 +255,8 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(50))
         }
         inFlight.removeAll()
-        if let record { await summarize(force: true, record: record) }
+        // "Only when I press Update Now" means no summary at stop either.
+        if let record, summaryInterval != nil { await summarize(force: true, record: record) }
         record?.close()
         lastRecord = record
         eventSession = -1
@@ -443,12 +448,10 @@ final class AppModel {
 
     private func teardown() async {
         generation += 1
-        // The ticker's sleep is cancelled; a summary it started runs to its end (it does not
-        // inherit the cancellation), and is waited for, so the final summary is not skipped.
         let ticker = self.ticker
         self.ticker = nil
         ticker?.cancel()
-        await ticker?.value
+        // The sound and the recognizer stop at once, even with a summary being written.
         source?.stop()
         source = nil
         await recognizer?.stop()
@@ -458,6 +461,9 @@ final class AppModel {
         detector = nil
         gate = nil
         isListening = false
+        // A summary the ticker started runs to its end (it does not inherit the cancellation) and
+        // is waited for, so the final summary is not skipped.
+        await ticker?.value
     }
 
     private func makeRecognizer(_ s: AppSettings) throws -> Recognizer? {
@@ -485,9 +491,10 @@ final class AppModel {
         ticker = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { break }
                 record?.writeIfChanged()
                 let s = settings
-                if let next = nextSummaryAt, Date() >= next, !summaryWaitsForLines {
+                if let next = nextSummaryAt, Date() >= next, summaryLinesMissing == 0 {
                     // Its own task: stopping cancels the ticker, not a summary half written.
                     await Task { await self.updateSummary(force: false) }.value
                 }
@@ -699,25 +706,26 @@ final class AppModel {
 
     /// The live summary's interval in minutes; nil: only on Update Now. Settings are saved once per change.
     var summaryInterval: Int? {
-        get { settings.summaryAuto ? settings.summaryEveryMinutes : nil }
+        get { settings.summaryAuto ? settings.summaryMinutes : nil }
         set {
             guard newValue != summaryInterval else { return }
             var s = settings
             s.summaryAuto = newValue != nil
-            if let newValue { s.summaryEveryMinutes = min(max(newValue, AppSettings.summaryMinutesRange.lowerBound), AppSettings.summaryMinutesRange.upperBound) }
+            if let newValue { s.summaryMinutes = AppSettings.clampedMinutes(newValue) }
             settings = s
         }
     }
 
-    /// When the live summary is next due (nil: not listening, or only when asked).
-    /// It also waits for `summaryMinLines` new lines, so a quiet room can push it later.
+    /// When the live summary is next due: nil when nothing will bring it up to date (not listening
+    /// yet or any more, record only, or only when asked). It also waits for `summaryMinLines` new
+    /// lines, so a quiet room can push it later.
     var nextSummaryAt: Date? {
-        guard isListening, let minutes = summaryInterval else { return nil }
-        return lastSummary.addingTimeInterval(Double(minutes * 60))
+        guard ticker != nil, recognizer != nil, let minutes = summaryInterval else { return nil }
+        return summaryRetryAt ?? lastSummary.addingTimeInterval(Double(minutes * 60))
     }
 
-    /// Too few new lines for an automatic update yet.
-    var summaryWaitsForLines: Bool { (record?.forSummary.count ?? 0) < Self.summaryMinLines }
+    /// How many more lines an automatic update waits for (0: enough).
+    var summaryLinesMissing: Int { max(0, Self.summaryMinLines - (record?.forSummary.count ?? 0)) }
 
     /// Bring the summary up to date with the lines since the last time (`force`: even a few).
     func updateSummary(force: Bool) async {
@@ -738,11 +746,11 @@ final class AppModel {
         do { model = try makeSummaryModel(s.liveSummaryModel, s) } catch {
             summaryError = error.localizedDescription
             record.giveBack(lines)
+            summaryRetryAt = Date().addingTimeInterval(60)
             return
         }
         summaryWorking = true
         summaryError = ""
-        lastSummary = Date()
         let system = Prompts.withGlossary(Assistants.summarySystem(s.chinese), glossary: s.glossary)
         let user = Assistants.summaryUser(before: summary, transcript: SessionFiles.forSummary(lines, clock: record.clock))
         do {
@@ -754,9 +762,13 @@ final class AppModel {
             let time = record.clock(Date().timeIntervalSince(record.started))
             summaryUpdated = String(localized: "Updated \(time)")
             record.writeSummary(text, updated: summaryUpdated)
+            // The interval counts from the end of an update, so a slow model never runs back to back.
+            lastSummary = Date()
+            summaryRetryAt = nil
         } catch {
             summaryError = String(localized: "Summary failed: \(error.localizedDescription)")
             record.giveBack(lines)
+            summaryRetryAt = Date().addingTimeInterval(60)
         }
         summaryWorking = false
     }

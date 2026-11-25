@@ -227,22 +227,24 @@ struct SummaryView: View {
             if !model.summaryError.isEmpty {
                 Text(verbatim: model.summaryError).font(.caption).foregroundStyle(.red)
             }
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    if !model.summaryUpdated.isEmpty {
-                        Text(verbatim: model.summaryUpdated)
-                    }
-                    if model.nextSummaryAt != nil {
-                        // Refreshed every 15 s, so the countdown keeps up without anything else changing.
-                        TimelineView(.periodic(from: .now, by: 15)) { context in
-                            if let next = model.nextSummaryAt, let note = nextUpdateNote(next, now: context.date) {
-                                Text(verbatim: note)
-                            }
+            // The notes on a line of their own, so the buttons never squeeze them.
+            VStack(alignment: .leading, spacing: 2) {
+                if !model.summaryUpdated.isEmpty {
+                    Text(verbatim: model.summaryUpdated)
+                }
+                if model.nextSummaryAt != nil {
+                    // Refreshed every 5 s (as often as the update is checked for), so the note
+                    // keeps up without anything else changing.
+                    TimelineView(.periodic(from: .now, by: 5)) { _ in
+                        if let note = nextUpdateNote {
+                            Text(verbatim: note)
                         }
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            HStack {
                 Spacer()
                 intervalMenu
                 if model.summaryWorking { ProgressView().controlSize(.small) }
@@ -252,12 +254,14 @@ struct SummaryView: View {
         }
     }
 
-    /// nil: nothing worth saying (an update is being written right now).
-    private func nextUpdateNote(_ next: Date, now: Date) -> String? {
-        let minutes = Int((next.timeIntervalSince(now) / 60).rounded(.up))
+    /// nil: nothing worth saying (not scheduled, or an update is being written right now).
+    private var nextUpdateNote: String? {
+        guard let next = model.nextSummaryAt, !model.summaryWorking else { return nil }
+        let minutes = Int((next.timeIntervalSinceNow / 60).rounded(.up))
         if minutes > 0 { return String(localized: "Next update in about \(String(minutes)) min") }
-        if model.summaryWorking { return nil }
-        if model.summaryWaitsForLines { return String(localized: "Next update: when \(String(AppModel.summaryMinLines)) new lines are in") }
+        let missing = model.summaryLinesMissing
+        if missing == 1 { return String(localized: "Next update: when one more line is in") }
+        if missing > 1 { return String(localized: "Next update: when \(String(missing)) more lines are in") }
         return String(localized: "Next update: any moment")
     }
 
@@ -266,33 +270,32 @@ struct SummaryView: View {
     /// The live summary's interval, changeable during the meeting.
     private var intervalMenu: some View {
         @Bindable var model = model
-        // A value set in Settings that is not a preset is listed too, so the current one is always checked.
-        let minutes = Set(Self.intervalPresets + [model.summaryInterval].compactMap { $0 }).sorted()
+        // The interval set in Settings is listed even if it is not a preset (and while updates
+        // are off), so it can always be chosen again.
+        let minutes = Set(Self.intervalPresets + [model.settings.summaryMinutes]).sorted()
         return Menu {
             Picker("Update", selection: $model.summaryInterval) {
                 Text("Only When I Press Update Now").tag(nil as Int?)
                 Divider()
                 ForEach(minutes, id: \.self) { m in
-                    Text(verbatim: String(localized: "Every \(String(m)) minutes")).tag(Optional(m))
+                    Text(verbatim: AppSettings.everyMinutes(m)).tag(Optional(m))
                 }
             }
             .pickerStyle(.inline)
             .labelsHidden()
         } label: {
-            Label(intervalLabel, systemImage: "clock.arrow.circlepath")
+            Label(model.summaryInterval.map(AppSettings.everyMinutes) ?? String(localized: "Only when asked"), systemImage: "clock.arrow.circlepath")
         }
         .fixedSize()
         .help("How often the live summary brings itself up to date")
     }
 
-    private var intervalLabel: String {
-        guard let m = model.summaryInterval else { return String(localized: "Only when asked") }
-        return String(localized: "Every \(String(m)) minutes")
-    }
-
     private var placeholder: String {
-        guard let m = model.summaryInterval else { return String(localized: "The main points appear here when you press Update Now.") }
-        return String(localized: "The main points appear here every \(String(m)) minutes while listening.")
+        switch model.summaryInterval {
+        case nil: String(localized: "The main points appear here when you press Update Now.")
+        case 1: String(localized: "The main points appear here every minute while listening.")
+        case let m?: String(localized: "The main points appear here every \(String(m)) minutes while listening.")
+        }
     }
 
     private var meeting: some View {

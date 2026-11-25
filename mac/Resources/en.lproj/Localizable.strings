@@ -4,6 +4,7 @@
 "%@ minutes" = "%@ minutes";
 "%@ minutes of sound" = "%@ minutes of sound";
 "%@ requests, %@ tokens in, %@ out" = "%@ requests, %@ tokens in, %@ out";
+"A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "A voice model did not match its checksum, so it was not kept." = "A voice model did not match its checksum, so it was not kept.";
 "API Keys" = "API Keys";
 "About" = "About";
@@ -14,7 +15,6 @@
 "Add an Anthropic API key in Settings first." = "Add an Anthropic API key in Settings first.";
 "Add an OpenAI API key in Settings first." = "Add an OpenAI API key in Settings first.";
 "Add speaker" = "Add speaker";
-"An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting." = "An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting.";
 "Anthropic API key" = "Anthropic API key";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them.";
@@ -51,6 +51,7 @@
 "Could not make the session folder: %@" = "Could not make the session folder: %@";
 "Could not read the format of the Mac's sound." = "Could not read the format of the Mac's sound.";
 "Could not start the recording: %@" = "Could not start the recording: %@";
+"Counted from the last update, and only once there are at least %@ new lines, so a quiet stretch is skipped. The last lines are summarized when listening stops." = "Counted from the last update, and only once there are at least %@ new lines, so a quiet stretch is skipped. The last lines are summarized when listening stops.";
 "Custom" = "Custom";
 "Don't save" = "Don't save";
 "Download" = "Download";
@@ -59,6 +60,7 @@
 "Downloading Apple's speech model…" = "Downloading Apple's speech model…";
 "Downloading Ollama…" = "Downloading Ollama…";
 "Downloading the voice models (%@ of %@)…" = "Downloading the voice models (%@ of %@)…";
+"During a meeting, Update Now in the Summary window brings the summary up to date at once, and the interval can be changed there too." = "During a meeting, Update Now in the Summary window brings the summary up to date at once, and the interval can be changed there too.";
 "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key." = "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key.";
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.";
@@ -69,8 +71,8 @@
 "English (US)" = "English (US)";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing.";
 "Every %@ minutes" = "Every %@ minutes";
-"Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "Every line already has both halves." = "Every line already has both halves.";
+"Every minute" = "Every minute";
 "Fill In Missing Halves" = "Fill In Missing Halves";
 "Filled in %@ lines." = "Filled in %@ lines.";
 "Filling in %@ lines with %@…" = "Filling in %@ lines with %@…";
@@ -136,13 +138,15 @@
 "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere." = "New voices become Speaker 1, 2, 3… on their own. Right-click one line of a voice and choose a name: every line of that voice, earlier and later, takes it. Works with every recognition; free, nothing is sent anywhere.";
 "Next update in about %@ min" = "Next update in about %@ min";
 "Next update: any moment" = "Next update: any moment";
-"Next update: when %@ new lines are in" = "Next update: when %@ new lines are in";
+"Next update: when %@ more lines are in" = "Next update: when %@ more lines are in";
+"Next update: when one more line is in" = "Next update: when one more line is in";
 "No Speaker" = "No Speaker";
 "No release found on GitHub." = "No release found on GitHub.";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
 "No sound output device found." = "No sound output device found.";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "Not downloaded yet: open Language & Region → Translation Languages and download both languages.";
+"Nothing is summarized until you press Update Now in the Summary window, not even when listening stops." = "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops.";
 "Nothing to summarize yet." = "Nothing to summarize yet.";
 "Nothing yet." = "Nothing yet.";
 "Ollama could not be downloaded from ollama.com." = "Ollama could not be downloaded from ollama.com.";
@@ -240,6 +244,7 @@
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
 "The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
+"The main points appear here every minute while listening." = "The main points appear here every minute while listening.";
 "The main points appear here when you press Update Now." = "The main points appear here when you press Update Now.";
 "The model answered the wrong number of lines; try again." = "The model answered the wrong number of lines; try again.";
 "The model did not answer with a list; try again." = "The model did not answer with a list; try again.";

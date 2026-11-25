@@ -14,7 +14,6 @@
 "Add an Anthropic API key in Settings first." = "请先在“设置”中填写 Anthropic API 密钥。";
 "Add an OpenAI API key in Settings first." = "请先在“设置”中填写 OpenAI API 密钥。";
 "Add speaker" = "添加讲者";
-"An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting." = "每次更新要等到至少有三行新的字幕，所以安静的时段会跳过。摘要窗口的“立即更新”随时都能点按，会议中也可以在那里修改更新频率。";
 "Anthropic API key" = "Anthropic API 密钥";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "任何你自己部署的、提供 OpenAI Chat Completions API 的服务器。在下面填写地址和模型。";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0。这个 fork 的修改不是原作者做的。翻译是你选择的模型当场生成的，照着念之前请自己看一眼。";
@@ -69,7 +68,6 @@
 "English (US)" = "英语（美国）";
 "Estimates at the providers' list prices (checked 2026-10-17); the providers' bills are what counts. Apple, Gemma, TranslateGemma and your own servers cost nothing." = "按各家标价估算（2026-10-17 查询），实际以各家账单为准。Apple、Gemma、TranslateGemma 和你自己的服务器不花钱。";
 "Every %@ minutes" = "每 %@ 分钟";
-"Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "会议中每隔几分钟更新：用又快又便宜的模型就够了。“与回复相同”就是“翻译”中选择的模型；选择 Apple 翻译或 TranslateGemma 时，使用第一个有密钥的，都没有则用 Gemma 4。";
 "Every line already has both halves." = "每一行都已经有对照了。";
 "Fill In Missing Halves" = "补对照";
 "Filled in %@ lines." = "已补好 %@ 行。";
@@ -292,6 +290,13 @@
 "✓ Ready: Ollama is running and has %@." = "✓ 可以使用：Ollama 正在运行，并已有 %@。";
 "✓ The voice models are on this Mac." = "✓ 声纹模型已在这台 Mac 上。";
 "補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud." = "补对照：没有中文意思的句子补上中文；用中文写的句子补上要念的外语。";
-"Next update: when %@ new lines are in" = "下次更新：等有 %@ 行新字幕时";
 "Next update: any moment" = "下次更新：随时";
 "Update" = "更新频率";
+"A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "用又快又便宜的模型就够了。“与回复相同”就是“翻译”中选择的模型；选择 Apple 翻译或 TranslateGemma 时，使用第一个有密钥的，都没有则用 Gemma 4。";
+"Counted from the last update, and only once there are at least %@ new lines, so a quiet stretch is skipped. The last lines are summarized when listening stops." = "从上次更新起算，而且要有至少 %@ 行新字幕才更新，所以安静的时段会跳过。停止聆听时会把最后几行也整理进摘要。";
+"During a meeting, Update Now in the Summary window brings the summary up to date at once, and the interval can be changed there too." = "会议中点按摘要窗口的“立即更新”可以马上更新摘要，也可以在那里修改更新频率。";
+"Every minute" = "每分钟";
+"Next update: when %@ more lines are in" = "下次更新：再有 %@ 行新字幕时";
+"Next update: when one more line is in" = "下次更新：再有 1 行新字幕时";
+"Nothing is summarized until you press Update Now in the Summary window, not even when listening stops." = "在摘要窗口点按“立即更新”之前不会生成摘要，停止聆听时也不会。";
+"The main points appear here every minute while listening." = "聆听时每分钟，要点会显示在这里。";

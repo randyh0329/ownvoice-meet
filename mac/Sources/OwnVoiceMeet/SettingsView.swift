@@ -164,17 +164,24 @@ private struct SummarySavingTab: View {
             Section("Live summary") {
                 Toggle("Update automatically while listening", isOn: $model.settings.summaryAuto)
                 if model.settings.summaryAuto {
-                    Stepper(value: $model.settings.summaryEveryMinutes, in: AppSettings.summaryMinutesRange) {
-                        Text(verbatim: String(localized: "Every \(String(model.settings.summaryEveryMinutes)) minutes"))
+                    Stepper(value: $model.settings.summaryMinutes, in: AppSettings.summaryMinutesRange) {
+                        Text(verbatim: AppSettings.everyMinutes(model.settings.summaryMinutes))
                     }
+                    Text(verbatim: String(localized: "Counted from the last update, and only once there are at least \(String(AppModel.summaryMinLines)) new lines, so a quiet stretch is skipped. The last lines are summarized when listening stops."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Nothing is summarized until you press Update Now in the Summary window, not even when listening stops.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text("An update waits until there are at least three new lines, so a quiet stretch is skipped. Update Now in the Summary window works at any time, and the interval can also be changed there during a meeting.")
+                Text("During a meeting, Update Now in the Summary window brings the summary up to date at once, and the interval can be changed there too.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Picker("Model", selection: $model.settings.liveSummaryModel) {
                     ForEach(SummaryModelChoice.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
-                Text("Every few minutes during the meeting: a fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.")
+                Text("A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
