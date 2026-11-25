@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const HELPER: &str = "ownvoice-apple-translate";
-/// The helper only runs on macOS 26 or later (the app checks first); 15 is where its APIs begin.
+/// The helper only translates on macOS 26 or later (apple_translate.rs checks the version before
+/// starting it, and tells an older Mac so); 15 is where its APIs begin.
 const HELPER_MIN_MACOS: &str = "15.0";
 
 fn main() {
