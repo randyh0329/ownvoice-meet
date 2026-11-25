@@ -8,7 +8,7 @@ OwnVoice Meet 每一版改了什麼，寫給使用者看。格式參考 [Keep a 
 - 「翻」新增 Gemma 4 E4B 和 Gemma 4 12B：Google 的開放模型，透過 Ollama 在你的電腦上翻譯，免費、文字不送出去、不需要 key。設定裡按「檢查 Ollama」看有沒有裝好，「下載模型」一鍵下載（E4B 約 7 GB）。小模型的台灣用語不如雲端模型，請先用錄音試。
 - 「翻」也可以選「Gemini 3.5 Live Translate（直接聽聲音翻譯）」：「聽」照樣用你選的辨識出原文，Live Translate 同時聽同一段聲音，把中文填到對應的句子下面。它只吃聲音，所以回覆視窗、即時摘要和 Windows 即時輔助字幕改用 Gemini 3.5 Flash-Lite（同一把 Gemini key）；連不上時字幕也自動改用 Flash-Lite。
 - 新的語音辨識選項「Gemini 3.5 Live Translate（同步口譯）」：Google 的口譯模型一邊聽一邊直接出原文和中文（譯成 zh-TW 臺灣繁體），字幕不再經過「翻」選的模型。預覽版，約每小時 2.2 美元。台灣用語靠指示和你的術語表引導，偶爾可能出現大陸用語；回覆視窗和即時摘要仍用「翻」選的模型。
-- 新的語音辨識選項「Gemini 3.5 Transcribe」：一句講完才出字（沒有灰字），約每小時 0.30 美元，大約是 Gemini Live 的一半。用同一把 Gemini API key，聽得懂 85 種以上語言與中英夾雜。
+- 新的語音辨識選項「Gemini 3.5 Transcribe」：一句講完才出字（沒有灰字），約每小時 0.30 美元，大約是 Gemini Live 的一半。用同一把 Gemini API key，聽得懂 85 種以上語言與中英夾雜。上傳的聲音和辨識結果不會留在 Google 那邊。
 
 - 本機辨識：「聽」可以選在電腦上辨識，免費、聲音不送出去、不需要 key。英文用 NVIDIA Parakeet，中文、日文、韓文用 SenseVoice，自動偵測時中英夾雜也聽得懂。第一次要下載約 910 MB 的模型；沒有灰字，每句講完約 0.5–1 秒出字。
 
