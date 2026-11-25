@@ -256,6 +256,8 @@ struct AppSettings: Codable, Equatable {
     var pauseWhenQuiet = true
     /// Minutes of quiet after which listening stops; 0 = never.
     var stopAfterQuietMinutes = 30
+    /// The people in the meeting, named by the user (lines refer to them by position).
+    var speakerNames: [String] = []
     var glossary = ""
     var alwaysOnTop = true
     var fontSize = 20.0
@@ -286,6 +288,7 @@ struct AppSettings: Codable, Equatable {
         whisperModel = (try? c.decodeIfPresent(String.self, forKey: .whisperModel)) ?? d.whisperModel
         pauseWhenQuiet = (try? c.decodeIfPresent(Bool.self, forKey: .pauseWhenQuiet)) ?? d.pauseWhenQuiet
         stopAfterQuietMinutes = (try? c.decodeIfPresent(Int.self, forKey: .stopAfterQuietMinutes)) ?? d.stopAfterQuietMinutes
+        speakerNames = (try? c.decodeIfPresent([String].self, forKey: .speakerNames)) ?? d.speakerNames
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize

@@ -6,9 +6,13 @@
 "%@ requests, %@ tokens in, %@ out" = "%@ 次請求，輸入 %@ token，輸出 %@";
 "API Keys" = "API 金鑰";
 "About" = "關於";
+"Add" = "新增";
+"Add Speaker" = "新增講者";
+"Add Speaker…" = "新增講者…";
 "Add a Gemini API key in Settings first." = "請先到「設定」填 Gemini API 金鑰。";
 "Add an Anthropic API key in Settings first." = "請先到「設定」填 Anthropic API 金鑰。";
 "Add an OpenAI API key in Settings first." = "請先到「設定」填 OpenAI API 金鑰。";
+"Add speaker" = "新增講者";
 "Anthropic API key" = "Anthropic API 金鑰";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "任何你自己架的、提供 OpenAI Chat Completions API 的伺服器。在下面填網址和模型。";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0。這個 fork 的修改不是原作者做的。翻譯是你選的模型當場產生的，照著唸之前請自己看一眼。";
@@ -109,11 +113,15 @@
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "麥克風權限沒開：到「系統設定 → 隱私權與安全性 → 麥克風」打開 OwnVoice Meet。";
 "Model" = "模型";
 "Monospaced font" = "等寬字型";
+"Name" = "名字";
 "Name (optional)" = "名稱（可不填）";
+"Name the people in the meeting; pick who is speaking from the caption bar or the Speaker menu (⌥1…⌥9), and right-click a line to change its speaker. Names go into the transcript and the summary. Renaming updates every line." = "為會議裡的人命名；從字幕列或「講者」選單（⌥1…⌥9）選現在誰在說話，在某一行按右鍵可以改它的講者。名字會寫進逐字稿和摘要；改名會更新每一行。";
 "Never" = "永不";
 "New Segment…" = "新段落…";
+"New lines get this name until you choose another." = "在你選別人之前，新的字幕行都會標上這個名字。";
 "New segment" = "新段落";
 "New segment: %@" = "新段落：%@";
+"No Speaker" = "不標講者";
 "No release found on GitHub." = "GitHub 上找不到發布版本。";
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "還沒有講稿。按「編輯」直接寫、「開啟…」讀 .md 檔，或「插入範本」從範例開始。只寫一種語言也可以，按「補對照」補上另一半。";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "還沒聽到 Mac 的聲音。請播放一點聲音；如果一直沒聲音，到「系統設定 → 隱私權與安全性 → 螢幕與系統錄音」的「僅限系統錄音」允許 OwnVoice Meet，然後結束並重新打開它。";
@@ -130,6 +138,7 @@
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "每行一個詞：中文 = English。Claude、Gemini 和 Gemma 會使用。";
 "Only when asked" = "只在按下時更新";
 "Open Language & Region" = "打開語言與地區";
+"Open Script" = "開啟講稿";
 "Open the Download Page" = "打開下載頁";
 "OpenAI API key" = "OpenAI API 金鑰";
 "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)" = "OpenAI gpt-4o-mini-transcribe，一句一句（約每小時 US$0.18）";
@@ -151,6 +160,8 @@
 "Recognition: %@" = "辨識：%@";
 "Record only, no captions" = "只錄音，不上字幕";
 "Recording only, no captions" = "只錄音中，沒有字幕";
+"Remove" = "移除";
+"Remove Speaker" = "移除講者";
 "Replies and Fill In Missing Halves write in this language." = "回覆和「補對照」會寫成這個語言。";
 "Reply" = "回覆";
 "Reply: type Chinese, read the words aloud" = "回覆：打中文，照著唸出來";
@@ -165,6 +176,7 @@
 "Segment %@" = "段落 %@";
 "Send" = "送出";
 "Server address (up to /v1)" = "伺服器網址（到 /v1 為止）";
+"Set Speaker" = "設定講者";
 "Set Up" = "設定";
 "Set Up a Local Model (Free, Offline)…" = "設定本機模型（免費、不連網）…";
 "Settings" = "設定";
@@ -176,6 +188,9 @@
 "Sound: %@" = "收音：%@";
 "Sources" = "來源";
 "Spanish" = "西班牙文";
+"Speaker" = "講者";
+"Speaker %@" = "講者 %@";
+"Speakers" = "講者";
 "Start" = "開始";
 "Start Listening" = "開始聆聽";
 "Start Segment" = "開始新段落";
@@ -238,6 +253,7 @@
 "Vietnamese" = "越南文";
 "What do you want to say? (Chinese)" = "想說什麼？（用中文打）";
 "What was said" = "說的話（原文）";
+"Who is speaking now: new lines get this name. Right-click a line to change its speaker." = "現在誰在說話：新的字幕行會標上這個名字。在某一行按右鍵可以改它的講者。";
 "Your Whisper server: fill in its address in Settings first." = "你的 Whisper 伺服器：請先在「設定」填網址。";
 "Your own Whisper server (OpenAI-compatible, free)" = "你自己的 Whisper 伺服器（OpenAI 相容，免費）";
 "Your own server" = "你自己的伺服器";

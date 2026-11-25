@@ -8,6 +8,7 @@ import SwiftUI
 struct CaptionsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         let style = CaptionStyle.of(model.settings)
@@ -22,8 +23,9 @@ struct CaptionsView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         ForEach(model.book.lines) { line in
-                            CaptionRow(line: line, fontSize: model.settings.fontSize, style: style)
+                            CaptionRow(line: line, fontSize: model.settings.fontSize, style: style, speaker: model.speakerName(line.speaker))
                                 .id(line.id)
+                                .contextMenu { SpeakerChoices(selected: line.speaker) { model.assignSpeaker($0, to: line.id) } }
                         }
                     }
                     .padding(16)
@@ -46,6 +48,15 @@ struct CaptionsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer()
+                Menu {
+                    SpeakerChoices(selected: model.currentSpeaker) { model.setCurrentSpeaker($0) }
+                    Divider()
+                    Button("Add Speaker…") { model.askAddSpeaker() }
+                } label: {
+                    Label(model.speakerName(model.currentSpeaker) ?? String(localized: "Speaker"), systemImage: "person.wave.2")
+                }
+                .fixedSize()
+                .help("Who is speaking now: new lines get this name. Right-click a line to change its speaker.")
                 Button("Reply", systemImage: "text.bubble") { openWindow(id: "reply") }
                     .labelStyle(.iconOnly)
                     .help("Reply: type Chinese, read the words aloud")
@@ -63,6 +74,15 @@ struct CaptionsView: View {
             .padding(10)
         }
         .frame(minWidth: 420, minHeight: 220)
+        .onAppear { model.captionsUndo = undoManager }
+        .onChange(of: undoManager) { _, new in model.captionsUndo = new }
+        .alert("Add speaker", isPresented: Bindable(model).speakerPrompt) {
+            TextField("Name", text: Bindable(model).speakerDraft)
+            Button("Add") { model.confirmAddSpeaker() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("New lines get this name until you choose another.")
+        }
         .alert("New segment", isPresented: Bindable(model).segmentPrompt) {
             TextField("Name (optional)", text: Bindable(model).segmentDraft)
             Button("Start Segment") { model.confirmSegment() }
@@ -78,12 +98,20 @@ struct CaptionRow: View {
     let line: CaptionLine
     let fontSize: Double
     let style: CaptionStyle
+    var speaker: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(verbatim: line.heard)
-                .font(style.font(size: fontSize * 0.8))
-                .foregroundStyle(line.isFinal ? style.heard : style.partial)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if let speaker {
+                    Text(verbatim: speaker + "：")
+                        .font(style.font(size: fontSize * 0.8, weight: .bold))
+                        .foregroundStyle(style.translation)
+                }
+                Text(verbatim: line.heard)
+                    .font(style.font(size: fontSize * 0.8))
+                    .foregroundStyle(line.isFinal ? style.heard : style.partial)
+            }
             if !line.translation.isEmpty {
                 Text(verbatim: line.translation)
                     .font(style.font(size: fontSize, weight: .medium))
@@ -105,5 +133,21 @@ struct WindowLevel: NSViewRepresentable {
         DispatchQueue.main.async {
             view.window?.level = floating ? .floating : .normal
         }
+    }
+}
+
+/// The speaker list as menu items, with "No Speaker"; `selected` gets a check mark.
+struct SpeakerChoices: View {
+    @Environment(AppModel.self) private var model
+    let selected: Int?
+    let choose: (Int?) -> Void
+
+    var body: some View {
+        ForEach(Array(model.settings.speakerNames.indices), id: \.self) { i in
+            Toggle(isOn: Binding(get: { selected == i }, set: { if $0 { choose(i) } })) {
+                Text(verbatim: model.speakerName(i) ?? "")
+            }
+        }
+        Toggle("No Speaker", isOn: Binding(get: { selected == nil }, set: { if $0 { choose(nil) } }))
     }
 }

@@ -9,12 +9,15 @@ public struct TranscriptLine: Equatable, Sendable {
     public let translation: String
     /// Which segment it belongs to (0 = the first).
     public let segment: Int
+    /// Who said it, by name; empty when not set.
+    public let speaker: String
 
-    public init(offset: TimeInterval, heard: String, translation: String, segment: Int = 0) {
+    public init(offset: TimeInterval, heard: String, translation: String, segment: Int = 0, speaker: String = "") {
         self.offset = offset
         self.heard = heard
         self.translation = translation
         self.segment = segment
+        self.speaker = speaker
     }
 }
 
@@ -59,7 +62,8 @@ public enum SessionFiles {
                 current = l.segment
                 out += "## \(String(format: "%02d", current + 1)) · \(segments[current].name) (\(hms(segments[current].offset)))\n\n"
             }
-            out += "[\(hms(l.offset))] \(l.heard.trimmingCharacters(in: .whitespacesAndNewlines))\n"
+            let who = l.speaker.isEmpty ? "" : "\(l.speaker)："
+            out += "[\(hms(l.offset))] \(who)\(l.heard.trimmingCharacters(in: .whitespacesAndNewlines))\n"
             let zh = l.translation.trimmingCharacters(in: .whitespacesAndNewlines)
             if !zh.isEmpty { out += "　\(zh)\n" }
             out += "\n"
@@ -75,7 +79,8 @@ public enum SessionFiles {
     public static func forSummary(_ lines: [TranscriptLine], clock: (TimeInterval) -> String) -> String {
         lines.filter { !$0.heard.trimmingCharacters(in: .whitespaces).isEmpty }.map { l in
             let zh = l.translation.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "[\(clock(l.offset))] \(l.heard.trimmingCharacters(in: .whitespacesAndNewlines))" + (zh.isEmpty ? "" : "\n  （\(zh)）")
+            let who = l.speaker.isEmpty ? "" : "\(l.speaker): "
+            return "[\(clock(l.offset))] \(who)\(l.heard.trimmingCharacters(in: .whitespacesAndNewlines))" + (zh.isEmpty ? "" : "\n  （\(zh)）")
         }.joined(separator: "\n")
     }
 }

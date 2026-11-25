@@ -10,12 +10,15 @@ public struct CaptionLine: Identifiable, Equatable, Sendable {
     public var heard: String
     public var translation: String = ""
     public var isFinal: Bool = false
+    /// Who said it: an index into the user's speaker list (names can change; lines follow).
+    public var speaker: Int?
 
-    public init(id: Int, heard: String, translation: String = "", isFinal: Bool = false) {
+    public init(id: Int, heard: String, translation: String = "", isFinal: Bool = false, speaker: Int? = nil) {
         self.id = id
         self.heard = heard
         self.translation = translation
         self.isFinal = isFinal
+        self.speaker = speaker
     }
 }
 
@@ -23,6 +26,8 @@ public struct CaptionBook: Sendable {
     public private(set) var lines: [CaptionLine] = []
     private var nextID = 1
     private var openID: Int?
+    /// Who is speaking now, as the user set it: new lines get this speaker.
+    public var speaker: Int?
     /// Older lines leave the screen (the transcript, later, keeps them all).
     public static let maxLines = 400
 
@@ -38,7 +43,7 @@ public struct CaptionBook: Sendable {
             return id
         }
         let id = take()
-        lines.append(CaptionLine(id: id, heard: t))
+        lines.append(CaptionLine(id: id, heard: t, speaker: speaker))
         openID = id
         trim()
         return id
@@ -62,7 +67,7 @@ public struct CaptionBook: Sendable {
         openID = nil
         guard !t.isEmpty else { return nil }
         let id = take()
-        lines.append(CaptionLine(id: id, heard: t, isFinal: true))
+        lines.append(CaptionLine(id: id, heard: t, isFinal: true, speaker: speaker))
         trim()
         return id
     }
@@ -72,7 +77,7 @@ public struct CaptionBook: Sendable {
     /// A new gray line, not the "open" one partial/finish work on.
     public mutating func openLine() -> Int {
         let id = take()
-        lines.append(CaptionLine(id: id, heard: ""))
+        lines.append(CaptionLine(id: id, heard: "", speaker: speaker))
         trim()
         return id
     }
@@ -90,6 +95,15 @@ public struct CaptionBook: Sendable {
 
     public mutating func setTranslation(_ text: String, for id: Int) {
         if let i = index(of: id) { lines[i].translation = text }
+    }
+
+    /// The user says who said line `id` (nil: nobody in particular).
+    public mutating func setSpeaker(_ speaker: Int?, for id: Int) {
+        if let i = index(of: id) { lines[i].speaker = speaker }
+    }
+
+    public func line(_ id: Int) -> CaptionLine? {
+        index(of: id).map { lines[$0] }
     }
 
     public func heard(_ id: Int) -> String? {

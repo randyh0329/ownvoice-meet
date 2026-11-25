@@ -63,6 +63,16 @@ struct AppCommands: Commands {
             Divider()
             Toggle("Keep Window on Top", isOn: Bindable(model).settings.alwaysOnTop)
         }
+        CommandMenu("Speaker") {
+            ForEach(Array(model.settings.speakerNames.indices.prefix(9)), id: \.self) { i in
+                Button(model.speakerName(i) ?? "") { model.setCurrentSpeaker(i) }
+                    .keyboardShortcut(KeyEquivalent(Character(String(i + 1))), modifiers: .option)
+            }
+            Button("No Speaker") { model.setCurrentSpeaker(nil) }
+                .keyboardShortcut("0", modifiers: .option)
+            Divider()
+            Button("Add Speaker…") { model.askAddSpeaker() }
+        }
         CommandGroup(before: .windowList) {
             Button("Captions") { openWindow(id: "captions") }
                 .keyboardShortcut("0")

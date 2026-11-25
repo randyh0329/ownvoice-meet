@@ -94,6 +94,7 @@ private struct ListenTranslateTab: View {
                 }
             }
             GemmaSection()
+            SpeakersSection()
             Section("Glossary") {
                 TextEditor(text: $model.settings.glossary)
                     .font(.body.monospaced())
@@ -374,5 +375,31 @@ private struct AboutTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The people in the meeting: names to label lines with (⌥1…⌥9 picks who is speaking now).
+private struct SpeakersSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section("Speakers") {
+            ForEach(Array(model.settings.speakerNames.indices), id: \.self) { i in
+                HStack {
+                    Text(verbatim: "⌥\(i + 1)").foregroundStyle(.secondary).monospacedDigit()
+                    TextField("Name", text: Binding(
+                        get: { i < model.settings.speakerNames.count ? model.settings.speakerNames[i] : "" },
+                        set: { if i < model.settings.speakerNames.count { model.settings.speakerNames[i] = $0 } }
+                    ))
+                    Button("Remove", systemImage: "minus.circle") { model.removeSpeaker(at: i) }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                }
+            }
+            Button("Add Speaker…") { model.askAddSpeaker() }
+            Text("Name the people in the meeting; pick who is speaking from the caption bar or the Speaker menu (⌥1…⌥9), and right-click a line to change its speaker. Names go into the transcript and the summary. Renaming updates every line.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }

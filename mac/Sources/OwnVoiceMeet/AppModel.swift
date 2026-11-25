@@ -17,7 +17,10 @@ final class AppModel {
     static let shared = AppModel()
 
     var settings = AppSettings.load() {
-        didSet { settings.save() }
+        didSet {
+            settings.save()
+            if settings.speakerNames != oldValue.speakerNames { record?.speakerNames = settings.speakerNames }
+        }
     }
     private(set) var book = CaptionBook()
     private(set) var isListening = false
@@ -45,6 +48,15 @@ final class AppModel {
     // Usage: this session's, and this month's (kept between launches).
     private(set) var sessionUsage = UsageBook()
     private(set) var monthUsage = UsageStore.load()
+
+    // Speakers: who is speaking now (an index into settings.speakerNames).
+    private(set) var currentSpeaker: Int?
+    var speakerPrompt = false
+    var speakerDraft = ""
+
+    // Undo: the caption and script windows' own undo managers (⌘Z, Edit menu), set by their views.
+    @ObservationIgnored weak var captionsUndo: UndoManager?
+    @ObservationIgnored weak var scriptUndo: UndoManager?
 
     // Segments
     var segmentPrompt = false
@@ -115,6 +127,7 @@ final class AppModel {
             }
             recognizer = try makeRecognizer(s)
             record = try SessionRecord(settings: s, recognition: s.listen.label, translation: translatesItself ? s.listen.label : s.translate.label, keepSound: s.listen == .recordOnly)
+            record?.speakerNames = s.speakerNames
         } catch {
             status = error.localizedDescription
             return
@@ -129,6 +142,7 @@ final class AppModel {
         lastSummary = Date()
         interpLines.removeAll()
         inFlight.removeAll()
+        book.speaker = currentSpeaker
         // A new meeting: its summary and its usage start from nothing.
         summary = ""
         summaryUpdated = ""
@@ -214,12 +228,116 @@ final class AppModel {
     }
 
     func clear() {
+        let before = captionsState
         book.clear()
+        book.speaker = currentSpeaker
         translated.removeAll()
         interpLines.removeAll()
         summary = ""
         summaryUpdated = ""
         summaryError = ""
+        registerCaptionsUndo(before, String(localized: "Clear Captions"))
+    }
+
+    // MARK: Undo
+
+    /// What the caption window shows and Undo can bring back: lines, summary, speakers.
+    struct CaptionsState {
+        var book: CaptionBook
+        var translated: Set<Int>
+        var summary: String
+        var summaryUpdated: String
+        var speakerNames: [String]
+        var currentSpeaker: Int?
+    }
+
+    private var captionsState: CaptionsState {
+        CaptionsState(book: book, translated: translated, summary: summary, summaryUpdated: summaryUpdated, speakerNames: settings.speakerNames, currentSpeaker: currentSpeaker)
+    }
+
+    /// Puts `state` back, and registers the way back again (so Redo works).
+    private func apply(_ state: CaptionsState, _ action: String) {
+        let now = captionsState
+        book = state.book
+        translated = state.translated
+        summary = state.summary
+        summaryUpdated = state.summaryUpdated
+        settings.speakerNames = state.speakerNames
+        currentSpeaker = state.currentSpeaker
+        book.speaker = currentSpeaker
+        record?.adoptSpeakers(book.lines)
+        registerCaptionsUndo(now, action)
+    }
+
+    private func registerCaptionsUndo(_ state: CaptionsState, _ action: String) {
+        guard let undo = captionsUndo else { return }
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.apply(state, action) }
+        }
+        undo.setActionName(action)
+    }
+
+    /// Replaces the script, undoably (補對照, the template, a file opened).
+    func setScript(_ text: String, action: String) {
+        let before = script
+        script = text
+        guard let undo = scriptUndo else { return }
+        undo.registerUndo(withTarget: self) { model in
+            MainActor.assumeIsolated { model.setScript(before, action: action) }
+        }
+        undo.setActionName(action)
+    }
+
+    // MARK: Speakers
+
+    /// The name of speaker `i` ("Speaker 2" while unnamed), nil for none.
+    func speakerName(_ i: Int?) -> String? {
+        guard let i, i < settings.speakerNames.count else { return nil }
+        let n = settings.speakerNames[i].trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? String(localized: "Speaker \(String(i + 1))") : n
+    }
+
+    /// Who is speaking now: new lines get this speaker.
+    func setCurrentSpeaker(_ i: Int?) {
+        currentSpeaker = i
+        book.speaker = i
+    }
+
+    func askAddSpeaker() {
+        speakerDraft = ""
+        speakerPrompt = true
+    }
+
+    /// Adds a speaker (from the prompt) and makes them the one speaking now.
+    func confirmAddSpeaker() {
+        let before = captionsState
+        let name = speakerDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        settings.speakerNames.append(name.isEmpty ? String(localized: "Speaker \(String(settings.speakerNames.count + 1))") : name)
+        setCurrentSpeaker(settings.speakerNames.count - 1)
+        registerCaptionsUndo(before, String(localized: "Add Speaker"))
+    }
+
+    /// Says who said line `id`.
+    func assignSpeaker(_ i: Int?, to id: Int) {
+        guard book.line(id)?.speaker != i else { return }
+        let before = captionsState
+        book.setSpeaker(i, for: id)
+        record?.adoptSpeakers(book.lines)
+        registerCaptionsUndo(before, String(localized: "Set Speaker"))
+    }
+
+    /// Removes speaker `i`: their lines lose the name; later speakers move up one place.
+    func removeSpeaker(at i: Int) {
+        guard i < settings.speakerNames.count else { return }
+        let before = captionsState
+        settings.speakerNames.remove(at: i)
+        for line in book.lines {
+            guard let s = line.speaker else { continue }
+            if s == i { book.setSpeaker(nil, for: line.id) } else if s > i { book.setSpeaker(s - 1, for: line.id) }
+        }
+        if let c = currentSpeaker { setCurrentSpeaker(c == i ? nil : (c > i ? c - 1 : c)) }
+        record?.adoptSpeakers(book.lines)
+        registerCaptionsUndo(before, String(localized: "Remove Speaker"))
     }
 
     private func teardown() async {
@@ -295,9 +413,10 @@ final class AppModel {
     private func handle(_ event: RecognitionEvent) {
         switch event {
         case .partial(let text):
-            if let id = book.partial(text) { record?.opened(id) }
+            if let id = book.partial(text) { record?.opened(id, speaker: book.line(id)?.speaker) }
         case .final(let text):
             if let id = book.finish(text) {
+                record?.opened(id, speaker: book.line(id)?.speaker)
                 record?.finished(id, heard: book.heard(id) ?? text)
                 translate(id)
             }
@@ -308,7 +427,7 @@ final class AppModel {
         case .lineOpened(let n):
             let id = book.openLine()
             interpLines[n] = id
-            record?.opened(id)
+            record?.opened(id, speaker: book.line(id)?.speaker)
         case let .lineHeard(n, text, done):
             guard let id = interpLines[n] else { return }
             book.setHeard(text, for: id, final: done)
@@ -508,7 +627,7 @@ final class AppModel {
     // MARK: Script
 
     func insertTemplate() {
-        script = script.isEmpty ? Script.template : script + "\n" + Script.template
+        setScript(script.isEmpty ? Script.template : script + "\n" + Script.template, action: String(localized: "Insert Template"))
         scriptEditing = true
     }
 
@@ -540,7 +659,7 @@ final class AppModel {
             guard script == original else {
                 throw AppError(String(localized: "The script changed while filling in; try again."))
             }
-            script = Script.merge(original, needs: needs, answers: answers, variant: s.chinese)
+            setScript(Script.merge(original, needs: needs, answers: answers, variant: s.chinese), action: String(localized: "Fill In Missing Halves"))
             scriptMessage = String(localized: "Filled in \(String(needs.count)) lines.")
         } catch Script.GlossError.notAList {
             scriptMessage = String(localized: "The model did not answer with a list; try again.")

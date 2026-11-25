@@ -21,9 +21,15 @@ final class SessionRecord {
     /// Finished, translated lines the summary has not taken in yet.
     private(set) var forSummary: [TranscriptLine] = []
 
+    /// The speaker list's names, for writing (lines keep positions in it).
+    var speakerNames: [String] = [] {
+        didSet { if speakerNames != oldValue { dirty = true } }
+    }
+
     private struct Entry {
         var offset: TimeInterval
         var segment: Int
+        var speaker: Int?
         var heard = ""
         var translation = ""
         var finished = false
@@ -60,14 +66,28 @@ final class SessionRecord {
     /// audio thread (it is safe there).
     var audioRecorder: AudioRecorder? { audio }
 
-    func opened(_ id: Int) {
+    func opened(_ id: Int, speaker: Int?) {
         guard entries[id] == nil else { return }
-        entries[id] = Entry(offset: Date().timeIntervalSince(started), segment: segments.count - 1)
+        entries[id] = Entry(offset: Date().timeIntervalSince(started), segment: segments.count - 1, speaker: speaker)
         order.append(id)
     }
 
+    /// The speakers of the lines as the captions now have them (after a change or an undo).
+    func adoptSpeakers(_ lines: [CaptionLine]) {
+        for line in lines where entries[line.id] != nil && entries[line.id]?.speaker != line.speaker {
+            entries[line.id]?.speaker = line.speaker
+            dirty = true
+        }
+    }
+
+    private func name(_ speaker: Int?) -> String {
+        guard let speaker, speaker < speakerNames.count else { return "" }
+        let n = speakerNames[speaker].trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? String(localized: "Speaker \(String(speaker + 1))") : n
+    }
+
     func finished(_ id: Int, heard: String) {
-        opened(id)
+        opened(id, speaker: nil)
         entries[id]?.heard = heard
         entries[id]?.finished = true
         dirty = true
@@ -78,7 +98,7 @@ final class SessionRecord {
         e.translation = zh
         entries[id] = e
         dirty = true
-        if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment)) }
+        if e.finished { forSummary.append(TranscriptLine(offset: e.offset, heard: e.heard, translation: zh, segment: e.segment, speaker: name(e.speaker))) }
         if closed { writeIfChanged() }
     }
 
@@ -111,7 +131,7 @@ final class SessionRecord {
     func writeIfChanged() {
         guard dirty, let folder else { return }
         dirty = false
-        let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment) }
+        let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment, speaker: name($0.speaker)) }
         write(SessionFiles.transcript(title: String(localized: "Transcript"), header: header, segments: segments, lines: lines), to: folder.appendingPathComponent("transcript.md"))
     }
 

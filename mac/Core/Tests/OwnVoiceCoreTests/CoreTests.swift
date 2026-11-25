@@ -412,3 +412,28 @@ final class ReviewFixTests: XCTestCase {
         XCTAssertEqual(click.finish(), .discard, "too short to be speech")
     }
 }
+
+final class SpeakerTests: XCTestCase {
+    func testNewLinesTakeTheCurrentSpeakerAndCanBeReassigned() {
+        var book = CaptionBook()
+        book.speaker = 0
+        let a = book.finish("Welcome.")!
+        book.speaker = 1
+        let b = book.partial("Thank you")!
+        let c = book.openLine()
+        XCTAssertEqual(book.line(a)?.speaker, 0)
+        XCTAssertEqual(book.line(b)?.speaker, 1)
+        XCTAssertEqual(book.line(c)?.speaker, 1)
+        book.setSpeaker(nil, for: a)
+        XCTAssertNil(book.line(a)?.speaker)
+    }
+
+    func testNamesInTheTranscriptAndForTheSummary() {
+        let md = SessionFiles.transcript(title: "T", header: [], lines: [
+            TranscriptLine(offset: 80, heard: "Why?", translation: "為什麼？", speaker: "Alice"),
+            TranscriptLine(offset: 90, heard: "Because.", translation: ""),
+        ])
+        XCTAssertEqual(md, "# T\n\n\n[00:01:20] Alice：Why?\n　為什麼？\n\n[00:01:30] Because.\n\n")
+        XCTAssertEqual(SessionFiles.forSummary([TranscriptLine(offset: 0, heard: "Hi.", translation: "", speaker: "Bob")], clock: { _ in "14:05" }), "[14:05] Bob: Hi.")
+    }
+}

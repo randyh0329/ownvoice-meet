@@ -58,6 +58,7 @@ struct ReplyView: View {
 
 struct ScriptView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         @Bindable var model = model
@@ -91,6 +92,8 @@ struct ScriptView: View {
             }
         }
         .frame(minWidth: 480, minHeight: 360)
+        .onAppear { model.scriptUndo = undoManager }
+        .onChange(of: undoManager) { _, new in model.scriptUndo = new }
     }
 
     private func openScript() {
@@ -98,7 +101,7 @@ struct ScriptView: View {
         panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText, .plainText]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) else { return }
-        model.script = text
+        model.setScript(text, action: String(localized: "Open Script"))
         model.scriptEditing = false
     }
 }
