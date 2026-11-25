@@ -6,17 +6,17 @@
 
 開線上會議或聽演講時，即時字幕把別人說的話接上中文意思；想發言時，用中文打出意思，它給你一句說得出口的外語，你照著唸。它不替你作答：話是你自己的，聲音也是你自己的。
 
-**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.1/OwnVoice-Meet-0.6.1-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
+**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.2/OwnVoice-Meet-0.6.2-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
 
 這是 [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) 的 fork（`randyh0329/ownvoice-meet`，分支 `main`；開發在 `gemini-transcribe`）。主要多了一個**用 Swift／SwiftUI 重寫的 Mac 原生版**（Apple Silicon、macOS 26 以上），放在 [`mac/`](mac/)；原本跨平台的版本（Tauri，Windows 與 macOS）留在 repo 根目錄，直到原生版的功能追上為止。
 
-> **狀態：Mac 原生版 0.6.1（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音、Apple 裝置上辨識、Apple 翻譯、Gemma 4、字幕顏色、存檔。0.6 新增的選項能建置、CI 通過，還在試用中。
+> **狀態：Mac 原生版 0.6.2（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音、Apple 裝置上辨識、Apple 翻譯、Gemma 4、字幕顏色、存檔。0.6 新增的選項能建置、CI 通過，還在試用中。
 
 ## 下載
 
 | 版本 | 適用 | 從哪裡拿 |
 |---|---|---|
-| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.6.1-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.1/OwnVoice-Meet-0.6.1-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
+| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.6.2-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.2/OwnVoice-Meet-0.6.2-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
 | 跨平台版（Tauri），Mac | Intel 與 Apple Silicon，macOS 11 以上 | [Actions →「macOS DMG」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml)：最新一次綠色的執行，Artifacts 的 `OwnVoice-Meet-macOS-dmg`。Mac 上只能用麥克風收音。 |
 | 跨平台版，Windows | Windows 10、11 | 原作者的 [0.4.0 發布頁](https://github.com/Zaious/ownvoice-meet/releases/latest)（不含這個分支新增的功能）。 |
 
@@ -32,6 +32,8 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 - **講稿**（⌘2）：中外對照講稿，分頁、提示、問答、複製區塊；「補對照」幫你補上缺的那一半。字幕翻譯、回覆和摘要都會參考講稿。
 - **即時摘要**（⌘3）：每隔幾分鐘整理成最多 8 點重點。
 - **存檔**（預設關閉）：每次聆聽一個資料夾，裡面是逐字稿、摘要，選了的話還有錄音（.m4a）。
+- **講者**：自己為會議裡的人命名，用 ⌥1…⌥9 切換現在誰在說話，右鍵改某一行；名字寫進逐字稿和摘要。
+- **復原**（⌘Z）：清除字幕、講者變更、講稿被替換（補對照、範本、開啟）都可以復原。
 - **段落**（⌘⇧N）：開始新段落，逐字稿按段落分節。
 - **用量**：估算這次和這個月每個服務的費用。
 - **省錢**：雲端辨識在安靜時自動暫停（不計費），有人說話就恢復；安靜太久自動停止聆聽。

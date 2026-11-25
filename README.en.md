@@ -6,17 +6,17 @@
 
 In an online meeting or a talk, live captions put the meaning of what others say under it in Chinese; when you want to speak, you type what you mean in Chinese and get a sentence you can say in the meeting's language, which you read aloud. It does not answer for you: the words are yours, and so is the voice.
 
-**[Download the native Mac app (.dmg, Apple Silicon, macOS 26 or later)](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.1/OwnVoice-Meet-0.6.1-mac-arm64.dmg)** · [All releases](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [First use](#first-use)
+**[Download the native Mac app (.dmg, Apple Silicon, macOS 26 or later)](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.2/OwnVoice-Meet-0.6.2-mac-arm64.dmg)** · [All releases](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [First use](#first-use)
 
 This is a fork of [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) (`randyh0329/ownvoice-meet`, branch `main`; development on `gemini-transcribe`). Its main addition is a **native Mac app rewritten in Swift and SwiftUI** (Apple Silicon, macOS 26 or later) in [`mac/`](mac/); the original cross-platform app (Tauri, Windows and macOS) stays at the repo root until the native app does everything it does.
 
-> **Status: native Mac app 0.6.1 (preview).** Tested on an Apple M5: the Mac's sound, Apple on-device recognition, Apple Translation, Gemma 4, caption colors and saving. The options new in 0.6 build and pass CI, and are still being tried.
+> **Status: native Mac app 0.6.2 (preview).** Tested on an Apple M5: the Mac's sound, Apple on-device recognition, Apple Translation, Gemma 4, caption colors and saving. The options new in 0.6 build and pass CI, and are still being tried.
 
 ## Download
 
 | Version | For | Where |
 |---|---|---|
-| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | **[OwnVoice-Meet-0.6.1-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.1/OwnVoice-Meet-0.6.1-mac-arm64.dmg)** ([release page](https://github.com/randyh0329/ownvoice-meet/releases/latest)). Open the .dmg and drag OwnVoice Meet to Applications. The newest development build is under [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess) (sign in to GitHub), or [build it](#build-from-source). |
+| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | **[OwnVoice-Meet-0.6.2-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.6.2/OwnVoice-Meet-0.6.2-mac-arm64.dmg)** ([release page](https://github.com/randyh0329/ownvoice-meet/releases/latest)). Open the .dmg and drag OwnVoice Meet to Applications. The newest development build is under [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess) (sign in to GitHub), or [build it](#build-from-source). |
 | Cross-platform app (Tauri), Mac | Intel and Apple Silicon, macOS 11 or later | [Actions → "macOS DMG"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml): the newest green run, `OwnVoice-Meet-macOS-dmg` under Artifacts. Listens through a microphone only on the Mac. |
 | Cross-platform app, Windows | Windows 10 and 11 | The original author's [0.4.0 release](https://github.com/Zaious/ownvoice-meet/releases/latest) (without this branch's additions). |
 
@@ -32,6 +32,8 @@ Actions keeps its files for 90 days; release files stay. The downloaded app is n
 - **Script** (⌘2): a bilingual script with sections, cues, Q&A and copy blocks; Fill In Missing Halves adds the missing half of each line. Captions, replies and the summary all read it as context.
 - **Live summary** (⌘3): at most 8 points, brought up to date every few minutes.
 - **Saving** (off by default): a folder per session with the transcript, the summary and, if chosen, the recording (.m4a).
+- **Speakers**: name the people in the meeting, switch who is speaking with ⌥1…⌥9, right-click a line to change it; names go into the transcript and the summary.
+- **Undo** (⌘Z): Clear Captions, speaker changes and script replacements (Fill In Missing Halves, template, Open…) can be undone.
 - **Segments** (⌘⇧N): start a new section; the transcript is grouped by section.
 - **Usage**: estimated cost per service for this session and this month.
 - **Saving money**: cloud recognition pauses in a quiet room (nothing billed) and resumes when someone speaks; listening stops after a long quiet.
