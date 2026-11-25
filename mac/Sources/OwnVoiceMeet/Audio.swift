@@ -51,10 +51,10 @@ final class SystemAudioSource: AudioSource {
 
     func start(_ onBuffer: @escaping (AVAudioPCMBuffer) -> Void) async throws {
         let own = Self.processObject(pid: getpid())
-        let description = CATapDescription(monoGlobalTapButExcludeProcesses: own.map { [NSNumber(value: $0)] } ?? [])
+        // The Mac keeps playing as usual (taps leave the sound unmuted unless asked).
+        let description = CATapDescription(monoGlobalTapButExcludeProcesses: own.map { [$0] } ?? [])
         description.uuid = UUID()
         description.isPrivate = true
-        description.muteBehavior = .unmuted
         try check(AudioHardwareCreateProcessTap(description, &tap))
 
         guard let output = Self.defaultOutputUID() else {
