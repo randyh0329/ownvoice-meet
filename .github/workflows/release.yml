@@ -52,6 +52,13 @@ jobs:
           $versions.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" }
           if ($bad) { throw "tag v$tag does not match every version above" }
       - run: npm ci
+      # Apple Translation's helper needs the macOS 26 SDK (TranslationSession outside SwiftUI).
+      - name: Newest Xcode on the runner
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | python3 -c 'import re,sys; print(max(sys.stdin.read().split(), key=lambda p: [int(n) for n in re.findall(r"\d+", p)]))')
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - name: Third-party licences for this platform
         shell: bash
         run: node scripts/third-party-licenses.mjs ${{ matrix.licences_target }}

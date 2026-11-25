@@ -52,6 +52,9 @@ pub struct Model {
     pub available: bool,
 }
 
+/// The 翻 option that translates on the Mac itself (Apple's Translation framework, apple_translate.rs).
+pub const APPLE_TRANSLATE: &str = "apple-translate";
+
 /// The 翻 option that listens to the audio itself (Live Translate) instead of translating text.
 pub const AUDIO_TRANSLATE: &str = "gemini-live-audio";
 
@@ -347,6 +350,22 @@ pub const MODELS: &[Model] = &[
         available: true,
     },
     Model {
+        id: "apple-translate",
+        kind: Kind::Llm,
+        provider: "apple",
+        api_model: "",
+        label: "Apple 翻譯（Mac 裝置上，免費）",
+        transport: APPLE_TRANSLATE,
+        min_effort: "",
+        price: Price::Free,
+        price_note: "macOS 內建，在 Mac 上翻",
+        speed: "裝置上：每句通常不到 0.1 秒（尚未實測）",
+        strength: "免費、不需要 key、文字不離開 Mac；有「中文（台灣）」",
+        caution: "一句一句翻，不看前文、講稿和術語表；回覆和摘要改用你有 key 的模型（Haiku → Gemini Flash-Lite → OpenAI Luna → 本機 Gemma 4）",
+        needs: "macOS 26 以上＋在系統設定下載英文與中文語言包",
+        available: true,
+    },
+    Model {
         id: "gemma4-e4b",
         kind: Kind::Llm,
         provider: "ollama",
@@ -448,6 +467,8 @@ mod tests {
         let batch = find("gemini-transcribe").unwrap();
         assert!((cost(batch, 3600.0, 0, 0, 0) - 0.30).abs() < 1e-9);
         let interp = find("gemini-live-translate").unwrap();
+        let apple = find("apple-translate").unwrap();
+        assert!(apple.kind == Kind::Llm && apple.transport == APPLE_TRANSLATE && matches!(apple.price, Price::Free));
         for id in ["gemma4-e4b", "gemma4-12b"] {
             let g = find(id).unwrap();
             assert!(g.kind == Kind::Llm && g.provider == "ollama" && g.min_effort == "none" && matches!(g.price, Price::Free));

@@ -16,3 +16,6 @@ scripts/private/
 
 # generated for release builds by scripts/third-party-licenses.mjs
 THIRD_PARTY_LICENSES.txt
+
+# the Apple Translation helper, compiled by src-tauri/build.rs on macOS
+src-tauri/binaries/

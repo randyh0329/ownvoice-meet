@@ -87,6 +87,14 @@
         <datalist id="local-models"></datalist>
         <div class="actions"><button type="button" id="test-llm">測試連線並列出模型</button><span id="test-llm-result" class="status"></span></div>
       </div>
+      <div id="llm-apple" class="local" hidden>
+        <p class="hint">用 Mac 內建的翻譯（和「翻譯」App 同一套）：免費、不需要 key、文字不送出去，每句幾乎立刻出中文。需要 macOS 26 以上，並在系統設定下載「英文」和「中文（台灣）」語言包。它一句一句翻，不看前文、講稿和術語表；回覆和即時摘要改用你有 key 的模型。</p>
+        <div class="actions">
+          <button type="button" id="apple-check">檢查 Apple 翻譯</button>
+          <button type="button" id="apple-settings">打開語言與地區設定</button>
+          <span id="apple-state" class="status"></span>
+        </div>
+      </div>
       <div id="llm-gemma" class="local" hidden>
         <p class="hint">Gemma 4 在你的電腦上翻譯：免費、文字不送出去、不需要 key。要先裝 <a href="https://ollama.com/download" id="ollama-link">Ollama</a>（裝好打開一次，它會在背景執行），再下載模型一次。回覆和即時摘要也用它。</p>
         <div class="actions">

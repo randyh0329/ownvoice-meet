@@ -73,6 +73,9 @@ function showLocalFields(): void {
   document.querySelector<HTMLElement>('#stt-sherpa')!.hidden = !sherpa;
   if (sherpa) void showSherpa();
   document.querySelector<HTMLElement>('#llm-local')!.hidden = chosen('llm') !== 'local-llm';
+  const apple = chosen('llm') === 'apple-translate';
+  document.querySelector<HTMLElement>('#llm-apple')!.hidden = !apple;
+  if (apple) void checkApple();
   const gemma = models.get(chosen('llm'))?.provider === 'ollama';
   document.querySelector<HTMLElement>('#llm-gemma')!.hidden = !gemma;
   if (gemma) void checkGemma();
@@ -107,6 +110,20 @@ sherpaBtn.addEventListener('click', async () => {
     off();
     sherpaBtn.disabled = false;
   }
+});
+
+// ---------- Apple Translation: macOS 26 and the language packs ----------
+const appleState = document.querySelector<HTMLElement>('#apple-state')!;
+
+async function checkApple(): Promise<void> {
+  appleState.textContent = '檢查中…';
+  const s = await invoke<{ ready: boolean; message: string }>('apple_translate_status', { language: field('stt_language').value.trim() });
+  appleState.textContent = s.message;
+}
+
+document.querySelector('#apple-check')!.addEventListener('click', () => void checkApple());
+document.querySelector('#apple-settings')!.addEventListener('click', () => {
+  invoke('open_language_settings').catch((err) => (appleState.textContent = String(err)));
 });
 
 // ---------- Gemma 4 in Ollama: check it is running with the model, download the model ----------

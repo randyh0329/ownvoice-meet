@@ -61,6 +61,12 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
+      # Apple Translation's helper needs the macOS 26 SDK (TranslationSession outside SwiftUI).
+      - name: Newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | python3 -c 'import re,sys; print(max(sys.stdin.read().split(), key=lambda p: [int(n) for n in re.findall(r"\d+", p)]))')
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - run: npm run build
       - name: Rust tests
         working-directory: src-tauri

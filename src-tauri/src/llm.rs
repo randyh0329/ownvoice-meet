@@ -41,11 +41,29 @@ pub struct Target {
 pub const FALLBACK_ID: &str = "gemini-3.5-flash-lite";
 pub const FALLBACK_LABEL: &str = "Gemini 3.5 Flash-Lite";
 
+/// Apple Translation (chosen under 翻) only translates caption lines: replies, the summary and the
+/// rest go to the first model there is a key for, else Gemma 4 in a local Ollama.
+pub fn apple_text_model() -> &'static catalog::Model {
+    let pick = if settings::get_key("anthropic").is_some() {
+        "claude-haiku-5-5"
+    } else if settings::get_key("gemini").is_some() {
+        FALLBACK_ID
+    } else if settings::get_key("openai").is_some() {
+        "gpt-6-luna"
+    } else {
+        "gemma4-e4b"
+    };
+    catalog::find(pick).expect("fallback models are in the catalog")
+}
+
 pub fn target(s: &Settings) -> Result<Target, String> {
     let mut m = catalog::find(&s.llm_id).ok_or_else(|| format!("unknown model {}", s.llm_id))?;
     let mut effort_setting = s.llm_effort.as_str();
     if m.transport == catalog::AUDIO_TRANSLATE {
         m = catalog::find(FALLBACK_ID).ok_or("fallback model missing")?;
+        effort_setting = "auto";
+    } else if m.transport == catalog::APPLE_TRANSLATE {
+        m = apple_text_model();
         effort_setting = "auto";
     }
     if !m.available {
@@ -253,6 +271,13 @@ fn gather(app: &AppHandle, before: Option<u64>) -> (Settings, Vec<String>, Strin
 /// show in its place.
 pub async fn translate(app: &AppHandle, id: u64, en: &str, early: bool, stop: &AtomicBool, mut show: impl FnMut(&str)) -> Result<String, String> {
     let (s, ctx, script) = gather(app, Some(id));
+    // Apple Translation: on the Mac, one line at a time, no context.
+    if catalog::find(&s.llm_id).is_some_and(|m| m.transport == catalog::APPLE_TRANSLATE) {
+        let zh = crate::apple_translate::translate(en, &s.stt_language).await.map_err(|e| format!("翻譯失敗：{e}"))?;
+        let zh = zh::to_taiwan(&zh);
+        show(&zh);
+        return Ok(zh);
+    }
     let t = target(&s)?;
     let system = prompts::system_blocks(prompts::LISTEN_SYSTEM, &prompts::parse_glossary(&s.glossary), &script);
     let client = app.state::<Http>().0.clone();

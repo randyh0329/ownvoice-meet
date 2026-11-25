@@ -4,6 +4,7 @@ OwnVoice Meet 每一版改了什麼，寫給使用者看。格式參考 [Keep a 
 
 ## [Unreleased]
 
+- 「翻」新增「Apple 翻譯（Mac 裝置上，免費）」：用 macOS 內建的翻譯（需要 macOS 26 以上），免費、不需要 key、文字不送出去，每句幾乎立刻出中文，目標是中文（台灣）。要先在「系統設定 → 一般 → 語言與地區 → 翻譯語言」下載英文和中文語言包；設定裡有「檢查 Apple 翻譯」和直接打開那一頁的按鈕。它一句一句翻、不看前文和術語表；回覆和摘要自動改用你有 key 的模型（Haiku → Gemini Flash-Lite → OpenAI Luna → 本機 Gemma 4）。
 - 「翻」新增 Gemma 4 E4B 和 Gemma 4 12B：Google 的開放模型，透過 Ollama 在你的電腦上翻譯，免費、文字不送出去、不需要 key。設定裡按「檢查 Ollama」看有沒有裝好，「下載模型」一鍵下載（E4B 約 7 GB）。小模型的台灣用語不如雲端模型，請先用錄音試。
 - 「翻」也可以選「Gemini 3.5 Live Translate（直接聽聲音翻譯）」：「聽」照樣用你選的辨識出原文，Live Translate 同時聽同一段聲音，把中文填到對應的句子下面。它只吃聲音，所以回覆視窗、即時摘要和 Windows 即時輔助字幕改用 Gemini 3.5 Flash-Lite（同一把 Gemini key）；連不上時字幕也自動改用 Flash-Lite。
 - 新的語音辨識選項「Gemini 3.5 Live Translate（同步口譯）」：Google 的口譯模型一邊聽一邊直接出原文和中文（譯成 zh-TW 臺灣繁體），字幕不再經過「翻」選的模型。預覽版，約每小時 2.2 美元。台灣用語靠指示和你的術語表引導，偶爾可能出現大陸用語；回覆視窗和即時摘要仍用「翻」選的模型。

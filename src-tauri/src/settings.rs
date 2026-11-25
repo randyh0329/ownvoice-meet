@@ -283,6 +283,7 @@ pub fn display_name(provider: &str) -> &str {
         "gemini" => "Gemini",
         "local" => "本機伺服器",
         "ollama" => "Ollama（本機）",
+        "apple" => "Apple",
         other => other,
     }
 }

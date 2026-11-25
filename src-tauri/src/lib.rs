@@ -12,6 +12,7 @@ mod captions;
 mod catalog;
 mod chatgpt;
 mod demo;
+mod apple_translate;
 mod gemini;
 mod gemini_translate;
 mod gloss;
@@ -116,7 +117,12 @@ fn pipeline_ended(app: &AppHandle, generation: u64) {
 
 /// The options this computer can use: Live Captions only where Windows has it.
 fn offered() -> Vec<catalog::Model> {
-    catalog::MODELS.iter().filter(|m| m.provider != "windows" || live_captions::installed()).copied().collect()
+    catalog::MODELS
+        .iter()
+        .filter(|m| m.provider != "windows" || live_captions::installed())
+        .filter(|m| m.transport != catalog::APPLE_TRANSLATE || cfg!(target_os = "macos"))
+        .copied()
+        .collect()
 }
 
 fn lock<'a>(state: &'a Shared<'_>) -> Result<std::sync::MutexGuard<'a, Session>, String> {
@@ -179,6 +185,20 @@ async fn test_local_stt(app: AppHandle, url: String, model: String) -> Result<St
 async fn local_models(app: AppHandle, url: String) -> Result<Vec<String>, String> {
     let client = app.state::<llm::Http>().0.clone();
     local::list_models(&client, &url, settings::get_key("local")).await
+}
+
+/// Settings: can Apple Translation translate the meeting language into Chinese here, and which
+/// model takes replies and the summary?
+#[tauri::command]
+async fn apple_translate_status(language: String) -> apple_translate::Status {
+    let mut s = apple_translate::status(language).await;
+    s.message = format!("{}　回覆和摘要用：{}", s.message, llm::apple_text_model().label);
+    s
+}
+
+#[tauri::command]
+fn open_language_settings() -> Result<(), String> {
+    apple_translate::open_language_settings()
 }
 
 /// Settings: is Ollama running with this Gemma 4 model?
@@ -773,6 +793,8 @@ pub fn run() {
             test_local_stt,
             local_models,
             ollama_check,
+            apple_translate_status,
+            open_language_settings,
             ollama_pull,
             live_captions_open,
             start_demo,

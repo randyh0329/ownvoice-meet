@@ -30,6 +30,12 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
+      # Apple Translation's helper needs the macOS 26 SDK (TranslationSession outside SwiftUI).
+      - name: Newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -vi beta | python3 -c 'import re,sys; print(max(sys.stdin.read().split(), key=lambda p: [int(n) for n in re.findall(r"\d+", p)]))')
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - run: npm run build
       - name: Rust tests
         working-directory: src-tauri
@@ -55,8 +61,12 @@ jobs:
             fi
           done
       - run: npm run tauri build -- --target universal-apple-darwin --bundles dmg --config src-tauri/tauri.release.conf.json
-      - name: The dmg was built
-        run: ls -la src-tauri/target/universal-apple-darwin/release/bundle/dmg
+      - name: The dmg was built, with the Apple Translation helper for both architectures
+        run: |
+          ls -la src-tauri/target/universal-apple-darwin/release/bundle/dmg
+          helper="src-tauri/target/universal-apple-darwin/release/bundle/macos/OwnVoice Meet.app/Contents/MacOS/ownvoice-apple-translate"
+          lipo -archs "$helper"
+          "$helper" --self-check | tee /dev/stderr | grep -q '"sdk26":true' || { echo "::error::the helper was built without the macOS 26 SDK"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: OwnVoice-Meet-macOS-dmg
