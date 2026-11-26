@@ -1,5 +1,6 @@
 // The windows around the captions: Reply (type Chinese, read the words aloud), Script (the
-// prepared bilingual script, with 補對照) and Summary (the main points so far).
+// prepared bilingual script, with 補對照) and Summary (the main points so far). Each has its own
+// text size and background (A− / A+ and the slider), and is kept out of screen sharing if asked.
 
 import AppKit
 import OwnVoiceCore
@@ -23,10 +24,10 @@ struct ReplyView: View {
                             .foregroundStyle(style.partial)
                     } else {
                         Text(verbatim: model.replyChinese)
-                            .font(style.font(size: model.settings.fontSize * 0.8))
+                            .font(style.font(size: model.settings.replyFontSize * 0.8))
                             .foregroundStyle(style.translation)
                         Text(verbatim: model.replyText.isEmpty ? "…" : model.replyText)
-                            .font(style.font(size: model.settings.fontSize * 1.5, weight: .semibold))
+                            .font(style.font(size: model.settings.replyFontSize * 1.5, weight: .semibold))
                             .foregroundStyle(style.heard)
                             .textSelection(.enabled)
                     }
@@ -34,7 +35,7 @@ struct ReplyView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
             }
-            .background(style.background ?? .clear, in: RoundedRectangle(cornerRadius: 8))
+            .background((style.background ?? .clear).opacity(model.settings.replyOpacity), in: RoundedRectangle(cornerRadius: 8))
             TextField("What do you want to say? (Chinese)", text: $model.replyInput, axis: .vertical)
                 .lineLimit(2...5)
                 .textFieldStyle(.roundedBorder)
@@ -44,6 +45,7 @@ struct ReplyView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                LookControls(size: $model.settings.replyFontSize, opacity: $model.settings.replyOpacity)
                 if model.replyWorking { ProgressView().controlSize(.small) }
                 Button("Send") { model.sendReply() }
                     .disabled(model.replyInput.trimmingCharacters(in: .whitespaces).isEmpty || model.replyWorking)
@@ -51,6 +53,8 @@ struct ReplyView: View {
         }
         .padding(16)
         .frame(minWidth: 420, minHeight: 280)
+        .fadedBackground(model.settings.replyOpacity)
+        .windowTraits("reply", hiddenFromCapture: model.settings.hideFromCapture)
     }
 }
 
@@ -73,6 +77,7 @@ struct ScriptView: View {
                     .help("補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud.")
                 if model.scriptWorking { ProgressView().controlSize(.small) }
                 Spacer()
+                LookControls(size: $model.settings.scriptFontSize, opacity: $model.settings.scriptOpacity)
             }
             .padding(8)
             if !model.scriptMessage.isEmpty {
@@ -86,12 +91,15 @@ struct ScriptView: View {
             if model.scriptEditing {
                 TextEditor(text: $model.script)
                     .font(.body.monospaced())
+                    .scrollContentBackground(.hidden)
                     .padding(6)
             } else {
-                ScriptPreview(items: Script.parse(model.script), fontSize: model.settings.fontSize)
+                ScriptPreview(items: Script.parse(model.script), fontSize: model.settings.scriptFontSize)
             }
         }
         .frame(minWidth: 480, minHeight: 360)
+        .fadedBackground(model.settings.scriptOpacity)
+        .windowTraits("script", hiddenFromCapture: model.settings.hideFromCapture)
         .onAppear { model.scriptUndo = undoManager }
         .onChange(of: undoManager) { _, new in model.scriptUndo = new }
     }
@@ -152,11 +160,11 @@ private struct ScriptItemView: View {
     var body: some View {
         switch item {
         case let .section(title, index):
-            Text(verbatim: title).font(.title2.bold()).padding(.top, 8).id("section-\(index)")
+            Text(verbatim: title).font(.system(size: fontSize * 1.2, weight: .bold)).padding(.top, 8).id("section-\(index)")
         case let .sub(title):
-            Text(verbatim: title).font(.headline).padding(.top, 4)
+            Text(verbatim: title).font(.system(size: fontSize * 0.9, weight: .semibold)).padding(.top, 4)
         case let .cue(text):
-            Text(verbatim: text).italic().foregroundStyle(.secondary)
+            Text(verbatim: text).font(.system(size: fontSize * 0.75)).italic().foregroundStyle(.secondary)
         case let .gloss(text):
             Text(verbatim: text).font(.system(size: fontSize * 0.75)).foregroundStyle(.secondary)
         case let .question(text):
@@ -203,23 +211,28 @@ struct SummaryView: View {
     var body: some View {
         @Bindable var model = model
         VStack(alignment: .leading, spacing: 10) {
-            Picker("Summary", selection: $model.summaryPane) {
-                Text("Live summary").tag(SummaryPane.live)
-                Text("Meeting summary").tag(SummaryPane.meeting)
+            HStack {
+                Picker("Summary", selection: $model.summaryPane) {
+                    Text("Live summary").tag(SummaryPane.live)
+                    Text("Meeting summary").tag(SummaryPane.meeting)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                LookControls(size: $model.settings.summaryFontSize, opacity: $model.settings.summaryOpacity)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
             if model.summaryPane == .live { live } else { meeting }
         }
         .padding(16)
         .frame(minWidth: 380, minHeight: 280)
+        .fadedBackground(model.settings.summaryOpacity)
+        .windowTraits("summary", hiddenFromCapture: model.settings.hideFromCapture)
     }
 
     private var live: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 Text(verbatim: model.summary.isEmpty ? placeholder : model.summary)
-                    .font(.system(size: model.settings.fontSize * 0.85))
+                    .font(.system(size: model.settings.summaryFontSize * 0.85))
                     .foregroundStyle(model.summary.isEmpty ? .secondary : .primary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -302,7 +315,7 @@ struct SummaryView: View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 Text(verbatim: model.minutes.isEmpty ? String(localized: "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.") : model.minutes)
-                    .font(.system(size: model.settings.fontSize * 0.8))
+                    .font(.system(size: model.settings.summaryFontSize * 0.8))
                     .foregroundStyle(model.minutes.isEmpty ? .secondary : .primary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

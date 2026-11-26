@@ -15,6 +15,7 @@
 "Add an Anthropic API key in Settings first." = "Add an Anthropic API key in Settings first.";
 "Add an OpenAI API key in Settings first." = "Add an OpenAI API key in Settings first.";
 "Add speaker" = "Add speaker";
+"Another app already uses %@: those work only while OwnVoice Meet is in front." = "Another app already uses %@: those work only while OwnVoice Meet is in front.";
 "Anthropic API key" = "Anthropic API key";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them.";
@@ -28,6 +29,8 @@
 "Apple on-device recognition has no audio format for this language." = "Apple on-device recognition has no audio format for this language.";
 "Apple recognition stopped: %@" = "Apple recognition stopped: %@";
 "Background" = "Background";
+"Background opacity" = "Background opacity";
+"Background opacity: slide left to see what is behind the window. The text stays solid." = "Background opacity: slide left to see what is behind the window. The text stays solid.";
 "By %@, %@" = "By %@, %@";
 "Cancel" = "Cancel";
 "Captions" = "Captions";
@@ -45,6 +48,10 @@
 "Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)" = "Claude Opus 5.5 (strongest value; US$4 / US$20 per million tokens)";
 "Claude Sonnet 5.5 (about US$0.66 an hour)" = "Claude Sonnet 5.5 (about US$0.66 an hour)";
 "Clear Captions" = "Clear Captions";
+"Click Through Captions" = "Click Through Captions";
+"Click through the captions window, or stop" = "Click through the captions window, or stop";
+"Click through: clicks go to the meeting under the captions. To click the captions again, press ⌃⇧F8 or use OwnVoice Meet in the menu bar." = "Click through: clicks go to the meeting under the captions. To click the captions again, press ⌃⇧F8 or use OwnVoice Meet in the menu bar.";
+"Clicks go to the window underneath. Press ⌃⇧F8, or use OwnVoice Meet in the menu bar, to click the captions again." = "Clicks go to the window underneath. Press ⌃⇧F8, or use OwnVoice Meet in the menu bar, to click the captions again.";
 "Colors" = "Colors";
 "Copy" = "Copy";
 "Could not listen to the Mac's sound (error %@): allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "Could not listen to the Mac's sound (error %@): allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
@@ -65,6 +72,7 @@
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.";
 "Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees.";
+"Each window has its own A− / A+ for the text size and a slider that fades its background (the text stays solid)." = "Each window has its own A− / A+ for the text size and a slider that fades its background (the text stays solid).";
 "Edit" = "Edit";
 "English" = "English";
 "English (UK)" = "English (UK)";
@@ -98,6 +106,7 @@
 "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below." = "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.";
 "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key." = "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key.";
 "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models." = "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.";
+"Hide the Reply, Script and Summary windows when the screen is shared, recorded or captured" = "Hide the Reply, Script and Summary windows when the screen is shared, recorded or captured";
 "How often the live summary brings itself up to date" = "How often the live summary brings itself up to date";
 "I speak" = "I speak";
 "Indonesian" = "Indonesian";
@@ -110,6 +119,7 @@
 "Kept in your login Keychain, never in a file. Apple recognition, Apple Translation and Gemma need no key." = "Kept in your login Keychain, never in a file. Apple recognition, Apple Translation and Gemma need no key.";
 "Korean" = "Korean";
 "Language" = "Language";
+"Larger text" = "Larger text";
 "Listen" = "Listen";
 "Listen & Translate" = "Listen & Translate";
 "Listening" = "Listening";
@@ -131,6 +141,7 @@
 "Name (optional)" = "Name (optional)";
 "Name the people in the meeting; pick who is speaking from the caption bar or the Speaker menu (⌥1…⌥9), and right-click a line to change its speaker. Names go into the transcript and the summary. Renaming updates every line." = "Name the people in the meeting; pick who is speaking from the caption bar or the Speaker menu (⌥1…⌥9), and right-click a line to change its speaker. Names go into the transcript and the summary. Renaming updates every line.";
 "Never" = "Never";
+"New Segment Now" = "New Segment Now";
 "New Segment…" = "New Segment…";
 "New lines get this name until you choose another." = "New lines get this name until you choose another.";
 "New segment" = "New segment";
@@ -178,6 +189,7 @@
 "Pause recognition while the room is quiet (nothing is billed)" = "Pause recognition while the room is quiet (nothing is billed)";
 "Press Start to listen." = "Press Start to listen.";
 "Quiet: recognition paused (nothing is billed); it comes back when someone speaks." = "Quiet: recognition paused (nothing is billed); it comes back when someone speaks.";
+"Quit OwnVoice Meet" = "Quit OwnVoice Meet";
 "Quit and reopen OwnVoice Meet to use the new language." = "Quit and reopen OwnVoice Meet to use the new language.";
 "Recognition" = "Recognition";
 "Recognition failed: %@" = "Recognition failed: %@";
@@ -197,6 +209,7 @@
 "Saved" = "Saved";
 "Saving" = "Saving";
 "Saving to %@" = "Saving to %@";
+"Screen sharing" = "Screen sharing";
 "Script" = "Script";
 "Segment %@" = "Segment %@";
 "Send" = "Send";
@@ -205,7 +218,10 @@
 "Set Up" = "Set Up";
 "Set Up a Local Model (Free, Offline)…" = "Set Up a Local Model (Free, Offline)…";
 "Settings" = "Settings";
+"Shortcuts from any app" = "Shortcuts from any app";
+"Show Captions" = "Show Captions";
 "Show in Finder" = "Show in Finder";
+"Smaller text" = "Smaller text";
 "Solarized" = "Solarized";
 "Someone is speaking: recognition is back on." = "Someone is speaking: recognition is back on.";
 "Sound" = "Sound";
@@ -219,6 +235,7 @@
 "Start" = "Start";
 "Start Listening" = "Start Listening";
 "Start Segment" = "Start Segment";
+"Start a new segment now, with the next name" = "Start a new segment now, with the next name";
 "Started: %@" = "Started: %@";
 "Starting Ollama… (if macOS asks whether to open it, choose Open)" = "Starting Ollama… (if macOS asks whether to open it, choose Open)";
 "Starting…" = "Starting…";
@@ -251,6 +268,7 @@
 "The model did not answer with a list; try again." = "The model did not answer with a list; try again.";
 "The model download stopped before it finished; press Set Up Gemma 4 to go on." = "The model download stopped before it finished; press Set Up Gemma 4 to go on.";
 "The model returned nothing." = "The model returned nothing.";
+"The others in the meeting don't see what you are about to say. The captions window stays visible. On macOS 15 and later, apps that capture the screen with Apple's newer ScreenCaptureKit (as many recent meeting and recording apps do) may still show these windows: check with a test share before relying on it." = "The others in the meeting don't see what you are about to say. The captions window stays visible. On macOS 15 and later, apps that capture the screen with Apple's newer ScreenCaptureKit (as many recent meeting and recording apps do) may still show these windows: check with a test share before relying on it.";
 "The reply was cut off at its length limit; try again." = "The reply was cut off at its length limit; try again.";
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "The same price as Haiku; its speed varies more. Needs an OpenAI API key.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
@@ -259,6 +277,7 @@
 "The voice models could not be downloaded." = "The voice models could not be downloaded.";
 "The voice models could not be loaded; speakers are not told apart." = "The voice models could not be loaded; speakers are not told apart.";
 "Theme" = "Theme";
+"They work while Zoom or another app is in front, with no extra permission. The menu bar icon also turns click-through off." = "They work while Zoom or another app is in front, with no extra permission. The menu bar icon also turns click-through off.";
 "This fork: randyh0329/ownvoice-meet" = "This fork: randyh0329/ownvoice-meet";
 "This month" = "This month";
 "This session" = "This session";
@@ -270,7 +289,11 @@
 "TranslateGemma 4B (local Ollama, free, translation only)" = "TranslateGemma 4B (local Ollama, free, translation only)";
 "TranslateGemma 4B: translation only, about 3.3 GB" = "TranslateGemma 4B: translation only, about 3.3 GB";
 "Translation" = "Translation";
+"Translation Only" = "Translation Only";
+"Translation Only: hide what was heard and show only the translations" = "Translation Only: hide what was heard and show only the translations";
 "Translation: %@" = "Translation: %@";
+"Type a Reply" = "Type a Reply";
+"Type a reply: the Reply window, ready for typing" = "Type a reply: the Reply window, ready for typing";
 "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text." = "Type what you want to say in Chinese below. The sentence to read aloud appears here, in large text.";
 "Unpacking Ollama failed." = "Unpacking Ollama failed.";
 "Up to date (%@)." = "Up to date (%@).";

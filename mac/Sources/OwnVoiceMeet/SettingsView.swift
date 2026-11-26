@@ -289,11 +289,22 @@ private struct AppearanceTab: View {
         @Bindable var model = model
         Form {
             Section("Captions") {
-                Slider(value: $model.settings.fontSize, in: 14...40, step: 1) {
+                Slider(value: $model.settings.fontSize, in: WindowLook.textRange, step: 1) {
                     Text("Text size")
                 }
                 Toggle("Keep Window on Top", isOn: $model.settings.alwaysOnTop)
+                Toggle("Translation Only", isOn: $model.settings.translationOnly)
+                Text("Each window has its own A− / A+ for the text size and a slider that fades its background (the text stays solid).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+            Section("Screen sharing") {
+                Toggle("Hide the Reply, Script and Summary windows when the screen is shared, recorded or captured", isOn: $model.settings.hideFromCapture)
+                Text("The others in the meeting don't see what you are about to say. The captions window stays visible. On macOS 15 and later, apps that capture the screen with Apple's newer ScreenCaptureKit (as many recent meeting and recording apps do) may still show these windows: check with a test share before relying on it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            ShortcutsSection()
             Section("Colors") {
                 Picker("Theme", selection: $model.settings.captionTheme) {
                     ForEach(CaptionTheme.allCases) { Text(verbatim: $0.label).tag($0) }
@@ -318,6 +329,39 @@ private struct AppearanceTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The shortcuts that work while another app (the meeting) is in front.
+private struct ShortcutsSection: View {
+    var body: some View {
+        let taken = WindowControl.shared.takenShortcuts
+        Section("Shortcuts from any app") {
+            LabeledContent {
+                Text(verbatim: GlobalShortcut.reply.symbol).monospaced()
+            } label: {
+                Text("Type a reply: the Reply window, ready for typing")
+            }
+            LabeledContent {
+                Text(verbatim: GlobalShortcut.newSegment.symbol).monospaced()
+            } label: {
+                Text("Start a new segment now, with the next name")
+            }
+            LabeledContent {
+                Text(verbatim: GlobalShortcut.clickThrough.symbol).monospaced()
+            } label: {
+                Text("Click through the captions window, or stop")
+            }
+            if !taken.isEmpty {
+                let list = taken.joined(separator: ", ")
+                Text(verbatim: String(localized: "Another app already uses \(list): those work only while OwnVoice Meet is in front."))
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            Text("They work while Zoom or another app is in front, with no extra permission. The menu bar icon also turns click-through off.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
