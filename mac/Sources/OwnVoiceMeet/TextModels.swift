@@ -50,6 +50,8 @@ struct ModelSpec {
     // Ollama maps "none" to thinking off for Gemma 4.
     static let gemma = ModelSpec(id: "gemma4-e4b", name: "Gemma 4 E4B", provider: .ollama, apiModel: "gemma4:e4b", effort: "none")
     static let gemma12 = ModelSpec(id: "gemma4-12b", name: "Gemma 4 12B", provider: .ollama, apiModel: "gemma4:12b", effort: "none")
+    // Qwen3 thinks before answering unless told not to; Ollama maps "none" to thinking off.
+    static let qwen3 = ModelSpec(id: "qwen3-1.7b", name: "Qwen3 1.7B", provider: .ollama, apiModel: "qwen3:1.7b", effort: "none")
     static let translateGemma = ModelSpec(id: "translategemma-4b", name: "TranslateGemma 4B", provider: .ollama, apiModel: "translategemma:4b", effort: "")
     // gpt-6-luna on the user's ChatGPT plan; the pricing id counts it as free (the plan pays).
     static let chatgpt = ModelSpec(id: "chatgpt-luna", name: String(localized: "ChatGPT plan (gpt-6-luna)"), provider: .chatgpt, apiModel: "gpt-6-luna", effort: "none")
@@ -71,6 +73,7 @@ extension TranslateOption {
         case .geminiLiveTranslate: .flashLite
         case .gemma: .gemma
         case .gemma12: .gemma12
+        case .qwen3: .qwen3
         case .localServer: ModelSpec(id: "local", name: String(localized: "Your own server"), provider: .local, apiModel: "", effort: "")
         case .apple, .translateGemma: nil
         }
@@ -158,7 +161,7 @@ struct ChatModel: TextModel {
         do {
             return try await read(req, format: .chat, failure: Requests.chatText, onText: onText)
         } catch let error as URLError where url == Requests.ollamaURL && error.code == .cannotConnectToHost {
-            throw AppError(String(localized: "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4."))
+            throw AppError(String(localized: "The local model is not set up yet: Settings → Listen & Translate → Local model on this Mac → Set Up."))
         }
     }
 }

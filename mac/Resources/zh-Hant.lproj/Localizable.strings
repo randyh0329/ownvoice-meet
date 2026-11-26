@@ -85,7 +85,6 @@
 "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory" = "Gemma 4 12B：比較穩，約 8 GB，需要 16 GB 記憶體";
 "Gemma 4 E4B (local Ollama, free)" = "Gemma 4 E4B（本機 Ollama，免費）";
 "Gemma 4 E4B: also replies and summaries, about 7 GB" = "Gemma 4 E4B：也能做回覆和摘要，約 7 GB";
-"Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4." = "Gemma 4 還沒設定好：設定 → 聽與翻 →「設定 Gemma 4」。";
 "German" = "德文";
 "Glossary" = "術語表";
 "Google's interpreter model hears the speech and gives the Chinese itself; the caption translation model is not used. A preview model. Needs a Gemini API key." = "Google 的口譯模型直接聽語音、給出中文，字幕不經過翻譯模型。預覽版。需要 Gemini API 金鑰。";
@@ -147,7 +146,6 @@
 "Ollama is not installed." = "還沒安裝 Ollama。";
 "Ollama is running; %@ is not downloaded yet." = "Ollama 正在執行，但還沒下載 %@。";
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "會議結束時一次：整份逐字稿（含講者和翻譯）送給這個模型寫成會議紀錄——重點、決議、待辦事項、待釐清問題——顯示在摘要視窗，並存成 minutes.md。用 Claude Opus 5.5 這類強的雲端模型效果好，一小時約 US$0.10–0.50。逐字稿會送到該服務。也可以隨時在摘要視窗按「摘要整場會議」。";
-"One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "按一下就會裝好缺少的部分：從 ollama.com 下載 Ollama（約 230 MB，會檢查簽章）和選的模型。TranslateGemma 只翻字幕（回覆和摘要會用別的模型）；Gemma 4 也能做回覆和摘要。文字不會離開這台 Mac。";
 "Only When I Press Update Now" = "只在我按「立即更新」時";
 "Only when asked" = "只在按下時更新";
 "Open Language & Region" = "打開語言與地區";
@@ -407,3 +405,8 @@
 "Live Translate connection dropped; captions use the text model for now, trying again in %@ s…" = "Live Translate 連線中斷，字幕先用文字模型翻譯，%@ 秒後再試…";
 "Live Translate is connected again." = "Live Translate 已重新連上。";
 "Live Translate refused the connection (check the Gemini key); captions are translated by the text model." = "Live Translate 拒絕連線（請檢查 Gemini 金鑰），字幕改用文字模型翻譯。";
+"Alibaba's small open model running on the Mac: the smallest download (about 1.4 GB) and quick, also does replies and summaries. Its translations are rougher than Gemma's: the meaning is mostly right, with an occasional slip. Set it up below." = "阿里巴巴的小型開放模型，在 Mac 上跑：下載最小（約 1.4 GB）、速度快，也能做回覆和摘要。翻譯比 Gemma 粗糙：意思大多對，偶爾漏字或用詞不準。在下面設定。";
+"One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 and Qwen3 also do replies and summaries, and Qwen3 1.7B is the smallest (the one the original app runs offline). Text never leaves this Mac." = "按一下就裝好缺的東西：從 ollama.com 下載 Ollama（約 230 MB，會檢查簽章）和選好的模型。TranslateGemma 只翻字幕（回覆和摘要改用其他模型）；Gemma 4 和 Qwen3 也能做回覆和摘要，Qwen3 1.7B 最小（就是原版 app 離線用的那個）。文字不會離開這台 Mac。";
+"Qwen3 1.7B (local Ollama, free, smallest)" = "Qwen3 1.7B（本機 Ollama，免費，最小）";
+"Qwen3 1.7B: smallest and quickest, about 1.4 GB, rougher wording" = "Qwen3 1.7B：最小最快，約 1.4 GB，用詞較粗糙";
+"The local model is not set up yet: Settings → Listen & Translate → Local model on this Mac → Set Up." = "本機模型還沒設定好：設定 →「聽與翻」→「在這台 Mac 上跑的本機模型（免費、不連網）」→「設定」。";

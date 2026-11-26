@@ -22,6 +22,7 @@
 "Add an OpenAI API key in Settings first." = "Add an OpenAI API key in Settings first.";
 "Add speaker" = "Add speaker";
 "Agenda" = "Agenda";
+"Alibaba's small open model running on the Mac: the smallest download (about 1.4 GB) and quick, also does replies and summaries. Its translations are rougher than Gemma's: the meaning is mostly right, with an occasional slip. Set it up below." = "Alibaba's small open model running on the Mac: the smallest download (about 1.4 GB) and quick, also does replies and summaries. Its translations are rougher than Gemma's: the meaning is mostly right, with an occasional slip. Set it up below.";
 "Almost no sound. The microphone may be muted or the wrong one, or OwnVoice Meet may not be allowed to use it (System Settings → Privacy & Security → Microphone)." = "Almost no sound. The microphone may be muted or the wrong one, or OwnVoice Meet may not be allowed to use it (System Settings → Privacy & Security → Microphone).";
 "Another app already uses %@: those work only while OwnVoice Meet is in front." = "Another app already uses %@: those work only while OwnVoice Meet is in front.";
 "Anthropic API key" = "Anthropic API key";
@@ -129,7 +130,6 @@
 "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory" = "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory";
 "Gemma 4 E4B (local Ollama, free)" = "Gemma 4 E4B (local Ollama, free)";
 "Gemma 4 E4B: also replies and summaries, about 7 GB" = "Gemma 4 E4B: also replies and summaries, about 7 GB";
-"Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4." = "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4.";
 "German" = "German";
 "Glossary" = "Glossary";
 "Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only." = "Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only.";
@@ -212,7 +212,7 @@
 "Ollama is running; %@ is not downloaded yet." = "Ollama is running; %@ is not downloaded yet.";
 "On this Mac: Parakeet + SenseVoice (free, offline)" = "On this Mac: Parakeet + SenseVoice (free, offline)";
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time.";
-"One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.";
+"One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 and Qwen3 also do replies and summaries, and Qwen3 1.7B is the smallest (the one the original app runs offline). Text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 and Qwen3 also do replies and summaries, and Qwen3 1.7B is the smallest (the one the original app runs offline). Text never leaves this Mac.";
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right.";
 "Only When I Press Update Now" = "Only When I Press Update Now";
 "Only when asked" = "Only when asked";
@@ -237,6 +237,8 @@
 "Quiet: recognition paused (nothing is billed); it comes back when someone speaks." = "Quiet: recognition paused (nothing is billed); it comes back when someone speaks.";
 "Quit OwnVoice Meet" = "Quit OwnVoice Meet";
 "Quit and reopen OwnVoice Meet to use the new language." = "Quit and reopen OwnVoice Meet to use the new language.";
+"Qwen3 1.7B (local Ollama, free, smallest)" = "Qwen3 1.7B (local Ollama, free, smallest)";
+"Qwen3 1.7B: smallest and quickest, about 1.4 GB, rougher wording" = "Qwen3 1.7B: smallest and quickest, about 1.4 GB, rougher wording";
 "Recognition" = "Recognition";
 "Recognition failed: %@" = "Recognition failed: %@";
 "Recognition models on this Mac" = "Recognition models on this Mac";
@@ -327,6 +329,7 @@
 "The glossary could not be given to recognition; recognition goes on without it." = "The glossary could not be given to recognition; recognition goes on without it.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
 "The level is fine: you can start." = "The level is fine: you can start.";
+"The local model is not set up yet: Settings → Listen & Translate → Local model on this Mac → Set Up." = "The local model is not set up yet: Settings → Listen & Translate → Local model on this Mac → Set Up.";
 "The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
 "The main points appear here every minute while listening." = "The main points appear here every minute while listening.";
 "The main points appear here when you press Update Now." = "The main points appear here when you press Update Now.";

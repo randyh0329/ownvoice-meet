@@ -177,7 +177,7 @@ private struct GemmaSection: View {
                     .disabled(setup.state == .working)
                 if setup.state == .working { ProgressView().controlSize(.small) }
             }
-            Text("One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.")
+            Text("One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 and Qwen3 also do replies and summaries, and Qwen3 1.7B is the smallest (the one the original app runs offline). Text never leaves this Mac.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

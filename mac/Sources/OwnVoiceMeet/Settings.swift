@@ -67,6 +67,8 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
     case geminiLiveTranslate = "gemini-live-translate"
     case gemma = "gemma4-e4b"
     case gemma12 = "gemma4-12b"
+    /// Qwen3 1.7B in Ollama: the smallest local model (the original app's 0.5.0 runs the same one).
+    case qwen3 = "qwen3-1.7b"
     case translateGemma = "translategemma-4b"
     case localServer = "local-llm"
 
@@ -85,6 +87,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .geminiLiveTranslate: String(localized: "Gemini 3.5 Live Translate, follows the captions (about US$2.2 an hour)")
         case .gemma: String(localized: "Gemma 4 E4B (local Ollama, free)")
         case .gemma12: String(localized: "Gemma 4 12B (local Ollama, free, needs 16 GB)")
+        case .qwen3: String(localized: "Qwen3 1.7B (local Ollama, free, smallest)")
         case .translateGemma: String(localized: "TranslateGemma 4B (local Ollama, free, translation only)")
         case .localServer: String(localized: "Your own server (OpenAI-compatible: vLLM, LM Studio…)")
         }
@@ -103,6 +106,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .geminiLiveTranslate: String(localized: "Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only.")
         case .gemma: String(localized: "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.")
         case .gemma12: String(localized: "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.")
+        case .qwen3: String(localized: "Alibaba's small open model running on the Mac: the smallest download (about 1.4 GB) and quick, also does replies and summaries. Its translations are rougher than Gemma's: the meaning is mostly right, with an occasional slip. Set it up below.")
         case .translateGemma: String(localized: "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.")
         case .localServer: String(localized: "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.")
         }
@@ -113,6 +117,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .gemma: .gemmaE4B
         case .gemma12: .gemma12B
+        case .qwen3: .qwen3
         case .translateGemma: .translateGemma4B
         default: nil
         }
@@ -161,6 +166,7 @@ enum LocalModel: String, CaseIterable, Identifiable {
     case translateGemma4B = "translategemma:4b"
     case gemmaE4B = "gemma4:e4b"
     case gemma12B = "gemma4:12b"
+    case qwen3 = "qwen3:1.7b"
 
     var id: String { rawValue }
 
@@ -169,6 +175,7 @@ enum LocalModel: String, CaseIterable, Identifiable {
         case .translateGemma4B: String(localized: "TranslateGemma 4B: translation only, about 3.3 GB")
         case .gemmaE4B: String(localized: "Gemma 4 E4B: also replies and summaries, about 7 GB")
         case .gemma12B: String(localized: "Gemma 4 12B: steadier, about 8 GB, wants 16 GB of memory")
+        case .qwen3: String(localized: "Qwen3 1.7B: smallest and quickest, about 1.4 GB, rougher wording")
         }
     }
 
@@ -177,6 +184,7 @@ enum LocalModel: String, CaseIterable, Identifiable {
         case .translateGemma4B: .translateGemma
         case .gemmaE4B: .gemma
         case .gemma12B: .gemma12
+        case .qwen3: .qwen3
         }
     }
 }
