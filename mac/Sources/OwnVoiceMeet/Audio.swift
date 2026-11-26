@@ -2,8 +2,10 @@
 // microphone (AVAudioEngine, for a talk in the room). Either hands over buffers in its own format;
 // each recognizer converts them to what it needs (BufferConverter).
 
+import AudioToolbox
 import AVFoundation
 import CoreAudio
+import OwnVoiceCore
 
 protocol AudioSource: AnyObject {
     /// Start delivering buffers (on an audio thread) until stop().
@@ -11,10 +13,11 @@ protocol AudioSource: AnyObject {
     func stop()
 }
 
-func makeAudioSource(_ input: AudioInput) -> AudioSource {
+/// `microphone`: the input device's UID (empty = the Mac's default); `gain` lifts its sound.
+func makeAudioSource(_ input: AudioInput, microphone: String = "", gain: Double = 1) -> AudioSource {
     switch input {
     case .system: SystemAudioSource()
-    case .microphone: MicrophoneSource()
+    case .microphone: MicrophoneSource(device: microphone, gain: gain)
     }
 }
 
@@ -22,6 +25,14 @@ final class MicrophoneSource: AudioSource {
     private let engine = AVAudioEngine()
     private var onBuffer: ((AVAudioPCMBuffer) -> Void)?
     private var observer: NSObjectProtocol?
+    /// The chosen microphone's UID (empty = the default) and the gain on its samples.
+    private let device: String
+    private let gain: Float
+
+    init(device: String = "", gain: Double = 1) {
+        self.device = device
+        self.gain = Float(gain)
+    }
 
     func start(_ onBuffer: @escaping (AVAudioPCMBuffer) -> Void) async throws {
         guard await AVCaptureDevice.requestAccess(for: .audio) else {
@@ -40,6 +51,7 @@ final class MicrophoneSource: AudioSource {
 
     private func begin() throws {
         let input = engine.inputNode
+        useChosenDevice(input)
         let format = input.outputFormat(forBus: 0)
         // Without a microphone (a Mac mini with nothing plugged in) the format is empty, and
         // installing a tap on it would end the app.
@@ -47,11 +59,26 @@ final class MicrophoneSource: AudioSource {
             throw AppError(String(localized: "No microphone found. Plug one in, or choose it in System Settings → Sound → Input."))
         }
         let onBuffer = self.onBuffer
+        let gain = self.gain
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+            // The gain goes on before anything else sees the sound: recognition, the recording,
+            // the level meter.
+            buffer.applyGain(gain)
             onBuffer?(buffer)
         }
         engine.prepare()
         try engine.start()
+    }
+
+    /// Points the input at the chosen microphone; one that is not connected leaves the default.
+    /// Only when it differs, so starting again after a configuration change does not cause another.
+    private func useChosenDevice(_ input: AVAudioInputNode) {
+        guard !device.isEmpty, let id = InputDevices.id(uid: device), let unit = input.audioUnit else { return }
+        var current = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        if AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &current, &size) == noErr, current == id { return }
+        var chosen = id
+        AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &chosen, UInt32(MemoryLayout<AudioDeviceID>.size))
     }
 
     func stop() {

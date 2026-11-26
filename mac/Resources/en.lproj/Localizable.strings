@@ -4,6 +4,10 @@
 "%@ minutes" = "%@ minutes";
 "%@ minutes of sound" = "%@ minutes of sound";
 "%@ requests, %@ tokens in, %@ out" = "%@ requests, %@ tokens in, %@ out";
+"%@ sent no sound." = "%@ sent no sound.";
+"%@, loudest moment %@: %@" = "%@, loudest moment %@: %@";
+"%@×" = "%@×";
+"1× (as it comes)" = "1× (as it comes)";
 "A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4." = "A fast, cheap model is enough. \"Same as replies\" is the one chosen under Translation, or with Apple Translation or TranslateGemma the first with a key, else Gemma 4.";
 "A voice model did not match its checksum, so it was not kept." = "A voice model did not match its checksum, so it was not kept.";
 "API Keys" = "API Keys";
@@ -15,6 +19,8 @@
 "Add an Anthropic API key in Settings first." = "Add an Anthropic API key in Settings first.";
 "Add an OpenAI API key in Settings first." = "Add an OpenAI API key in Settings first.";
 "Add speaker" = "Add speaker";
+"Agenda" = "Agenda";
+"Almost no sound. The microphone may be muted or the wrong one, or OwnVoice Meet may not be allowed to use it (System Settings → Privacy & Security → Microphone)." = "Almost no sound. The microphone may be muted or the wrong one, or OwnVoice Meet may not be allowed to use it (System Settings → Privacy & Security → Microphone).";
 "Anthropic API key" = "Anthropic API key";
 "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below." = "Any server with the OpenAI Chat Completions API on your own machines. Fill in its address and model below.";
 "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them." = "Apache License 2.0. The changes in this fork are not the original author's. Translations are made on the spot by the model you choose: read them before you say them.";
@@ -42,7 +48,9 @@
 "Check Again" = "Check Again";
 "Check Apple Translation" = "Check Apple Translation";
 "Check for Updates" = "Check for Updates";
+"Check while the speaker or the room is talking: it uses the microphone and gain above. Raise the gain when you sit far from the speaker." = "Check while the speaker or the room is talking: it uses the microphone and gain above. Raise the gain when you sit far from the speaker.";
 "Checking asks GitHub (api.github.com) for this fork's latest release, only when you press the button." = "Checking asks GitHub (api.github.com) for this fork's latest release, only when you press the button.";
+"Checking: let the speaker or the room be talking…" = "Checking: let the speaker or the room be talking…";
 "Checking…" = "Checking…";
 "Chinese" = "Chinese";
 "Choose…" = "Choose…";
@@ -74,7 +82,7 @@
 "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key." = "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key.";
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.";
-"Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees.";
+"Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees.";
 "Edit" = "Edit";
 "English" = "English";
 "English (UK)" = "English (UK)";
@@ -90,6 +98,7 @@
 "Folder" = "Folder";
 "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated." = "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated.";
 "French" = "French";
+"Gain" = "Gain";
 "Gemini 3.5 Flash-Lite (about US$0.13 an hour)" = "Gemini 3.5 Flash-Lite (about US$0.13 an hour)";
 "Gemini 3.5 Live Translate: hears and translates in one (about US$2.2 an hour)" = "Gemini 3.5 Live Translate: hears and translates in one (about US$2.2 an hour)";
 "Gemini 3.5 Transcribe Live (about US$0.54 an hour)" = "Gemini 3.5 Transcribe Live (about US$0.54 an hour)";
@@ -112,6 +121,7 @@
 "How often the live summary brings itself up to date" = "How often the live summary brings itself up to date";
 "I speak" = "I speak";
 "Indonesian" = "Indonesian";
+"Input level" = "Input level";
 "Insert Template" = "Insert Template";
 "Installing Ollama…" = "Installing Ollama…";
 "Interface" = "Interface";
@@ -134,7 +144,9 @@
 "Meeting language" = "Meeting language";
 "Meeting summary" = "Meeting summary";
 "Meeting summary failed: %@" = "Meeting summary failed: %@";
+"Microphone" = "Microphone";
 "Microphone (in the room)" = "Microphone (in the room)";
+"Microphone Check (6 s)" = "Microphone Check (6 s)";
 "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone." = "Microphone access is off: turn on OwnVoice Meet in System Settings → Privacy & Security → Microphone.";
 "Model" = "Model";
 "Monospaced font" = "Monospaced font";
@@ -157,6 +169,7 @@
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
 "No sound output device found." = "No sound output device found.";
+"Not connected (the default is used)" = "Not connected (the default is used)";
 "Not connected to ChatGPT yet: press Continue with ChatGPT in Settings → Listen & Translate." = "Not connected to ChatGPT yet: press Continue with ChatGPT in Settings → Listen & Translate.";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "Not downloaded yet: open Language & Region → Translation Languages and download both languages.";
 "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops." = "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops.";
@@ -186,6 +199,7 @@
 "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key." = "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key.";
 "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key." = "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key.";
 "Open…" = "Open…";
+"Optional: one segment name per line, such as the day's sessions. Listening starts with the first; New Segment takes the next. Click the segment's name in the caption window to rename it." = "Optional: one segment name per line, such as the day's sessions. Listening starts with the first; New Segment takes the next. Click the segment's name in the caption window to rename it.";
 "Original project by Zaious: Zaious/ownvoice-meet" = "Original project by Zaious: Zaious/ownvoice-meet";
 "OwnVoice Meet" = "OwnVoice Meet";
 "Pause recognition while the room is quiet (nothing is billed)" = "Pause recognition while the room is quiet (nothing is billed)";
@@ -197,8 +211,11 @@
 "Recognition: %@" = "Recognition: %@";
 "Record only, no captions" = "Record only, no captions";
 "Recording only, no captions" = "Recording only, no captions";
+"Recording this segment. Click to rename it." = "Recording this segment. Click to rename it.";
 "Remove" = "Remove";
 "Remove Speaker" = "Remove Speaker";
+"Rename" = "Rename";
+"Rename segment" = "Rename segment";
 "Replies and Fill In Missing Halves write in this language." = "Replies and Fill In Missing Halves write in this language.";
 "Reply" = "Reply";
 "Reply: type Chinese, read the words aloud" = "Reply: type Chinese, read the words aloud";
@@ -212,6 +229,7 @@
 "Saving to %@" = "Saving to %@";
 "Script" = "Script";
 "Segment %@" = "Segment %@";
+"Segment name" = "Segment name";
 "Send" = "Send";
 "Server address (up to /v1)" = "Server address (up to /v1)";
 "Set Speaker" = "Set Speaker";
@@ -255,6 +273,7 @@
 "Summary & Saving" = "Summary & Saving";
 "Summary failed: %@" = "Summary failed: %@";
 "System" = "System";
+"System default" = "System default";
 "Tell speakers apart by voice (on this Mac)" = "Tell speakers apart by voice (on this Mac)";
 "Terminal (amber)" = "Terminal (amber)";
 "Terminal (green)" = "Terminal (green)";
@@ -266,7 +285,9 @@
 "The ChatGPT sign-in reply did not match; sign in again." = "The ChatGPT sign-in reply did not match; sign in again.";
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
+"The check failed: %@" = "The check failed: %@";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
+"The level is fine: you can start." = "The level is fine: you can start.";
 "The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
 "The main points appear here every minute while listening." = "The main points appear here every minute while listening.";
 "The main points appear here when you press Update Now." = "The main points appear here when you press Update Now.";
@@ -277,6 +298,8 @@
 "The reply was cut off at its length limit; try again." = "The reply was cut off at its length limit; try again.";
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "The same price as Haiku; its speed varies more. Needs an OpenAI API key.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
+"The segment going on now. Click to rename it." = "The segment going on now. Click to rename it.";
+"The segment's transcript and recording take the new name." = "The segment's transcript and recording take the new name.";
 "The transcript starts a new section from here." = "The transcript starts a new section from here.";
 "The voice models (about 32 MB) are downloaded once." = "The voice models (about 32 MB) are downloaded once.";
 "The voice models could not be downloaded." = "The voice models could not be downloaded.";
@@ -287,6 +310,8 @@
 "This month" = "This month";
 "This session" = "This session";
 "This sign-in did not allow using your ChatGPT plan; sign in again in Settings." = "This sign-in did not allow using your ChatGPT plan; sign in again in Settings.";
+"Too loud, it may distort. Lower the gain one step." = "Too loud, it may distort. Lower the gain one step.";
+"Too quiet. Raise the gain one step and check again, or move the Mac closer to the speaker or the loudspeaker. The Mac's own input volume is in System Settings → Sound → Input." = "Too quiet. Raise the gain one step and check again, or move the Mac closer to the speaker or the loudspeaker. The Mac's own input volume is in System Settings → Sound → Input.";
 "Total" = "Total";
 "Transcript" = "Transcript";
 "Transcript and summary" = "Transcript and summary";

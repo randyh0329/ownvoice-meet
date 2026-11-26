@@ -68,10 +68,18 @@ final class AppModel {
     @ObservationIgnored weak var captionsUndo: UndoManager?
     @ObservationIgnored weak var scriptUndo: UndoManager?
 
-    // Segments
+    // Segments: the one going on now (number 1 = the first), shown in the caption window.
     var segmentPrompt = false
     var segmentDraft = ""
     private(set) var segmentName = ""
+    private(set) var segmentNumber = 1
+    var segmentRenamePrompt = false
+    var segmentRenameDraft = ""
+
+    // A talk in the room: the input level while listening (0…1, a few times a second), and
+    // Settings' Microphone Check.
+    private(set) var inputLevel = 0.0
+    let micCheck = MicCheck()
 
     // Reply window
     var replyInput = ""
@@ -160,7 +168,7 @@ final class AppModel {
         let session = generation
         eventSession = session
         status = String(localized: "Starting…")
-        segmentName = ""
+        showCurrentSegment()
         lastSummary = Date()
         summaryRetryAt = nil
         interpLines.removeAll()
@@ -179,9 +187,14 @@ final class AppModel {
         minutes = ""
         minutesNote = ""
         sessionUsage = UsageBook()
-        let source = makeAudioSource(s.input)
+        let source = makeAudioSource(s.input, microphone: s.micDevice, gain: s.micGain)
         self.source = source
         let recorder = record?.audioRecorder
+        let level = LevelTap { value in
+            Task { @MainActor in
+                if self.eventSession == session, self.isListening { self.inputLevel = value }
+            }
+        }
         let gate = QuietGate()
         self.gate = gate
         let silence = s.input == .system ? SilenceWatch(after: 10) {
@@ -210,6 +223,7 @@ final class AppModel {
                 self.detector = detector
                 try await source.start { buffer in
                     silence?.feed(buffer)
+                    level.feed(buffer)
                     if gate.admit(buffer) { recognizer?.feed(buffer) }
                     detector?.feed(buffer)
                     recorder?.write(buffer)
@@ -491,6 +505,7 @@ final class AppModel {
         detector = nil
         gate = nil
         isListening = false
+        inputLevel = 0
         // A summary the ticker started runs to its end (it does not inherit the cancellation) and
         // is waited for, so the final summary is not skipped.
         await ticker?.value
@@ -625,18 +640,50 @@ final class AppModel {
 
     // MARK: Segments
 
+    /// The prompt for a new segment, filled in with the agenda's next name when it has one.
     func askNewSegment() {
         guard isListening else { return }
-        segmentDraft = ""
+        segmentDraft = record?.nextAgendaName ?? ""
         segmentPrompt = true
     }
 
     func confirmSegment() {
         let name = segmentDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let record else { return }
+        guard isListening, let record else { return }
         let n = record.newSegment(name)
-        segmentName = n
+        showCurrentSegment()
         status = String(localized: "New segment: \(n)")
+    }
+
+    /// A new segment at once, without the prompt (for a shortcut): the agenda's next name, or
+    /// "Segment 3".
+    func quickNewSegment() {
+        guard isListening, let record else { return }
+        let n = record.newSegment("")
+        showCurrentSegment()
+        status = String(localized: "New segment: \(n)")
+    }
+
+    /// The prompt to rename the segment going on now (its transcript and recording follow).
+    func askRenameSegment() {
+        guard isListening else { return }
+        segmentRenameDraft = segmentName
+        segmentRenamePrompt = true
+    }
+
+    func confirmRenameSegment() {
+        guard isListening, let record else { return }
+        record.renameSegment(segmentRenameDraft)
+        showCurrentSegment()
+    }
+
+    /// Whether the sound of the session going on is being recorded (the red indicator).
+    var recordingSound: Bool { isListening && record?.audioRecorder != nil }
+
+    private func showCurrentSegment() {
+        guard let current = record?.currentSegment else { return }
+        segmentNumber = current.number
+        segmentName = current.name
     }
 
     // MARK: Usage

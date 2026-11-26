@@ -1,6 +1,7 @@
 // A listening session as it is kept: every line with its time and final translation (for the
-// summary, and for transcript.md when saving is on), the summary in summary.md, and the sound in
-// recording.m4a when the user chose to keep it. Each session gets a folder named by its start.
+// summary, and for transcript.md when saving is on), the summary in summary.md, and the sound when
+// the user chose to keep it. Each session gets a folder named by its start; each segment in it gets
+// its own transcript ("01-Keynote.md") and, with the sound kept, its own recording ("01-Keynote.m4a").
 
 import AVFoundation
 import Foundation
@@ -17,7 +18,14 @@ final class SessionRecord {
     /// Closed: a translation that still arrives is written at once (no ticker any more).
     private var closed = false
     private var audio: AudioRecorder?
-    private var segments = [Segment(name: String(localized: "Start"), offset: 0)]
+    private var segments: [Segment]
+    /// The agenda's segment names, taken in turn by New Segment.
+    private let agenda: [String]
+    /// Each segment's transcript as last written, to remove it when the segment is renamed.
+    private var written: [Int: URL] = [:]
+    /// The recording file open now, and the segment it belongs to.
+    private var soundFile: URL?
+    private var soundSegment = 0
     /// Finished, translated lines the summary has not taken in yet.
     private(set) var forSummary: [TranscriptLine] = []
 
@@ -37,6 +45,8 @@ final class SessionRecord {
 
     /// `keepSound`: record the sound even if saving is off (record only).
     init(settings s: AppSettings, recognition: String, translation: String, keepSound: Bool = false) throws {
+        agenda = Agenda.names(s.agenda)
+        segments = [Segment(name: Agenda.name(agenda, at: 0) ?? String(localized: "Start"), offset: 0)]
         let start = DateFormatter.localizedString(from: started, dateStyle: .medium, timeStyle: .short)
         header = [
             String(localized: "Started: \(start)"),
@@ -58,7 +68,9 @@ final class SessionRecord {
         }
         folder = dir
         if s.saveMode == .transcriptAndAudio || keepSound {
-            audio = try AudioRecorder(url: dir.appendingPathComponent("recording.m4a"))
+            let url = soundURL(0, in: dir)
+            audio = try AudioRecorder(url: url)
+            soundFile = url
         }
     }
 
@@ -123,13 +135,52 @@ final class SessionRecord {
         if closed { writeIfChanged() }
     }
 
-    /// A new segment from now on; returns its name ("Segment 2" when none was given).
+    /// The segment going on now: its number (1 = the first) and name.
+    var currentSegment: (number: Int, name: String) { (segments.count, segments[segments.count - 1].name) }
+
+    /// The agenda's name for the next segment, if it has one left.
+    var nextAgendaName: String? { Agenda.name(agenda, at: segments.count) }
+
+    /// A new segment from now on; returns its name (the agenda's next one, or "Segment 2", when
+    /// none was given). With the sound kept, the recording goes on in a file of its own.
     @discardableResult
     func newSegment(_ name: String) -> String {
-        let n = name.isEmpty ? String(localized: "Segment \(String(segments.count + 1))") : name
+        let i = segments.count
+        let n = name.isEmpty ? (Agenda.name(agenda, at: i) ?? String(localized: "Segment \(String(i + 1))")) : name
         segments.append(Segment(name: n, offset: Date().timeIntervalSince(started)))
+        // If the next file cannot be made, the sound goes on into the one open now: nothing is lost.
+        if let audio, let folder, let closing = closingURL() {
+            let next = soundURL(i, in: folder)
+            if audio.split(closingAs: closing, next: next) {
+                soundFile = next
+                soundSegment = i
+            }
+        }
         dirty = true
+        writeIfChanged()
         return n
+    }
+
+    /// Renames the segment going on now: its transcript at once, its recording when it closes.
+    func renameSegment(_ name: String) {
+        let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, let last = segments.last, n != last.name else { return }
+        segments[segments.count - 1] = Segment(name: n, offset: last.offset)
+        dirty = true
+        writeIfChanged()
+    }
+
+    /// Where segment `i`'s recording goes, by its name now.
+    private func soundURL(_ i: Int, in folder: URL) -> URL {
+        folder.appendingPathComponent(SessionFiles.segmentStem(i + 1, segments[i].name) + ".m4a")
+    }
+
+    /// The name the open recording closes under: its segment's name now, unless another file
+    /// already has that name (then it keeps the one it was opened with).
+    private func closingURL() -> URL? {
+        guard let folder, let open = soundFile else { return nil }
+        let wanted = soundURL(soundSegment, in: folder)
+        return wanted != open && FileManager.default.fileExists(atPath: wanted.path) ? open : wanted
     }
 
     func takeForSummary() -> [TranscriptLine] {
@@ -154,6 +205,13 @@ final class SessionRecord {
         dirty = false
         let lines = order.compactMap { entries[$0] }.filter(\.finished).map { TranscriptLine(offset: $0.offset, heard: $0.heard, translation: $0.translation, segment: $0.segment, speaker: name($0.speaker)) }
         write(SessionFiles.transcript(title: String(localized: "Transcript"), header: header, segments: segments, lines: lines), to: folder.appendingPathComponent("transcript.md"))
+        // Each segment's own transcript; a renamed one does not leave its old file behind.
+        for i in segments.indices {
+            let url = folder.appendingPathComponent(SessionFiles.segmentStem(i + 1, segments[i].name) + ".md")
+            if let old = written[i], old != url { try? FileManager.default.removeItem(at: old) }
+            write(SessionFiles.segmentTranscript(index: i, header: header, segments: segments, lines: lines), to: url)
+            written[i] = url
+        }
     }
 
     /// Every finished line so far, in order (for the meeting summary).
@@ -175,7 +233,7 @@ final class SessionRecord {
     }
 
     func close() {
-        audio?.close()
+        audio?.close(as: closingURL())
         audio = nil
         dirty = true
         writeIfChanged()
@@ -187,13 +245,21 @@ final class SessionRecord {
     }
 }
 
-/// The session's sound as AAC in an .m4a file (mono, 48 kHz).
+/// The session's sound as AAC in .m4a files (mono, 48 kHz), one per segment.
 final class AudioRecorder: @unchecked Sendable {
-    private let file: AVAudioFile
+    /// The file written now and where it is: touched only on `queue` once recording has begun.
+    private var file: AVAudioFile
+    private var url: URL
     private let converter: BufferConverter
     private let queue = DispatchQueue(label: "recorder")
 
     init(url: URL) throws {
+        file = try Self.open(url)
+        self.url = url
+        converter = BufferConverter(to: file.processingFormat)
+    }
+
+    private static func open(_ url: URL) throws -> AVAudioFile {
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 48_000,
@@ -201,11 +267,10 @@ final class AudioRecorder: @unchecked Sendable {
             AVEncoderBitRateKey: 64_000,
         ]
         do {
-            file = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+            return try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
         } catch {
             throw AppError(String(localized: "Could not start the recording: \(error.localizedDescription)"))
         }
-        converter = BufferConverter(to: file.processingFormat)
     }
 
     /// Called on the audio thread: converted there (the source may reuse its buffer), written on
@@ -215,7 +280,33 @@ final class AudioRecorder: @unchecked Sendable {
         queue.async { try? self.file.write(from: converted) }
     }
 
-    func close() {
-        queue.sync { file.close() }
+    /// A segment ends (called on the main thread): the next file is made here, then swapped in on
+    /// the writing queue, between one buffer and the next, so no sound is lost or doubled. The file
+    /// that ends is closed and named `closingAs`. False, and the sound stays in the file open now,
+    /// when the next one cannot be made.
+    func split(closingAs: URL, next: URL) -> Bool {
+        guard let new = try? Self.open(next) else { return false }
+        queue.async {
+            let old = self.file
+            let oldURL = self.url
+            self.file = new
+            self.url = next
+            old.close()
+            Self.move(oldURL, to: closingAs)
+        }
+        return true
+    }
+
+    /// The last file is closed (playable from then on) and named `final` when given.
+    func close(as final: URL?) {
+        queue.sync {
+            file.close()
+            if let final { Self.move(url, to: final) }
+        }
+    }
+
+    private static func move(_ from: URL, to: URL) {
+        guard from.standardizedFileURL != to.standardizedFileURL else { return }
+        try? FileManager.default.moveItem(at: from, to: to)
     }
 }
