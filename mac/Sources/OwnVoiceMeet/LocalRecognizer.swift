@@ -229,7 +229,11 @@ final class LocalRecognizer: Recognizer, @unchecked Sendable {
     private var senseVoice: OpaquePointer?
     private var onEvent: ((RecognitionEvent) -> Void)?
 
-    init(language: String, chinese: ChineseVariant) {
+    /// Fails at once (before anything starts) when the models are not downloaded yet.
+    init(language: String, chinese: ChineseVariant) throws {
+        guard LocalSpeechModels.allPresent() else {
+            throw AppError(String(localized: "Download the on-device recognition models in Settings first."))
+        }
         route = LocalSpeech.route(language)
         senseVoiceHint = LocalSpeech.senseVoiceHint(language)
         self.chinese = chinese
@@ -242,9 +246,6 @@ final class LocalRecognizer: Recognizer, @unchecked Sendable {
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
         self.onEvent = onEvent
-        guard LocalSpeechModels.allPresent() else {
-            throw AppError(String(localized: "Download the on-device recognition models in Settings first."))
-        }
         onEvent(.status(String(localized: "Loading the on-device recognition models…")))
         let route = route, hint = senseVoiceHint
         // Loading a gigabyte of models takes a few seconds: off the main thread.
