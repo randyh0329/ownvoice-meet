@@ -95,7 +95,7 @@ final class FollowingState {
     /// Time passes; returns whether nothing waits for run `run`'s Chinese (a good moment to replace
     /// its session).
     func tick(run: Int) -> Bool {
-        with { slot, sink in
+        with { (slot: inout LiveTranslateFollowing, sink: InterpreterSink) -> Bool in
             slot.tick(run: run, now: Date(), sink: sink)
             return slot.idle(run: run)
         }
