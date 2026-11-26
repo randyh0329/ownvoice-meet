@@ -1,6 +1,7 @@
 // Gemini Live transcription over a WebSocket (BidiGenerateContent), protocol per
 // ai.google.dev/gemini-api/docs/live-api/live-transcribe:
-//   setup { model, generationConfig.responseModalities, inputAudioTranscription.languageCodes }
+//   setup { model, generationConfig.responseModalities, inputAudioTranscription.languageCodes,
+//           inputAudioTranscription.customVocabulary (the glossary's terms) }
 //   realtimeInput.audio { data: base64 16-bit 16 kHz mono PCM, mimeType "audio/pcm;rate=16000" }
 //   serverContent.interimInputTranscription.text  the hypothesis while someone talks (gray)
 //   serverContent.inputTranscription.text         the final text at a pause (white, translated)
@@ -21,13 +22,16 @@ public enum GeminiLive {
         case goAway
     }
 
-    public static func setupMessage(model: String, language: String) -> String {
+    /// `terms`: the glossary's names and product terms, which recognition is biased toward.
+    public static func setupMessage(model: String, language: String, terms: [String] = []) -> String {
         let lang = language.trimmingCharacters(in: .whitespaces)
+        var transcription: [String: Any] = ["languageCodes": lang.isEmpty ? [] : [lang]]
+        if !terms.isEmpty { transcription["customVocabulary"] = terms }
         let setup: [String: Any] = [
             "setup": [
                 "model": "models/\(model)",
                 "generationConfig": ["responseModalities": ["TEXT"]],
-                "inputAudioTranscription": ["languageCodes": lang.isEmpty ? [] : [lang]],
+                "inputAudioTranscription": transcription,
             ],
         ]
         return json(setup)

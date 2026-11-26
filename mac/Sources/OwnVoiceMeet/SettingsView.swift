@@ -70,6 +70,13 @@ private struct ListenTranslateTab: View {
                 Text(verbatim: model.settings.translate.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                // Only recognition with gray text while someone speaks has a sentence to translate early.
+                if [ListenOption.appleSpeech, .geminiLive, .openaiLive].contains(model.settings.listen) {
+                    Toggle("Translate long sentences before they end", isOn: $model.settings.earlyTranslation)
+                    Text("While a long sentence is still being spoken, its Chinese starts to appear; the full translation takes over when the sentence ends. With a paid translation model this costs a few extra cents an hour.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Picker("Chinese", selection: $model.settings.chinese) {
                     ForEach(ChineseVariant.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
@@ -100,7 +107,7 @@ private struct ListenTranslateTab: View {
                 TextEditor(text: $model.settings.glossary)
                     .font(.body.monospaced())
                     .frame(minHeight: 80)
-                Text("One term per line: 中文 = English. Used by Claude, Gemini and Gemma.")
+                Text("One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

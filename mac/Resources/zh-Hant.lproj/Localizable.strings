@@ -149,7 +149,6 @@
 "Ollama is running; %@ is not downloaded yet." = "Ollama 正在執行，但還沒下載 %@。";
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "會議結束時一次：整份逐字稿（含講者和翻譯）送給這個模型寫成會議紀錄——重點、決議、待辦事項、待釐清問題——顯示在摘要視窗，並存成 minutes.md。用 Claude Opus 5.5 這類強的雲端模型效果好，一小時約 US$0.10–0.50。逐字稿會送到該服務。也可以隨時在摘要視窗按「摘要整場會議」。";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "按一下就會裝好缺少的部分：從 ollama.com 下載 Ollama（約 230 MB，會檢查簽章）和選的模型。TranslateGemma 只翻字幕（回覆和摘要會用別的模型）；Gemma 4 也能做回覆和摘要。文字不會離開這台 Mac。";
-"One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "每行一個詞：中文 = English。Claude、Gemini 和 Gemma 會使用。";
 "Only When I Press Update Now" = "只在我按「立即更新」時";
 "Only when asked" = "只在按下時更新";
 "Open Language & Region" = "打開語言與地區";
@@ -302,3 +301,6 @@
 "The main points appear here every minute while listening." = "聆聽時每分鐘，重點會出現在這裡。";
 "No microphone found. Plug one in, or choose it in System Settings → Sound → Input." = "找不到麥克風。請接上一個，或到「系統設定」→「聲音」→「輸入」選擇。";
 "The reply was cut off at its length limit; try again." = "回覆在長度上限被截斷了，請再試一次。";
+"One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right." = "每行一個詞：中文 = English。Claude、Gemini 和 Gemma 會使用，也會提供給語音辨識，讓人名和產品名稱聽得更準。";
+"Translate long sentences before they end" = "長句還沒說完就先翻譯";
+"While a long sentence is still being spoken, its Chinese starts to appear; the full translation takes over when the sentence ends. With a paid translation model this costs a few extra cents an hour." = "長句還在說的時候，中文就會開始出現；句子說完後，再換成完整的翻譯。使用付費翻譯模型時，每小時會多花幾美分。";

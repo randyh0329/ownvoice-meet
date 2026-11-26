@@ -31,13 +31,16 @@ protocol Recognizer: AnyObject {
 
 final class AppleSpeechRecognizer: Recognizer {
     private let language: String
+    /// The glossary's names and terms (Prompts.recognitionTerms), given as contextual strings.
+    private let terms: [String]
     private var analyzer: SpeechAnalyzer?
     private var input: AsyncStream<AnalyzerInput>.Continuation?
     private var converter: BufferConverter?
     private var results: Task<Void, Never>?
 
-    init(language: String) {
+    init(language: String, terms: [String] = []) {
         self.language = language.isEmpty ? "en-US" : language
+        self.terms = terms
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -57,6 +60,12 @@ final class AppleSpeechRecognizer: Recognizer {
         }
         converter = BufferConverter(to: format)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
+        // A hint only: recognition goes on without it if the analyzer does not take it.
+        if !terms.isEmpty {
+            let context = AnalysisContext()
+            context.contextualStrings[.general] = terms
+            try? await analyzer.setContext(context)
+        }
         let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream()
         input = continuation
         results = Task {
@@ -96,6 +105,7 @@ final class GeminiLiveRecognizer: Recognizer {
     private let key: String
     private let model = "gemini-3.5-transcribe-live"
     private let language: String
+    private let terms: [String]
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
     private let queue = DispatchQueue(label: "gemini-live")
     // On `queue`:
@@ -108,9 +118,10 @@ final class GeminiLiveRecognizer: Recognizer {
     private var running = false
     private var onEvent: ((RecognitionEvent) -> Void)?
 
-    init(key: String, language: String) {
+    init(key: String, language: String, terms: [String] = []) {
         self.key = key
         self.language = language
+        self.terms = terms
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -127,7 +138,7 @@ final class GeminiLiveRecognizer: Recognizer {
         // A bad key or model closes the socket here; a server that never answers times out.
         let deadline = Date().addingTimeInterval(10)
         do {
-            try await socket.send(.string(GeminiLive.setupMessage(model: model, language: language)))
+            try await socket.send(.string(GeminiLive.setupMessage(model: model, language: language, terms: terms)))
             while !GeminiLive.parse(try await socket.receive(before: deadline).data).contains(.setupComplete) {}
         } catch {
             socket.cancel()
@@ -324,15 +335,17 @@ final class SentenceRecognizer: Recognizer {
 
     private let service: Service
     private let language: String
+    private let terms: [String]
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
     private let queue = DispatchQueue(label: "sentences")
     private var segmenter = Segmenter(rate: 16_000)
     private var uploads: Task<Void, Never>?
     private var onEvent: ((RecognitionEvent) -> Void)?
 
-    init(service: Service, language: String) {
+    init(service: Service, language: String, terms: [String] = []) {
         self.service = service
         self.language = language
+        self.terms = terms
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -363,11 +376,11 @@ final class SentenceRecognizer: Recognizer {
         let previous = uploads
         let wav = WAV.data(utterance, rate: 16_000)
         let seconds = Double(utterance.count) / 16_000
-        let service = service, language = language, onEvent = onEvent
+        let service = service, language = language, terms = terms, onEvent = onEvent
         uploads = Task {
             await previous?.value
             do {
-                let text = try await Self.transcribe(wav, service: service, language: language)
+                let text = try await Self.transcribe(wav, service: service, language: language, terms: terms)
                 if case .whisper = service {} else { onEvent?(.audio(seconds)) }
                 onEvent?(.final(text))
             } catch {
@@ -377,13 +390,14 @@ final class SentenceRecognizer: Recognizer {
         }
     }
 
-    private static func transcribe(_ wav: Data, service: Service, language: String) async throws -> String {
+    private static func transcribe(_ wav: Data, service: Service, language: String, terms: [String]) async throws -> String {
         var req: URLRequest
+        let prompt = Prompts.transcriptionPrompt(terms: terms)
         switch service {
         case .openAI(let key):
             req = URLRequest(url: Uploads.openAITranscriptions, timeoutInterval: 30)
             req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization")
-            let form = Uploads.transcriptionForm(wav: wav, model: "gpt-4o-mini-transcribe", language: language)
+            let form = Uploads.transcriptionForm(wav: wav, model: "gpt-4o-mini-transcribe", language: language, prompt: prompt)
             req.setValue(form.contentType, forHTTPHeaderField: "content-type")
             req.httpBody = form.body
         case let .whisper(base, model, key):
@@ -393,14 +407,14 @@ final class SentenceRecognizer: Recognizer {
             }
             req = URLRequest(url: url, timeoutInterval: 60)
             if let key { req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization") }
-            let form = Uploads.transcriptionForm(wav: wav, model: model, language: language)
+            let form = Uploads.transcriptionForm(wav: wav, model: model, language: language, prompt: prompt)
             req.setValue(form.contentType, forHTTPHeaderField: "content-type")
             req.httpBody = form.body
         case .gemini(let key):
             req = URLRequest(url: Uploads.geminiInteractions, timeoutInterval: 30)
             req.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             req.setValue("application/json", forHTTPHeaderField: "content-type")
-            req.httpBody = try Uploads.geminiBody(model: "gemini-3.5-transcribe", language: language, wav: wav)
+            req.httpBody = try Uploads.geminiBody(model: "gemini-3.5-transcribe", language: language, wav: wav, terms: terms)
         }
         req.httpMethod = "POST"
         let (data, response) = try await URLSession.shared.data(for: req)
@@ -427,6 +441,7 @@ final class SentenceRecognizer: Recognizer {
 final class OpenAILiveRecognizer: Recognizer {
     private let key: String
     private let language: String
+    private let terms: [String]
     private let converter = BufferConverter(to: AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 24_000, channels: 1, interleaved: true)!)
     private let queue = DispatchQueue(label: "openai-live")
     private var segmenter = Segmenter(rate: OpenAIRealtime.sampleRate)
@@ -435,9 +450,10 @@ final class OpenAILiveRecognizer: Recognizer {
     private var sentSeconds = 0.0
     private var onEvent: ((RecognitionEvent) -> Void)?
 
-    init(key: String, language: String) {
+    init(key: String, language: String, terms: [String] = []) {
         self.key = key
         self.language = language.split(separator: "-").first.map(String.init) ?? ""
+        self.terms = terms
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -455,7 +471,7 @@ final class OpenAILiveRecognizer: Recognizer {
             socket.resume()
             let deadline = Date().addingTimeInterval(10)
             do {
-                try await socket.send(.string(OpenAIRealtime.sessionUpdate(model: "gpt-live-transcribe", language: language)))
+                try await socket.send(.string(OpenAIRealtime.sessionUpdate(model: "gpt-live-transcribe", language: language, terms: terms)))
                 while true {
                     switch OpenAIRealtime.parse(try await socket.receive(before: deadline).data) {
                     case .accepted?:

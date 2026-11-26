@@ -9,6 +9,15 @@ import Translation
 protocol Translator: Sendable {
     /// The line's Chinese; `partial` gets it as it grows (text models stream).
     func translate(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String
+    /// A sentence still being spoken, translated before it ends (early translation): as a
+    /// fragment, where the translator can be told so.
+    func translateUnfinished(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String
+}
+
+extension Translator {
+    func translateUnfinished(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await translate(text, context: context, partial: partial)
+    }
 }
 
 /// Usage of a text model: its pricing id and the tokens one request used.
@@ -91,10 +100,18 @@ struct ModelTranslator: Translator {
     let onUsage: UsageReport
 
     func translate(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await translate(text, context: context, unfinished: false, partial: partial)
+    }
+
+    func translateUnfinished(_ text: String, context: [String], partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await translate(text, context: context, unfinished: true, partial: partial)
+    }
+
+    private func translate(_ text: String, context: [String], unfinished: Bool, partial: @escaping @Sendable (String) -> Void) async throws -> String {
         let variant = chinese
         let reply = try await model.stream(
             system: Prompts.system(glossary: glossary, variant: variant),
-            user: Prompts.listenUser(context: context, utterance: text, variant: variant),
+            user: Prompts.listenUser(context: context, utterance: text, variant: variant, unfinished: unfinished),
             script: script,
             maxTokens: 1000
         ) { soFar in partial(variant.fix(soFar)) }

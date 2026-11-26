@@ -312,6 +312,9 @@ struct AppSettings: Codable, Equatable {
     /// Speakers told apart by voice, on this Mac (SpeakerDetector).
     var autoSpeakers = false
     var glossary = ""
+    // MARK: Early translation
+    /// A long sentence still being spoken is translated before it ends (AppModel.translateEarly).
+    var earlyTranslation = true
     var alwaysOnTop = true
     var fontSize = 20.0
     var captionTheme: CaptionTheme = .system
@@ -353,6 +356,8 @@ struct AppSettings: Codable, Equatable {
         speakerNames = (try? c.decodeIfPresent([String].self, forKey: .speakerNames)) ?? d.speakerNames
         autoSpeakers = (try? c.decodeIfPresent(Bool.self, forKey: .autoSpeakers)) ?? d.autoSpeakers
         glossary = (try? c.decodeIfPresent(String.self, forKey: .glossary)) ?? d.glossary
+        // MARK: Early translation
+        earlyTranslation = (try? c.decodeIfPresent(Bool.self, forKey: .earlyTranslation)) ?? d.earlyTranslation
         alwaysOnTop = (try? c.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)) ?? d.alwaysOnTop
         fontSize = (try? c.decodeIfPresent(Double.self, forKey: .fontSize)) ?? d.fontSize
         captionTheme = (try? c.decodeIfPresent(CaptionTheme.self, forKey: .captionTheme)) ?? d.captionTheme
