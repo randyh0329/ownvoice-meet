@@ -335,6 +335,21 @@ struct AppSettings: Codable, Equatable {
     var customTranslation = "#FFE066"
     var customBackground = "#0C0C0C"
     var customMonospaced = true
+    // MARK: Windows: screen sharing, text size and background per window, translation only
+    /// The Reply, Script and Summary windows are left out of screen sharing, recordings and
+    /// screenshots (what the user is about to say stays private).
+    var hideFromCapture = true
+    /// How solid each window's background is (WindowLook.opacityRange); the text always stays solid.
+    var captionsOpacity = 1.0
+    var replyOpacity = 1.0
+    var scriptOpacity = 1.0
+    var summaryOpacity = 1.0
+    /// Text size of the windows around the captions (the captions themselves use fontSize).
+    var replyFontSize = 20.0
+    var scriptFontSize = 20.0
+    var summaryFontSize = 20.0
+    /// The captions window shows only the translations, not what was heard.
+    var translationOnly = false
 
     // MARK: A talk in the room
     /// The microphone's Core Audio UID; empty = the Mac's default input.
@@ -390,6 +405,16 @@ struct AppSettings: Codable, Equatable {
         micDevice = (try? c.decodeIfPresent(String.self, forKey: .micDevice)) ?? d.micDevice
         micGain = MicLevel.nearestGain((try? c.decodeIfPresent(Double.self, forKey: .micGain)) ?? d.micGain)
         agenda = (try? c.decodeIfPresent(String.self, forKey: .agenda)) ?? d.agenda
+        hideFromCapture = (try? c.decodeIfPresent(Bool.self, forKey: .hideFromCapture)) ?? d.hideFromCapture
+        captionsOpacity = WindowLook.clampOpacity((try? c.decodeIfPresent(Double.self, forKey: .captionsOpacity)) ?? d.captionsOpacity)
+        replyOpacity = WindowLook.clampOpacity((try? c.decodeIfPresent(Double.self, forKey: .replyOpacity)) ?? d.replyOpacity)
+        scriptOpacity = WindowLook.clampOpacity((try? c.decodeIfPresent(Double.self, forKey: .scriptOpacity)) ?? d.scriptOpacity)
+        summaryOpacity = WindowLook.clampOpacity((try? c.decodeIfPresent(Double.self, forKey: .summaryOpacity)) ?? d.summaryOpacity)
+        // Before these existed every window followed the caption size: an enlarged one stays so.
+        replyFontSize = (try? c.decodeIfPresent(Double.self, forKey: .replyFontSize)) ?? fontSize
+        scriptFontSize = (try? c.decodeIfPresent(Double.self, forKey: .scriptFontSize)) ?? fontSize
+        summaryFontSize = (try? c.decodeIfPresent(Double.self, forKey: .summaryFontSize)) ?? fontSize
+        translationOnly = (try? c.decodeIfPresent(Bool.self, forKey: .translationOnly)) ?? d.translationOnly
     }
 
     /// Where sessions are saved.

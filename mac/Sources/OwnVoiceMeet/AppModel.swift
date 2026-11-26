@@ -23,7 +23,10 @@ final class AppModel {
         }
     }
     private(set) var book = CaptionBook()
-    private(set) var isListening = false
+    /// While listening, the Mac and its display stay awake (KeepAwake).
+    private(set) var isListening = false {
+        didSet { KeepAwake.set(isListening) }
+    }
     private(set) var status = String(localized: "Press Start to listen.")
 
     // Settings window
@@ -728,13 +731,15 @@ final class AppModel {
         status = String(localized: "New segment: \(n)")
     }
 
-    /// A new segment at once, without the prompt (for a shortcut): the agenda's next name, or
-    /// "Segment 3".
-    func quickNewSegment() {
-        guard isListening, let record else { return }
+    /// A new segment at once, without the prompt (⌃⇧F9, from any app): the agenda's next name, or
+    /// "Segment 3". Returns false when nothing is being listened to.
+    @discardableResult
+    func quickNewSegment() -> Bool {
+        guard isListening, let record else { return false }
         let n = record.newSegment("")
         showCurrentSegment()
         status = String(localized: "New segment: \(n)")
+        return true
     }
 
     /// The prompt to rename the segment going on now (its transcript and recording follow).

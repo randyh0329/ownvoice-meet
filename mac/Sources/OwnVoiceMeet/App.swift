@@ -1,5 +1,5 @@
 // OwnVoice Meet for the Mac: a caption window that floats over the meeting; Reply, Script and
-// Summary windows around it; Settings. Every word of the interface comes from
+// Summary windows around it; Settings; a menu bar item. Every word of the interface comes from
 // Localizable.strings (en, zh-Hant, zh-Hans).
 // No @State anywhere: with the macOS 27 SDK it is a macro whose plugin ships only with Xcode, and
 // the app also builds with the Command Line Tools. State lives in AppModel (Observation's macros
@@ -38,6 +38,11 @@ struct OwnVoiceMeetApp: App {
         Settings {
             SettingsView().environment(model)
         }
+
+        // The way back from click-through (the captions window then cannot be clicked).
+        MenuBarExtra("OwnVoice Meet", systemImage: "captions.bubble") {
+            MenuBarMenu().environment(model)
+        }
     }
 }
 
@@ -45,6 +50,14 @@ struct OwnVoiceMeetApp: App {
 /// recording can be played and the transcript, summary and minutes are written.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        GlobalHotKeys.registerAll()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        KeepAwake.set(false)
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let model = AppModel.shared
         guard model.isListening || model.finishing else { return .terminateNow }
@@ -77,8 +90,14 @@ struct AppCommands: Commands {
             Button("New Segment…") { model.askNewSegment() }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(!model.isListening)
+            Button("New Segment Now") { model.quickNewSegment() }
+                .globalShortcut(.newSegment)
+                .disabled(!model.isListening)
             Divider()
             Toggle("Keep Window on Top", isOn: Bindable(model).settings.alwaysOnTop)
+            Toggle("Translation Only", isOn: Bindable(model).settings.translationOnly)
+            Toggle("Click Through Captions", isOn: Bindable(WindowControl.shared).clickThrough)
+                .globalShortcut(.clickThrough)
         }
         CommandMenu("Speaker") {
             ForEach(Array(model.settings.speakerNames.indices.prefix(9)), id: \.self) { i in
@@ -95,6 +114,8 @@ struct AppCommands: Commands {
                 .keyboardShortcut("0")
             Button("Reply") { openWindow(id: "reply") }
                 .keyboardShortcut("1")
+            Button("Type a Reply") { WindowControl.shared.showReply() }
+                .globalShortcut(.reply)
             Button("Script") { openWindow(id: "script") }
                 .keyboardShortcut("2")
             Button("Summary") { openWindow(id: "summary") }

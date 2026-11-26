@@ -1,5 +1,6 @@
 // The caption window: each line as heard (gray while the sentence goes on) with its Chinese under
-// it, newest at the bottom; a bar with Start/Stop, the status and Settings.
+// it, newest at the bottom (or only the translations); a bar with Start/Stop, the status, text size,
+// background, click-through and Settings.
 
 import AppKit
 import OwnVoiceCore
@@ -11,7 +12,10 @@ struct CaptionsView: View {
     @Environment(\.undoManager) private var undoManager
 
     var body: some View {
+        @Bindable var model = model
         let style = CaptionStyle.of(model.settings)
+        let opacity = model.settings.captionsOpacity
+        let clickThrough = WindowControl.shared.clickThrough
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -23,14 +27,14 @@ struct CaptionsView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         ForEach(model.book.lines) { line in
-                            CaptionRow(line: line, fontSize: model.settings.fontSize, style: style, speaker: model.speakerName(line.speaker))
+                            CaptionRow(line: line, fontSize: model.settings.fontSize, style: style, speaker: model.speakerName(line.speaker), translationOnly: model.settings.translationOnly)
                                 .id(line.id)
                                 .contextMenu { SpeakerChoices(selected: line.speaker) { model.assignSpeaker($0, to: line.id) } }
                         }
                     }
                     .padding(16)
                 }
-                .background(style.background ?? .clear)
+                .fadedBackground(opacity, style.background ?? Color(nsColor: .windowBackgroundColor))
                 .onChange(of: model.book.lines.last) { _, last in
                     if let last { withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
@@ -52,6 +56,16 @@ struct CaptionsView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Spacer()
+                LookControls(size: $model.settings.fontSize, opacity: $model.settings.captionsOpacity)
+                Toggle(isOn: $model.settings.translationOnly) {
+                    Label("Translation Only", systemImage: "translate")
+                }
+                .toggleStyle(.button)
+                .labelStyle(.iconOnly)
+                .help("Translation Only: hide what was heard and show only the translations")
+                Button("Click Through Captions", systemImage: "cursorarrow.rays") { WindowControl.shared.clickThrough = true }
+                    .labelStyle(.iconOnly)
+                    .help("Click through: clicks go to the meeting under the captions. To click the captions again, press ⌃⇧F8 or use OwnVoice Meet in the menu bar.")
                 Menu {
                     SpeakerChoices(selected: model.currentSpeaker) { model.setCurrentSpeaker($0) }
                     Divider()
@@ -76,8 +90,19 @@ struct CaptionsView: View {
                 .help("Settings")
             }
             .padding(10)
+            .fadedBackground(opacity)
         }
-        .frame(minWidth: 420, minHeight: 220)
+        .overlay(alignment: .top) {
+            if clickThrough {
+                Text("Clicks go to the window underneath. Press ⌃⇧F8, or use OwnVoice Meet in the menu bar, to click the captions again.")
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(8)
+            }
+        }
+        .frame(minWidth: 600, minHeight: 220)
         .onAppear { model.captionsUndo = undoManager }
         .onChange(of: undoManager) { _, new in model.captionsUndo = new }
         .alert("Add speaker", isPresented: Bindable(model).speakerPrompt) {
@@ -102,6 +127,7 @@ struct CaptionsView: View {
             Text("The segment's transcript and recording take the new name.")
         }
         .background(WindowLevel(floating: model.settings.alwaysOnTop))
+        .windowTraits("captions", ignoresMouse: clickThrough)
     }
 }
 
@@ -110,20 +136,33 @@ struct CaptionRow: View {
     let fontSize: Double
     let style: CaptionStyle
     var speaker: String? = nil
+    /// Only the translation; a line still without one shows a small "…", so speech is seen coming.
+    var translationOnly = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                if let speaker {
-                    Text(verbatim: speaker + "：")
-                        .font(style.font(size: fontSize * 0.8, weight: .bold))
-                        .foregroundStyle(style.translation)
+            if translationOnly {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    speakerLabel
+                    if line.translation.isEmpty {
+                        Text(verbatim: "…")
+                            .font(style.font(size: fontSize * 0.8))
+                            .foregroundStyle(style.partial)
+                    } else {
+                        Text(verbatim: line.translation)
+                            .font(style.font(size: fontSize, weight: .medium))
+                            .foregroundStyle(style.translation)
+                    }
                 }
-                Text(verbatim: line.heard)
-                    .font(style.font(size: fontSize * 0.8))
-                    .foregroundStyle(line.isFinal ? style.heard : style.partial)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    speakerLabel
+                    Text(verbatim: line.heard)
+                        .font(style.font(size: fontSize * 0.8))
+                        .foregroundStyle(line.isFinal ? style.heard : style.partial)
+                }
             }
-            if !line.translation.isEmpty {
+            if !translationOnly, !line.translation.isEmpty {
                 Text(verbatim: line.translation)
                     .font(style.font(size: fontSize, weight: .medium))
                     .foregroundStyle(style.translation)
@@ -131,6 +170,15 @@ struct CaptionRow: View {
         }
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var speakerLabel: some View {
+        if let speaker {
+            Text(verbatim: speaker + "：")
+                .font(style.font(size: fontSize * 0.8, weight: .bold))
+                .foregroundStyle(style.translation)
+        }
     }
 }
 
