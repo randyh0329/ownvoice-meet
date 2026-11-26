@@ -57,7 +57,8 @@ struct ModelSpec {
 
 extension TranslateOption {
     /// The general text model this option is, if it is one (not Apple Translation or TranslateGemma,
-    /// which only translate caption lines).
+    /// which only translate caption lines). Live Translate takes sound only: its text model, for the
+    /// lines it misses, replies and the summary, is Gemini 3.5 Flash-Lite on the same key.
     var textModel: ModelSpec? {
         switch self {
         case .haiku: .haiku
@@ -67,6 +68,7 @@ extension TranslateOption {
         case .sol: .sol
         case .geminiFlashLite: .flashLite
         case .geminiFlash: .flash
+        case .geminiLiveTranslate: .flashLite
         case .gemma: .gemma
         case .gemma12: .gemma12
         case .localServer: ModelSpec(id: "local", name: String(localized: "Your own server"), provider: .local, apiModel: "", effort: "")

@@ -612,7 +612,6 @@ final class OpenAILiveRecognizer: Recognizer {
 /// hand to the tasks that read the socket and tick the interpreter.
 final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @unchecked Sendable {
     private let key: String
-    private let model = "gemini-3.5-live-translate-preview"
     private let target: String
     private let instruction: String
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
@@ -629,7 +628,7 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
 
     init(key: String, chinese: ChineseVariant, glossary: String) {
         self.key = key
-        target = chinese == .traditionalTaiwan ? "zh-TW" : "zh-Hans"
+        target = LiveTranslate.target(chinese)
         instruction = Assistants.liveTranslateInstruction(glossary: glossary, variant: chinese)
     }
 
@@ -647,19 +646,11 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
     }
 
     private func open() async throws -> URLSessionWebSocketTask {
-        var url = URLComponents(string: GeminiLive.endpoint)!
-        url.queryItems = [URLQueryItem(name: "key", value: key)]
-        let socket = URLSession.shared.webSocketTask(with: url.url!)
-        socket.resume()
-        let deadline = Date().addingTimeInterval(10)
         do {
-            try await socket.send(.string(GeminiLive.translateSetup(model: model, target: target, instruction: instruction)))
-            while !GeminiLive.parseTranslate(try await socket.receive(before: deadline).data).contains(.setupComplete) {}
+            return try await LiveTranslate.open(key: key, target: target, instruction: instruction)
         } catch {
-            socket.cancel()
             throw AppError(String(localized: "Gemini did not answer the setup (check the key)."))
         }
-        return socket
     }
 
     private func connect() async throws {

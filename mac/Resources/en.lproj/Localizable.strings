@@ -118,6 +118,7 @@
 "French" = "French";
 "Gain" = "Gain";
 "Gemini 3.5 Flash-Lite (about US$0.13 an hour)" = "Gemini 3.5 Flash-Lite (about US$0.13 an hour)";
+"Gemini 3.5 Live Translate, follows the captions (about US$2.2 an hour)" = "Gemini 3.5 Live Translate, follows the captions (about US$2.2 an hour)";
 "Gemini 3.5 Live Translate: hears and translates in one (about US$2.2 an hour)" = "Gemini 3.5 Live Translate: hears and translates in one (about US$2.2 an hour)";
 "Gemini 3.5 Transcribe Live (about US$0.54 an hour)" = "Gemini 3.5 Transcribe Live (about US$0.54 an hour)";
 "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)" = "Gemini 3.5 Transcribe, sentence by sentence (about US$0.30 an hour)";
@@ -131,6 +132,7 @@
 "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4." = "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4.";
 "German" = "German";
 "Glossary" = "Glossary";
+"Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only." = "Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only.";
 "Google's interpreter model hears the speech and gives the Chinese itself; the caption translation model is not used. A preview model. Needs a Gemini API key." = "Google's interpreter model hears the speech and gives the Chinese itself; the caption translation model is not used. A preview model. Needs a Gemini API key.";
 "Google's live transcription, steadier in a noisy room. Needs a Gemini API key (use the paid tier: free-tier data is used to improve Google's products)." = "Google's live transcription, steadier in a noisy room. Needs a Gemini API key (use the paid tier: free-tier data is used to improve Google's products).";
 "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below." = "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.";
@@ -160,6 +162,9 @@
 "Listening (on this Mac)" = "Listening (on this Mac)";
 "Listening (on this Mac, nothing is sent)" = "Listening (on this Mac, nothing is sent)";
 "Listening (sentence by sentence)" = "Listening (sentence by sentence)";
+"Live Translate connection dropped; captions use the text model for now, trying again in %@ s…" = "Live Translate connection dropped; captions use the text model for now, trying again in %@ s…";
+"Live Translate is connected again." = "Live Translate is connected again.";
+"Live Translate refused the connection (check the Gemini key); captions are translated by the text model." = "Live Translate refused the connection (check the Gemini key); captions are translated by the text model.";
 "Live summary" = "Live summary";
 "Loading the on-device recognition models…" = "Loading the on-device recognition models…";
 "Local model on this Mac (free, offline)" = "Local model on this Mac (free, offline)";

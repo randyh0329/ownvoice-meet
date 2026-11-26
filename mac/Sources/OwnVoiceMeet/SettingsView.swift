@@ -30,6 +30,11 @@ struct SettingsView: View {
 private struct ListenTranslateTab: View {
     @Environment(AppModel.self) private var model
 
+    /// Live Translate under Translation can follow this recognition (not itself, not record only).
+    private var canFollow: Bool {
+        model.settings.listen != .geminiLiveTranslate && model.settings.listen != .recordOnly
+    }
+
     var body: some View {
         @Bindable var model = model
         Form {
@@ -56,7 +61,7 @@ private struct ListenTranslateTab: View {
                     TextField("Server address (up to /v1)", text: $model.settings.whisperURL)
                     TextField("Model", text: $model.settings.whisperModel)
                 }
-                if model.settings.listen.isCloud {
+                if model.settings.listen.isCloud || (model.settings.translate == .geminiLiveTranslate && canFollow) {
                     Toggle("Pause recognition while the room is quiet (nothing is billed)", isOn: $model.settings.pauseWhenQuiet)
                 }
                 Picker("Stop listening after quiet for", selection: $model.settings.stopAfterQuietMinutes) {
@@ -74,7 +79,10 @@ private struct ListenTranslateTab: View {
                         .foregroundStyle(.secondary)
                 }
                 Picker("Translation", selection: $model.settings.translate) {
-                    ForEach(TranslateOption.allCases) { Text(verbatim: $0.label).tag($0) }
+                    // Live Translate is offered only where it can follow the recognition.
+                    ForEach(TranslateOption.allCases.filter { $0 != .geminiLiveTranslate || canFollow || $0 == model.settings.translate }) {
+                        Text(verbatim: $0.label).tag($0)
+                    }
                 }
                 Text(verbatim: model.settings.translate.detail)
                     .font(.caption)

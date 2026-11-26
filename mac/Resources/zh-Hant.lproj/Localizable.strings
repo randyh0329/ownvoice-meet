@@ -402,3 +402,8 @@
 "Translation Only: hide what was heard and show only the translations" = "只看翻譯：隱藏聽到的原文，只顯示翻譯";
 "Type a Reply" = "輸入回覆";
 "Type a reply: the Reply window, ready for typing" = "輸入回覆：叫出回覆視窗，可以直接打字";
+"Gemini 3.5 Live Translate, follows the captions (about US$2.2 an hour)" = "Gemini 3.5 Live Translate，跟著字幕翻（約每小時 US$2.2）";
+"Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only." = "Google 的口譯模型跟上面選的辨識聽同樣的聲音，邊聽邊給出那些字幕的中文。它漏掉的字幕、回覆和摘要用 Gemini 3.5 Flash-Lite。預覽版。需要 Gemini API 金鑰。辨識選 Live Translate 本身或只錄音時不會用到。";
+"Live Translate connection dropped; captions use the text model for now, trying again in %@ s…" = "Live Translate 連線中斷，字幕先用文字模型翻譯，%@ 秒後再試…";
+"Live Translate is connected again." = "Live Translate 已重新連上。";
+"Live Translate refused the connection (check the Gemini key); captions are translated by the text model." = "Live Translate 拒絕連線（請檢查 Gemini 金鑰），字幕改用文字模型翻譯。";
