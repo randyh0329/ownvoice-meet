@@ -243,6 +243,7 @@
 "Thai" = "Thai";
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
+"The glossary could not be given to recognition; recognition goes on without it." = "The glossary could not be given to recognition; recognition goes on without it.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
 "The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
 "The main points appear here every minute while listening." = "The main points appear here every minute while listening.";

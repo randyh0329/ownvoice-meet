@@ -37,3 +37,47 @@ extension Prompts {
         return list.isEmpty ? "" : "Names and terms in this meeting: \(list)."
     }
 }
+
+/// One session's recognition hints, given up for good the first time a service refuses them, so
+/// recognition with a glossary is never worse than without: the refused setup or upload is tried
+/// again without the terms, and the rest of the session goes without. Used from any thread.
+public final class RecognitionHints: @unchecked Sendable {
+    private let lock = NSLock()
+    private let all: [String]
+    private var refused = false
+    private var noticePending = false
+
+    public init(_ terms: [String]) {
+        all = terms
+    }
+
+    /// The terms to send now: none once a service refused them.
+    public var terms: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return refused ? [] : all
+    }
+
+    /// A request with the terms was refused and the same one without them was taken.
+    public func refuse() {
+        lock.lock()
+        defer { lock.unlock() }
+        if !refused { noticePending = true }
+        refused = true
+    }
+
+    /// True once after `refuse`: the moment to tell the user.
+    public func takeNotice() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let notice = noticePending
+        noticePending = false
+        return notice
+    }
+
+    /// Whether an upload answered with this HTTP status may have been refused for the terms (a
+    /// request the service did not accept), not for the key, the address or the rate limit.
+    public static func mayBeRefused(status: Int) -> Bool {
+        (400..<500).contains(status) && ![401, 403, 404, 408, 429].contains(status)
+    }
+}

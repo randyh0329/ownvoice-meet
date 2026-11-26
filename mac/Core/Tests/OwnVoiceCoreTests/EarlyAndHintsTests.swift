@@ -136,3 +136,26 @@ final class RecognitionHintsTests: XCTestCase {
         XCTAssertFalse(bare.contains("prompt"))
     }
 }
+
+final class RecognitionHintsFallbackTests: XCTestCase {
+    func testRefusedHintsAreDroppedForTheSessionAndAnnouncedOnce() {
+        let hints = RecognitionHints(["Kubernetes", "BigQuery"])
+        XCTAssertEqual(hints.terms, ["Kubernetes", "BigQuery"])
+        XCTAssertFalse(hints.takeNotice(), "nothing to tell before a refusal")
+        hints.refuse()
+        XCTAssertEqual(hints.terms, [])
+        XCTAssertTrue(hints.takeNotice())
+        XCTAssertFalse(hints.takeNotice(), "said once")
+        hints.refuse()
+        XCTAssertFalse(hints.takeNotice(), "a second refusal is not announced again")
+        XCTAssertEqual(hints.terms, [])
+    }
+
+    func testOnlyARejectedRequestIsRetriedWithoutTheHints() {
+        XCTAssertTrue(RecognitionHints.mayBeRefused(status: 400))
+        XCTAssertTrue(RecognitionHints.mayBeRefused(status: 422))
+        for status in [200, 401, 403, 404, 408, 429, 500, 503] {
+            XCTAssertFalse(RecognitionHints.mayBeRefused(status: status), String(status))
+        }
+    }
+}

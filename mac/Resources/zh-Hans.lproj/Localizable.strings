@@ -304,3 +304,4 @@
 "One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right." = "每行一个词：中文 = English。Claude、Gemini 和 Gemma 会使用，也会提供给语音识别，让人名和产品名称听得更准。";
 "Translate long sentences before they end" = "长句还没说完就先翻译";
 "While a long sentence is still being spoken, its Chinese starts to appear; the full translation takes over when the sentence ends. With a paid translation model this costs a few extra cents an hour." = "长句还在说的时候，中文就会开始出现；句子说完后，再换成完整的翻译。使用付费翻译模型时，每小时会多花几美分。";
+"The glossary could not be given to recognition; recognition goes on without it." = "术语表无法提供给语音识别；识别会在没有术语表的情况下继续。";

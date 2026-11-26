@@ -105,7 +105,7 @@ final class GeminiLiveRecognizer: Recognizer {
     private let key: String
     private let model = "gemini-3.5-transcribe-live"
     private let language: String
-    private let terms: [String]
+    private let hints: RecognitionHints
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
     private let queue = DispatchQueue(label: "gemini-live")
     // On `queue`:
@@ -121,7 +121,7 @@ final class GeminiLiveRecognizer: Recognizer {
     init(key: String, language: String, terms: [String] = []) {
         self.key = key
         self.language = language
-        self.terms = terms
+        hints = RecognitionHints(terms)
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -130,7 +130,21 @@ final class GeminiLiveRecognizer: Recognizer {
         try await connect()
     }
 
+    /// A setup refused with the glossary's terms is tried again without them, and the rest of the
+    /// session goes without.
     private func open() async throws -> URLSessionWebSocketTask {
+        let terms = hints.terms
+        do {
+            return try await open(terms: terms)
+        } catch {
+            guard !terms.isEmpty, running else { throw error }
+            let socket = try await open(terms: [])
+            hints.refuse()
+            return socket
+        }
+    }
+
+    private func open(terms: [String]) async throws -> URLSessionWebSocketTask {
         var url = URLComponents(string: GeminiLive.endpoint)!
         url.queryItems = [URLQueryItem(name: "key", value: key)]
         let socket = URLSession.shared.webSocketTask(with: url.url!)
@@ -151,6 +165,7 @@ final class GeminiLiveRecognizer: Recognizer {
         let socket = try await open()
         queue.sync { self.socket = socket }
         onEvent?(.status(String(localized: "Listening (Gemini Live)")))
+        hints.announce(onEvent)
         receive(on: socket)
     }
 
@@ -223,6 +238,7 @@ final class GeminiLiveRecognizer: Recognizer {
                 return
             }
             queue.sync { self.socket = next }
+            hints.announce(onEvent)
             finishPartial()
             receive(on: next)
             old.send(.string(GeminiLive.streamEnd)) { _ in }
@@ -335,7 +351,7 @@ final class SentenceRecognizer: Recognizer {
 
     private let service: Service
     private let language: String
-    private let terms: [String]
+    private let hints: RecognitionHints
     private let converter = BufferConverter(to: BufferConverter.pcm16k)
     private let queue = DispatchQueue(label: "sentences")
     private var segmenter = Segmenter(rate: 16_000)
@@ -345,7 +361,7 @@ final class SentenceRecognizer: Recognizer {
     init(service: Service, language: String, terms: [String] = []) {
         self.service = service
         self.language = language
-        self.terms = terms
+        hints = RecognitionHints(terms)
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -376,11 +392,12 @@ final class SentenceRecognizer: Recognizer {
         let previous = uploads
         let wav = WAV.data(utterance, rate: 16_000)
         let seconds = Double(utterance.count) / 16_000
-        let service = service, language = language, terms = terms, onEvent = onEvent
+        let service = service, language = language, hints = hints, onEvent = onEvent
         uploads = Task {
             await previous?.value
             do {
-                let text = try await Self.transcribe(wav, service: service, language: language, terms: terms)
+                let text = try await Self.transcribe(wav, service: service, language: language, hints: hints)
+                hints.announce(onEvent)
                 if case .whisper = service {} else { onEvent?(.audio(seconds)) }
                 onEvent?(.final(text))
             } catch {
@@ -390,7 +407,20 @@ final class SentenceRecognizer: Recognizer {
         }
     }
 
-    private static func transcribe(_ wav: Data, service: Service, language: String, terms: [String]) async throws -> String {
+    /// An upload refused with the glossary's terms (a 4xx that is not about the key, the address or
+    /// the rate) is sent again without them; if that one is taken, the rest of the session goes without.
+    private static func transcribe(_ wav: Data, service: Service, language: String, hints: RecognitionHints) async throws -> String {
+        let terms = hints.terms
+        var (data, status) = try await send(wav, service: service, language: language, terms: terms)
+        if !terms.isEmpty, RecognitionHints.mayBeRefused(status: status) {
+            (data, status) = try await send(wav, service: service, language: language, terms: [])
+            if (200..<300).contains(status) { hints.refuse() }
+        }
+        if case .gemini = service { return try Uploads.geminiText(data, status: status) }
+        return try Uploads.transcriptionText(data, status: status)
+    }
+
+    private static func send(_ wav: Data, service: Service, language: String, terms: [String]) async throws -> (Data, Int) {
         var req: URLRequest
         let prompt = Prompts.transcriptionPrompt(terms: terms)
         switch service {
@@ -418,9 +448,7 @@ final class SentenceRecognizer: Recognizer {
         }
         req.httpMethod = "POST"
         let (data, response) = try await URLSession.shared.data(for: req)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if case .gemini = service { return try Uploads.geminiText(data, status: status) }
-        return try Uploads.transcriptionText(data, status: status)
+        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     /// The sentence being spoken when listening stops is sent too (or its gray line dropped), and
@@ -441,7 +469,7 @@ final class SentenceRecognizer: Recognizer {
 final class OpenAILiveRecognizer: Recognizer {
     private let key: String
     private let language: String
-    private let terms: [String]
+    private let hints: RecognitionHints
     private let converter = BufferConverter(to: AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 24_000, channels: 1, interleaved: true)!)
     private let queue = DispatchQueue(label: "openai-live")
     private var segmenter = Segmenter(rate: OpenAIRealtime.sampleRate)
@@ -453,7 +481,7 @@ final class OpenAILiveRecognizer: Recognizer {
     init(key: String, language: String, terms: [String] = []) {
         self.key = key
         self.language = language.split(separator: "-").first.map(String.init) ?? ""
-        self.terms = terms
+        hints = RecognitionHints(terms)
     }
 
     func start(onEvent: @escaping (RecognitionEvent) -> Void) async throws {
@@ -462,7 +490,21 @@ final class OpenAILiveRecognizer: Recognizer {
         try await connect()
     }
 
+    /// A session refused with the glossary's terms is tried again without them, and the rest of
+    /// the session goes without.
     private func connect() async throws {
+        let terms = hints.terms
+        do {
+            try await connect(terms: terms)
+        } catch {
+            guard !terms.isEmpty, running else { throw error }
+            try await connect(terms: [])
+            hints.refuse()
+            hints.announce(onEvent)
+        }
+    }
+
+    private func connect(terms: [String]) async throws {
         var lastError = ""
         for url in OpenAIRealtime.urls {
             var req = URLRequest(url: url)
@@ -731,4 +773,11 @@ final class GeminiLiveTranslateRecognizer: Recognizer, InterpreterSink, @uncheck
     func heard(_ id: Int, _ text: String, done: Bool) { onEvent?(.lineHeard(id, text, done: done)) }
     func translated(_ id: Int, _ text: String, done: Bool) { onEvent?(.lineTranslated(id, text, done: done)) }
     func drop(_ id: Int) { onEvent?(.lineDropped(id)) }
+}
+
+extension RecognitionHints {
+    /// Tells the user, once, that recognition goes on without the glossary.
+    func announce(_ onEvent: ((RecognitionEvent) -> Void)?) {
+        if takeNotice() { onEvent?(.status(String(localized: "The glossary could not be given to recognition; recognition goes on without it."))) }
+    }
 }
