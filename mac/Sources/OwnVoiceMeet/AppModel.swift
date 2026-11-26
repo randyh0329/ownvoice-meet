@@ -534,6 +534,7 @@ final class AppModel {
         case .openaiLive: return OpenAILiveRecognizer(key: try key("openai", openAI), language: s.meetingLanguage, terms: terms)
         case .openaiMini: return SentenceRecognizer(service: .openAI(key: try key("openai", openAI)), language: s.meetingLanguage, terms: terms)
         case .localWhisper: return SentenceRecognizer(service: .whisper(base: s.whisperURL, model: s.whisperModel, key: Keychain.get("local")), language: s.meetingLanguage, terms: terms)
+        case .localSherpa: return try LocalRecognizer(language: s.meetingLanguage, chinese: s.chinese)
         case .recordOnly: return nil
         }
     }

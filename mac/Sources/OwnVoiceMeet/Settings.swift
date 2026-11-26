@@ -12,6 +12,7 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
     case openaiLive = "openai-live"
     case openaiMini = "openai-mini"
     case localWhisper = "local-whisper"
+    case localSherpa = "sherpa-local"
     case recordOnly = "record-only"
 
     var id: String { rawValue }
@@ -25,6 +26,7 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
         case .openaiLive: String(localized: "OpenAI gpt-live-transcribe (about US$1.02 an hour)")
         case .openaiMini: String(localized: "OpenAI gpt-4o-mini-transcribe, sentence by sentence (about US$0.18 an hour)")
         case .localWhisper: String(localized: "Your own Whisper server (OpenAI-compatible, free)")
+        case .localSherpa: String(localized: "On this Mac: Parakeet + SenseVoice (free, offline)")
         case .recordOnly: String(localized: "Record only, no captions")
         }
     }
@@ -38,6 +40,7 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
         case .openaiLive: String(localized: "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key.")
         case .openaiMini: String(localized: "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.")
         case .localWhisper: String(localized: "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.")
+        case .localSherpa: String(localized: "Recognized on the Mac: NVIDIA Parakeet for English and other European languages, SenseVoice for Chinese, Japanese and Korean. With the meeting language on Detect automatically, each sentence is heard in its own language, so talks that mix Chinese and English work. No gray text: an ellipsis shows while someone speaks, and the line comes about a second after they stop. Download the models (about 910 MB) below first.")
         case .recordOnly: String(localized: "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated.")
         }
     }
@@ -46,7 +49,7 @@ enum ListenOption: String, CaseIterable, Codable, Identifiable {
     var isCloud: Bool {
         switch self {
         case .geminiLive, .geminiLiveTranslate, .geminiTranscribe, .openaiLive, .openaiMini: true
-        case .appleSpeech, .localWhisper, .recordOnly: false
+        case .appleSpeech, .localWhisper, .localSherpa, .recordOnly: false
         }
     }
 }
@@ -260,13 +263,16 @@ enum InterfaceLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-/// Languages offered for the meeting (BCP-47). Apple recognition needs one chosen.
+/// Languages offered for the meeting (BCP-47). Apple recognition needs one chosen. Detect
+/// automatically ("") lets recognition on this Mac pick each sentence's language; the other
+/// recognizers take it as no language hint.
 struct MeetingLanguage: Identifiable {
     let code: String
     let name: String
     var id: String { code }
 
     static let all = [
+        MeetingLanguage(code: "", name: String(localized: "Detect automatically")),
         MeetingLanguage(code: "en-US", name: String(localized: "English (US)")),
         MeetingLanguage(code: "en-GB", name: String(localized: "English (UK)")),
         MeetingLanguage(code: "ja-JP", name: String(localized: "Japanese")),

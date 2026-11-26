@@ -47,6 +47,11 @@ private struct ListenTranslateTab: View {
                 Picker("Meeting language", selection: $model.settings.meetingLanguage) {
                     ForEach(MeetingLanguage.all) { Text(verbatim: $0.name).tag($0.code) }
                 }
+                if model.settings.meetingLanguage.isEmpty && model.settings.listen == .appleSpeech {
+                    Text("Apple recognition cannot detect the language: it listens for English (US).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if model.settings.listen == .localWhisper {
                     TextField("Server address (up to /v1)", text: $model.settings.whisperURL)
                     TextField("Model", text: $model.settings.whisperModel)
@@ -58,6 +63,9 @@ private struct ListenTranslateTab: View {
                     Text("Never").tag(0)
                     ForEach([10, 20, 30, 60], id: \.self) { m in Text(verbatim: String(localized: "\(String(m)) minutes")).tag(m) }
                 }
+            }
+            if model.settings.listen == .localSherpa {
+                LocalSpeechSection()
             }
             Section("Translate") {
                 if model.settings.listen == .geminiLiveTranslate || model.settings.listen == .recordOnly {
