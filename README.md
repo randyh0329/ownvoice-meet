@@ -6,17 +6,17 @@
 
 開線上會議或聽演講時，即時字幕把別人說的話接上中文意思；想發言時，用中文打出意思，它給你一句說得出口的外語，你照著唸。它不替你作答：話是你自己的，聲音也是你自己的。
 
-**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.7.1/OwnVoice-Meet-0.7.1-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
+**[下載 Mac 原生版（.dmg，Apple Silicon、macOS 26 以上）](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.8.0/OwnVoice-Meet-0.8.0-mac-arm64.dmg)** · [所有版本](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [第一次使用](#第一次使用)
 
 這是 [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) 的 fork（`randyh0329/ownvoice-meet`，分支 `main`；開發在 `gemini-transcribe`）。主要多了一個**用 Swift／SwiftUI 重寫的 Mac 原生版**（Apple Silicon、macOS 26 以上），放在 [`mac/`](mac/)；原本跨平台的版本（Tauri，Windows 與 macOS）留在 repo 根目錄，直到原生版的功能追上為止。
 
-> **狀態：Mac 原生版 0.7.1（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音、Apple 裝置上辨識、Apple 翻譯、Gemma 4、字幕顏色、存檔。0.6 新增的選項能建置、CI 通過，還在試用中。0.7.1 修正了程式碼審查找到的問題：耳機當輸出時聽不到聲音、錄音時按 ⌘Q 錄音檔損壞、復原刪掉新字幕、Gemini 上傳不再讓 Google 保存，以及即時摘要的更新頻率可以自己設定。
+> **狀態：Mac 原生版 0.8.0（預覽）。** 在 Apple M5 上實測過：聽 Mac 的聲音、Apple 裝置上辨識、Apple 翻譯、Gemma 4、字幕顏色、存檔。0.8.0 補齊了跨平台版有、Mac 版還沒有的功能（視窗控制、在任何 app 裡都能用的快捷鍵、長句先翻、離線的 Parakeet＋SenseVoice 辨識、ChatGPT 方案、Live Translate 跟著字幕翻、麥克風檢查、議程與每段各自存檔）；這些能建置、CI 通過，還在試用中。
 
 ## 下載
 
 | 版本 | 適用 | 從哪裡拿 |
 |---|---|---|
-| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.7.1-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.7.1/OwnVoice-Meet-0.7.1-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
+| **Mac 原生版**（建議） | Apple Silicon（M1 以後），macOS 26 以上 | **[OwnVoice-Meet-0.8.0-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.8.0/OwnVoice-Meet-0.8.0-mac-arm64.dmg)**（[發布頁](https://github.com/randyh0329/ownvoice-meet/releases/latest)）。打開 .dmg，把 OwnVoice Meet 拖到「應用程式」。最新的開發版在 [Actions →「Mac app (Swift)」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess)（要登入 GitHub），或[自己建置](#從原始碼建置)。 |
 | 跨平台版（Tauri），Mac | Intel 與 Apple Silicon，macOS 11 以上 | [Actions →「macOS DMG」](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml)：最新一次綠色的執行，Artifacts 的 `OwnVoice-Meet-macOS-dmg`。Mac 上只能用麥克風收音。 |
 | 跨平台版，Windows | Windows 10、11 | 原作者的 [0.4.0 發布頁](https://github.com/Zaious/ownvoice-meet/releases/latest)（不含這個分支新增的功能）。 |
 
@@ -25,8 +25,8 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 ## Mac 原生版做什麼
 
 - **聽會議的聲音**：直接聽 Mac 播放的聲音（Core Audio 的 process tap，只需要「僅限系統錄音」權限，不錄螢幕），或用麥克風聽實體會場。
-- **聽（語音辨識）**：Apple 裝置上辨識（免費、不上傳）、Gemini 3.5 Transcribe Live、Gemini 3.5 Live Translate（聽和翻一起做）、Gemini 3.5 Transcribe 或 OpenAI gpt-4o-mini-transcribe（一句一句）、OpenAI gpt-live-transcribe、你自己的 Whisper 伺服器，或只錄音。
-- **翻（翻譯）**：Apple 翻譯（裝置上，免費）、Claude Haiku／Sonnet 5.5、OpenAI gpt-6-luna／gpt-6.1-sol、Gemini 3.5 Flash-Lite／3.8 Flash，或在這台 Mac 上跑的 **TranslateGemma 4B**、**Gemma 4 E4B**、Gemma 4 12B（Ollama，免費；設定裡選一個、按一下就裝好），也可以接你自己的 OpenAI 相容伺服器。
+- **聽（語音辨識）**：Apple 裝置上辨識（免費、不上傳）、Gemini 3.5 Transcribe Live、Gemini 3.5 Live Translate（聽和翻一起做）、Gemini 3.5 Transcribe 或 OpenAI gpt-4o-mini-transcribe（一句一句）、OpenAI gpt-live-transcribe、你自己的 Whisper 伺服器、**在這台 Mac 上用 Parakeet＋SenseVoice**（免費、離線，模型約 910 MB；可以每句自動判斷中文或英文），或只錄音。術語表裡的人名和術語也會提示語音辨識。
+- **翻（翻譯）**：Apple 翻譯（裝置上，免費）、Claude Haiku／Sonnet 5.5、OpenAI gpt-6-luna／gpt-6.1-sol、Gemini 3.5 Flash-Lite／3.8 Flash，或在這台 Mac 上跑的 **TranslateGemma 4B**、**Gemma 4 E4B**、Gemma 4 12B（Ollama，免費；設定裡選一個、按一下就裝好），也可以接你自己的 OpenAI 相容伺服器、用 **ChatGPT 方案**（用 ChatGPT 登入，不用 API key），或讓 **Gemini 3.5 Live Translate 跟著其他辨識的字幕翻**。長句子還沒講完就先開始翻。
 - **中文要哪一種**：繁體中文（台灣）或简体中文。提示詞、Apple 翻譯的目標語言和字幕的字都跟著換。
 - **回覆**（⌘1）：打中文，變成要唸的外語（設定裡選「我說的語言」），大字顯示。
 - **講稿**（⌘2）：中外對照講稿，分頁、提示、問答、複製區塊；「補對照」幫你補上缺的那一半。字幕翻譯、回覆和摘要都會參考講稿。
@@ -35,9 +35,11 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 - **存檔**（預設關閉）：每次聆聽一個資料夾，裡面是逐字稿、摘要，選了的話還有錄音（.m4a）。
 - **講者**：可以**依聲音自動分辨**（在 Mac 上，免費，模型約 32 MB 下載一次）：新的聲音自動變成講者 1、2、3，在任一行按右鍵取名，這個聲音前後的每一行都會跟著改。也可以自己用 ⌥1…⌥9 切換現在誰在說話。名字寫進逐字稿和摘要。
 - **復原**（⌘Z）：清除字幕、講者變更、講稿被替換（補對照、範本、開啟）都可以復原。
-- **段落**（⌘⇧N）：開始新段落，逐字稿按段落分節。
+- **段落**（⌘⇧N，或在任何 app 裡按 ⌃⇧F9）：開始新段落，有寫**議程**就照議程命名；點段落標籤可以改名，錄音中顯示紅色 ●。每個段落也各自存一份逐字稿和錄音檔。
+- **開會時**：分享螢幕時回覆和講稿視窗會隱藏；字幕視窗可以讓滑鼠點擊穿過去操作會議（⌃⇧F8，或選單列圖示）；每個視窗都有 A−／A+ 和背景透明度滑桿；**只看翻譯**只顯示翻譯；在任何 app 裡按 ⌃⇧Space 叫出回覆；聆聽時 Mac 不會睡著。
+- **麥克風**：選麥克風和增益、做 6 秒麥克風檢查，聆聽時看音量條。
 - **用量**：估算這次和這個月每個服務的費用。
-- **省錢**：雲端辨識在安靜時自動暫停（不計費），有人說話就恢復；安靜太久自動停止聆聽。
+- **省錢**：雲端辨識在安靜時自動暫停（不計費），有人說話就恢復，連同前 2 秒一起送出，第一句不會漏；安靜太久自動停止聆聽。
 - **字幕顏色**：跟系統、終端機（綠色／琥珀色）、Solarized、電影字幕，或自訂顏色；原文和中文分開兩種顏色。
 - **介面語言**：English、繁體中文、简体中文，跟著 Mac 或在設定裡指定。
 
@@ -63,13 +65,16 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 |---|---|---|
 | 聽 | Apple 裝置上辨識 | 免費，聲音不離開 Mac |
 | 聽 | 你自己的 Whisper 伺服器 | 免費 |
+| 聽 | 在這台 Mac 上：Parakeet＋SenseVoice | 免費，聲音不離開 Mac |
 | 聽 | OpenAI gpt-4o-mini-transcribe（一句一句） | 約每小時 US$0.18 |
 | 聽 | Gemini 3.5 Transcribe（一句一句） | 約每小時 US$0.30 |
 | 聽 | Gemini 3.5 Transcribe Live | 約每小時 US$0.54 |
 | 聽 | OpenAI gpt-live-transcribe | 約每小時 US$1.02 |
 | 聽＋翻 | Gemini 3.5 Live Translate | 約每小時 US$2.2 |
 | 翻 | Apple 翻譯、TranslateGemma 4B、Gemma 4 E4B／12B、你自己的伺服器 | 免費，文字不離開你的機器 |
+| 翻 | ChatGPT 方案（gpt-6-luna） | 用你的 ChatGPT 方案額度，不另外計費 |
 | 翻 | Claude Haiku 5.5、OpenAI gpt-6-luna | 約每小時 US$0.03 |
+| 翻 | Gemini 3.5 Live Translate 跟著字幕翻 | 約每小時 US$2.2 |
 | 翻 | Gemini 3.5 Flash-Lite | 約每小時 US$0.13 |
 | 翻 | Gemini 3.8 Flash（較慢） | 約每小時 US$0.25 |
 | 翻 | Claude Sonnet 5.5、OpenAI gpt-6.1-sol | 約每小時 US$0.66 |
@@ -82,7 +87,7 @@ Actions 附的檔案保留 90 天，發布頁的檔案一直都在。下載的 a
 - **字幕文字、講稿、術語表**：選 Apple 翻譯或 Gemma 時不離開 Mac；選 Claude 或 Gemini 時送到 Anthropic 或 Google。
 - **API key**：存在 macOS 的鑰匙圈，不寫進檔案。
 - **存檔**：預設關閉；打開後逐字稿、摘要和錄音只存在你的 Mac 上。會留下別人的聲音，請先確認大家同意。
-- **網路連線**：只連你選的服務；設定本機模型時從 ollama.com 下載 Ollama 和模型；按「檢查更新」時問 GitHub。沒有統計、沒有廣告。
+- **網路連線**：只連你選的服務；設定本機模型時從 ollama.com 下載 Ollama 和模型；下載裝置上辨識模型時連 Hugging Face；用 ChatGPT 登入時連 OpenAI；按「檢查更新」時問 GitHub。沒有統計、沒有廣告。
 
 ## 從原始碼建置
 

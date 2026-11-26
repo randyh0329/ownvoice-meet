@@ -6,17 +6,17 @@
 
 In an online meeting or a talk, live captions put the meaning of what others say under it in Chinese; when you want to speak, you type what you mean in Chinese and get a sentence you can say in the meeting's language, which you read aloud. It does not answer for you: the words are yours, and so is the voice.
 
-**[Download the native Mac app (.dmg, Apple Silicon, macOS 26 or later)](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.7.1/OwnVoice-Meet-0.7.1-mac-arm64.dmg)** · [All releases](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [First use](#first-use)
+**[Download the native Mac app (.dmg, Apple Silicon, macOS 26 or later)](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.8.0/OwnVoice-Meet-0.8.0-mac-arm64.dmg)** · [All releases](https://github.com/randyh0329/ownvoice-meet/releases/latest) · [First use](#first-use)
 
 This is a fork of [Zaious/ownvoice-meet](https://github.com/Zaious/ownvoice-meet) (`randyh0329/ownvoice-meet`, branch `main`; development on `gemini-transcribe`). Its main addition is a **native Mac app rewritten in Swift and SwiftUI** (Apple Silicon, macOS 26 or later) in [`mac/`](mac/); the original cross-platform app (Tauri, Windows and macOS) stays at the repo root until the native app does everything it does.
 
-> **Status: native Mac app 0.7.1 (preview).** Tested on an Apple M5: the Mac's sound, Apple on-device recognition, Apple Translation, Gemma 4, caption colors and saving. The options new in 0.6 build and pass CI, and are still being tried. 0.7.1 fixes what a code review found (no sound with a headset as output, an unplayable recording after ⌘Q, Undo removing newer captions, Gemini uploads no longer stored by Google) and lets you set how often the live summary updates.
+> **Status: native Mac app 0.8.0 (preview).** Tested on an Apple M5: the Mac's sound, Apple on-device recognition, Apple Translation, Gemma 4, caption colors and saving. 0.8.0 brings over what the cross-platform app had and the Mac app lacked (window controls, shortcuts from any app, early translation, offline Parakeet + SenseVoice recognition, ChatGPT plan, Live Translate following the captions, microphone check, agenda and per-segment files); these build and pass CI and are still being tried.
 
 ## Download
 
 | Version | For | Where |
 |---|---|---|
-| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | **[OwnVoice-Meet-0.7.1-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.7.1/OwnVoice-Meet-0.7.1-mac-arm64.dmg)** ([release page](https://github.com/randyh0329/ownvoice-meet/releases/latest)). Open the .dmg and drag OwnVoice Meet to Applications. The newest development build is under [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess) (sign in to GitHub), or [build it](#build-from-source). |
+| **Native Mac app** (recommended) | Apple Silicon (M1 and later), macOS 26 or later | **[OwnVoice-Meet-0.8.0-mac-arm64.dmg](https://github.com/randyh0329/ownvoice-meet/releases/download/mac-v0.8.0/OwnVoice-Meet-0.8.0-mac-arm64.dmg)** ([release page](https://github.com/randyh0329/ownvoice-meet/releases/latest)). Open the .dmg and drag OwnVoice Meet to Applications. The newest development build is under [Actions → "Mac app (Swift)"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/mac-native.yml?query=is%3Asuccess) (sign in to GitHub), or [build it](#build-from-source). |
 | Cross-platform app (Tauri), Mac | Intel and Apple Silicon, macOS 11 or later | [Actions → "macOS DMG"](https://github.com/randyh0329/ownvoice-meet/actions/workflows/dmg.yml): the newest green run, `OwnVoice-Meet-macOS-dmg` under Artifacts. Listens through a microphone only on the Mac. |
 | Cross-platform app, Windows | Windows 10 and 11 | The original author's [0.4.0 release](https://github.com/Zaious/ownvoice-meet/releases/latest) (without this branch's additions). |
 
@@ -25,8 +25,8 @@ Actions keeps its files for 90 days; release files stay. The downloaded app is n
 ## What the native Mac app does
 
 - **Hears the meeting**: what the Mac plays (a Core Audio process tap; needs only System Audio Recording Only, no screen recording), or a microphone for a talk in the room.
-- **Listen (speech recognition)**: Apple on-device recognition (free, nothing uploaded), Gemini 3.5 Transcribe Live, Gemini 3.5 Live Translate (hears and translates in one), Gemini 3.5 Transcribe or OpenAI gpt-4o-mini-transcribe (sentence by sentence), OpenAI gpt-live-transcribe, your own Whisper server, or record only.
-- **Translate**: Apple Translation (on-device, free), Claude Haiku / Sonnet 5.5, OpenAI gpt-6-luna / gpt-6.1-sol, Gemini 3.5 Flash-Lite / 3.8 Flash, or on the Mac **TranslateGemma 4B**, **Gemma 4 E4B** or Gemma 4 12B (Ollama, free; pick one and set it up with one click in Settings), or your own OpenAI-compatible server.
+- **Listen (speech recognition)**: Apple on-device recognition (free, nothing uploaded), Gemini 3.5 Transcribe Live, Gemini 3.5 Live Translate (hears and translates in one), Gemini 3.5 Transcribe or OpenAI gpt-4o-mini-transcribe (sentence by sentence), OpenAI gpt-live-transcribe, your own Whisper server, **on this Mac with Parakeet + SenseVoice** (free, offline, about 910 MB of models; can detect Chinese and English sentence by sentence), or record only. The glossary's names and terms also help recognition.
+- **Translate**: Apple Translation (on-device, free), Claude Haiku / Sonnet 5.5, OpenAI gpt-6-luna / gpt-6.1-sol, Gemini 3.5 Flash-Lite / 3.8 Flash, or on the Mac **TranslateGemma 4B**, **Gemma 4 E4B** or Gemma 4 12B (Ollama, free; pick one and set it up with one click in Settings), your own OpenAI-compatible server, a **ChatGPT plan** (sign in with ChatGPT, no API key), or **Gemini 3.5 Live Translate following the captions** of another recognizer. Long sentences start translating before they end.
 - **Which Chinese**: Traditional Chinese (Taiwan) or Simplified Chinese; the prompts, Apple Translation's target and the script of the captions all follow.
 - **Reply** (⌘1): type Chinese, get the words to read aloud in the language you speak (Settings → I speak), in large text.
 - **Script** (⌘2): a bilingual script with sections, cues, Q&A and copy blocks; Fill In Missing Halves adds the missing half of each line. Captions, replies and the summary all read it as context.
@@ -35,9 +35,11 @@ Actions keeps its files for 90 days; release files stay. The downloaded app is n
 - **Saving** (off by default): a folder per session with the transcript, the summary and, if chosen, the recording (.m4a).
 - **Speakers**: **told apart by voice automatically** (on the Mac, free; about 32 MB of models downloaded once): new voices become Speaker 1, 2, 3, and naming one line of a voice names every line of it, earlier and later. Or switch who is speaking yourself with ⌥1…⌥9. Names go into the transcript and the summary.
 - **Undo** (⌘Z): Clear Captions, speaker changes and script replacements (Fill In Missing Halves, template, Open…) can be undone.
-- **Segments** (⌘⇧N): start a new section; the transcript is grouped by section.
+- **Segments** (⌘⇧N, or ⌃⇧F9 from any app): start a new section, named from the **agenda** if you wrote one; click the segment badge to rename it, red ● while recording. Each segment also gets its own transcript and recording file.
+- **In a meeting**: the Reply and Script windows are hidden when you share your screen; the captions window can let clicks through to the meeting (⌃⇧F8, or the menu bar icon); each window has A−/A+ and a background slider; **Translation Only** shows just the translation; ⌃⇧Space brings up Reply from any app; the Mac stays awake while listening.
+- **Microphone**: choose the microphone and gain, run a 6-second Microphone Check, and watch the level bar while listening.
 - **Usage**: estimated cost per service for this session and this month.
-- **Saving money**: cloud recognition pauses in a quiet room (nothing billed) and resumes when someone speaks; listening stops after a long quiet.
+- **Saving money**: cloud recognition pauses in a quiet room (nothing billed) and resumes when someone speaks, sending the 2 seconds before so the first words are kept; listening stops after a long quiet.
 - **Caption colors**: system, terminal (green or amber), Solarized, subtitles, or your own; what was said and the Chinese in two colors.
 - **Interface in English, 繁體中文 and 简体中文**: follows the Mac, or chosen in Settings.
 
@@ -63,13 +65,16 @@ Replies, the summary and Fill In Missing Halves need a text model: the one chose
 |---|---|---|
 | Listen | Apple on-device recognition | Free; sound stays on the Mac |
 | Listen | Your own Whisper server | Free |
+| Listen | On this Mac: Parakeet + SenseVoice | Free; sound stays on the Mac |
 | Listen | OpenAI gpt-4o-mini-transcribe (sentence by sentence) | About US$0.18 an hour |
 | Listen | Gemini 3.5 Transcribe (sentence by sentence) | About US$0.30 an hour |
 | Listen | Gemini 3.5 Transcribe Live | About US$0.54 an hour |
 | Listen | OpenAI gpt-live-transcribe | About US$1.02 an hour |
 | Listen + translate | Gemini 3.5 Live Translate | About US$2.2 an hour |
 | Translate | Apple Translation, TranslateGemma 4B, Gemma 4 E4B / 12B, your own server | Free; text stays on your machines |
+| Translate | ChatGPT plan (gpt-6-luna) | Your ChatGPT plan's quota, no API cost |
 | Translate | Claude Haiku 5.5, OpenAI gpt-6-luna | About US$0.03 an hour |
+| Translate | Gemini 3.5 Live Translate following the captions | About US$2.2 an hour |
 | Translate | Gemini 3.5 Flash-Lite | About US$0.13 an hour |
 | Translate | Gemini 3.8 Flash (slow) | About US$0.25 an hour |
 | Translate | Claude Sonnet 5.5, OpenAI gpt-6.1-sol | About US$0.66 an hour |
@@ -82,7 +87,7 @@ Entirely free and offline: Apple recognition plus Apple Translation or Translate
 - **Caption text, script, glossary**: stay on the Mac with Apple Translation or Gemma; go to Anthropic or Google with Claude or Gemini.
 - **API keys**: in the macOS Keychain, never in a file.
 - **Saving**: off by default; when on, transcripts, summaries and recordings stay on your Mac. Other people's voices are kept: check that everyone agrees.
-- **Network**: only the services you choose; ollama.com when you set up a local model; GitHub when you press Check for Updates. No analytics, no ads.
+- **Network**: only the services you choose; ollama.com when you set up a local model; Hugging Face when you download the on-device recognition models; OpenAI when you sign in with ChatGPT; GitHub when you press Check for Updates. No analytics, no ads.
 
 ## Build from source
 
