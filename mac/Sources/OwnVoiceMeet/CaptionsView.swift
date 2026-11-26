@@ -42,6 +42,10 @@ struct CaptionsView: View {
                 }
                 .keyboardShortcut("l")
                 .tint(model.isListening ? .red : .accentColor)
+                if model.isListening {
+                    InputLevelBar()
+                    SegmentBadge()
+                }
                 Text(verbatim: model.status)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -90,6 +94,13 @@ struct CaptionsView: View {
         } message: {
             Text("The transcript starts a new section from here.")
         }
+        .alert("Rename segment", isPresented: Bindable(model).segmentRenamePrompt) {
+            TextField("Segment name", text: Bindable(model).segmentRenameDraft)
+            Button("Rename") { model.confirmRenameSegment() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The segment's transcript and recording take the new name.")
+        }
         .background(WindowLevel(floating: model.settings.alwaysOnTop))
     }
 }
@@ -120,6 +131,50 @@ struct CaptionRow: View {
         }
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// How loud the sound comes in while listening, a few times a second. Its own view, so only it is
+/// redrawn as the level changes.
+struct InputLevelBar: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let level = model.inputLevel
+        Capsule()
+            .fill(Color.secondary.opacity(0.25))
+            .frame(width: 44, height: 5)
+            .overlay(alignment: .leading) {
+                Capsule()
+                    .fill(level > 0.9 ? Color.orange : Color.green)
+                    .frame(width: 44 * level, height: 5)
+            }
+            .animation(.linear(duration: 0.1), value: level)
+            .help("Input level")
+    }
+}
+
+/// The segment going on now ("01 · Keynote"), red with a dot while the sound is recorded; a click
+/// renames it.
+struct SegmentBadge: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let title = SessionFiles.segmentTitle(model.segmentNumber - 1, model.segmentName)
+        let recording = model.recordingSound
+        Button {
+            model.askRenameSegment()
+        } label: {
+            Text(verbatim: recording ? "● " + title : title)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(recording ? Color.red : Color.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: 220, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .layoutPriority(1)
+        .help(recording ? LocalizedStringKey("Recording this segment. Click to rename it.") : LocalizedStringKey("The segment going on now. Click to rename it."))
     }
 }
 

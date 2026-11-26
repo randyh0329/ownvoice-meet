@@ -37,6 +37,7 @@ private struct ListenTranslateTab: View {
                 Picker("Sound", selection: $model.settings.input) {
                     ForEach(AudioInput.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
+                if model.settings.input == .microphone { MicrophoneRows() }
                 Picker("Recognition", selection: $model.settings.listen) {
                     ForEach(ListenOption.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
@@ -206,6 +207,7 @@ private struct SummarySavingTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            AgendaSection()
             Section("Saving") {
                 Picker("Keep", selection: $model.settings.saveMode) {
                     ForEach(SaveMode.allCases) { Text(verbatim: $0.label).tag($0) }
@@ -225,7 +227,7 @@ private struct SummarySavingTab: View {
                         Button("Use Documents") { model.settings.saveFolder = "" }
                     }
                 }
-                Text("Each session gets a folder with transcript.md and summary.md, and recording.m4a if chosen. Other people's voices are kept: check that everyone agrees.")
+                Text("Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -239,6 +241,67 @@ private struct SummarySavingTab: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         if panel.runModal() == .OK, let url = panel.url { model.settings.saveFolder = url.path }
+    }
+}
+
+/// Under Sound, for a talk in the room: which microphone, its gain, and the Microphone Check.
+private struct MicrophoneRows: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        let check = model.micCheck
+        let devices = InputDevices.all()
+        Picker("Microphone", selection: $model.settings.micDevice) {
+            Text("System default").tag("")
+            ForEach(devices) { Text(verbatim: $0.name).tag($0.uid) }
+            // One chosen before and unplugged now stays chosen (the default is used meanwhile).
+            if !model.settings.micDevice.isEmpty, !devices.contains(where: { $0.uid == model.settings.micDevice }) {
+                Text("Not connected (the default is used)").tag(model.settings.micDevice)
+            }
+        }
+        Picker("Gain", selection: $model.settings.micGain) {
+            ForEach(MicLevel.gains, id: \.self) { Text(verbatim: Self.gainLabel($0)).tag($0) }
+        }
+        HStack {
+            Button("Microphone Check (6 s)") {
+                Task { await check.run(device: model.settings.micDevice, gain: model.settings.micGain) }
+            }
+            .disabled(check.running || model.isListening)
+            if check.running {
+                ProgressView(value: check.level)
+                    .frame(width: 100)
+            }
+        }
+        if !check.result.isEmpty {
+            Text(verbatim: check.result)
+                .font(.caption)
+        }
+        Text("Check while the speaker or the room is talking: it uses the microphone and gain above. Raise the gain when you sit far from the speaker.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    /// "1× (as it comes)", "2×"…
+    private static func gainLabel(_ gain: Double) -> String {
+        let times = String(Int(gain))
+        return gain == 1 ? String(localized: "1× (as it comes)") : String(localized: "\(times)×")
+    }
+}
+
+/// The day's segments by name, taken in turn by New Segment.
+private struct AgendaSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        Section("Agenda") {
+            TextEditor(text: $model.settings.agenda)
+                .frame(minHeight: 70)
+            Text("Optional: one segment name per line, such as the day's sessions. Listening starts with the first; New Segment takes the next. Click the segment's name in the caption window to rename it.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

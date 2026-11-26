@@ -320,6 +320,14 @@ struct AppSettings: Codable, Equatable {
     var customBackground = "#0C0C0C"
     var customMonospaced = true
 
+    // MARK: A talk in the room
+    /// The microphone's Core Audio UID; empty = the Mac's default input.
+    var micDevice = ""
+    /// Software gain on the microphone (one of MicLevel.gains), before recognition and recording.
+    var micGain = 1.0
+    /// One segment name per line (optional): New Segment takes them in turn.
+    var agenda = ""
+
     init() {}
 
     /// Each field falls back to its default, so a setting added later keeps the others.
@@ -360,6 +368,10 @@ struct AppSettings: Codable, Equatable {
         customTranslation = (try? c.decodeIfPresent(String.self, forKey: .customTranslation)) ?? d.customTranslation
         customBackground = (try? c.decodeIfPresent(String.self, forKey: .customBackground)) ?? d.customBackground
         customMonospaced = (try? c.decodeIfPresent(Bool.self, forKey: .customMonospaced)) ?? d.customMonospaced
+        // MARK: A talk in the room
+        micDevice = (try? c.decodeIfPresent(String.self, forKey: .micDevice)) ?? d.micDevice
+        micGain = MicLevel.nearestGain((try? c.decodeIfPresent(Double.self, forKey: .micGain)) ?? d.micGain)
+        agenda = (try? c.decodeIfPresent(String.self, forKey: .agenda)) ?? d.agenda
     }
 
     /// Where sessions are saved.
