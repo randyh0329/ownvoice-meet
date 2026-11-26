@@ -194,7 +194,7 @@ enum GlobalShortcut: UInt32, CaseIterable {
         }
     }
 
-    static let modifiers: EventModifiers = [.control, .shift]
+    static let modifiers: SwiftUI.EventModifiers = [.control, .shift]
 
     var symbol: String {
         switch self {
