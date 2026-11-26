@@ -94,6 +94,7 @@ private struct ListenTranslateTab: View {
                     }
                 }
             }
+            ChatGPTSection()
             GemmaSection()
             SpeakersSection()
             Section("Glossary") {

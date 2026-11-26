@@ -669,3 +669,117 @@ final class SecondReviewTests: XCTestCase {
         XCTAssertEqual(book.lines.map(\.heard), ["three", "four"])
     }
 }
+
+final class ChatGPTPlanTests: XCTestCase {
+    func testTheResponsesRequestStoresNothingAndStreams() throws {
+        let data = try ChatGPTPlan.requestBody(model: "gpt-6-luna", effort: "none", system: "I", user: "U")
+        let v = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(v["store"] as? Bool, false)
+        XCTAssertEqual(v["stream"] as? Bool, true)
+        XCTAssertEqual(v["instructions"] as? String, "I")
+        XCTAssertEqual((v["reasoning"] as? [String: Any])?["effort"] as? String, "none")
+        XCTAssertEqual((v["input"] as? [[String: Any]])?.first?["content"] as? String, "U")
+        XCTAssertNil(v["temperature"])
+        XCTAssertNil(v["max_output_tokens"])
+        let plain = try JSONSerialization.jsonObject(with: ChatGPTPlan.requestBody(model: "m", effort: "", system: "I", user: "U")) as? [String: Any]
+        XCTAssertNil(plain?["reasoning"])
+    }
+
+    func testAResponsesStreamGivesTextAndUsage() throws {
+        var reply = StreamedReply(.responses)
+        XCTAssertTrue(try reply.read(#"data: {"type":"response.output_text.delta","delta":"你好"}"#))
+        XCTAssertFalse(try reply.read("event: response.completed"))
+        try reply.read(#"data: {"type":"response.completed","response":{"usage":{"input_tokens":120,"input_tokens_details":{"cached_tokens":20},"output_tokens":9}}}"#)
+        XCTAssertEqual(reply.text, "你好")
+        XCTAssertEqual(reply.tokens, Tokens(input: 100, cached: 20, output: 9))
+        XCTAssertTrue(reply.finished)
+        XCTAssertFalse(reply.truncated)
+    }
+
+    func testPlanFailuresSayWhatHappened() {
+        var reply = StreamedReply(.responses)
+        let failed = #"data: {"type":"response.failed","response":{"error":{"code":"subscription_sharing_usage_limit_exceeded","message":"limit"}}}"#
+        XCTAssertThrowsError(try reply.read(failed)) { XCTAssertEqual($0 as? ChatGPTPlan.Failure, .quotaUsedUp) }
+        XCTAssertThrowsError(try reply.read(#"data: {"type":"response.incomplete"}"#)) { XCTAssertEqual($0 as? ChatGPTPlan.Failure, .incomplete) }
+        XCTAssertThrowsError(try reply.read(#"data: {"type":"error","code":"server_error","message":"oops"}"#)) {
+            XCTAssertEqual($0 as? ChatGPTPlan.Failure, .other(status: 0, code: "server_error", message: "oops"))
+        }
+        XCTAssertEqual(ChatGPTPlan.failure(status: 403, body: Data(#"{"error":{"code":"subscription_sharing_user_not_eligible","message":"x"}}"#.utf8)), .notEligible)
+        XCTAssertEqual(ChatGPTPlan.failure(status: 429, body: Data(#"{"error":{"code":"subscription_sharing_usage_limit_exceeded"}}"#.utf8)), .quotaUsedUp)
+        XCTAssertEqual(ChatGPTPlan.failure(status: 401, body: Data()), .signedOut)
+        XCTAssertEqual(ChatGPTPlan.failure(status: 500, body: Data("busy".utf8)), .other(status: 500, code: "", message: "busy"))
+    }
+
+    func testPKCEChallengeIsBase64URLOfTheSHA256() {
+        // SHA-256 of the RFC 7636 example verifier "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wWlW-Mo2ytwI".
+        let hex = "82b39e6643578c2a024e2793a33cc033690774e58fefb1d49bea69d0e2517fbb"
+        var digest = Data()
+        var i = hex.startIndex
+        while i < hex.endIndex {
+            let j = hex.index(i, offsetBy: 2)
+            digest.append(UInt8(hex[i..<j], radix: 16)!)
+            i = j
+        }
+        XCTAssertEqual(ChatGPTPlan.base64URL(digest), "grOeZkNXjCoCTieTozzAM2kHdOWP77HUm-pp0OJRf7s")
+        let token = ChatGPTPlan.randomToken()
+        XCTAssertEqual(token.count, 43)
+        XCTAssertNotEqual(token, ChatGPTPlan.randomToken())
+        XCTAssertTrue(ChatGPTPlan.form([("a", "b c"), ("r", "http://127.0.0.1:1/x")]).contains("r=http%3A%2F%2F127.0.0.1%3A1%2Fx"))
+    }
+
+    func testTheSignInAddressCarriesTheProtocol() throws {
+        let url = ChatGPTPlan.authorizeURL(endpoint: URL(string: "https://auth.openai.com/oauth/authorize")!, clientID: nil,
+                                           redirect: ChatGPTPlan.redirect(port: 54321), state: "s1", nonce: "n1", challenge: "c1")
+        let q = ChatGPTPlan.formValues(try XCTUnwrap(url.query))
+        XCTAssertEqual(q["client_id"], "dynamic_agent_client")
+        XCTAssertEqual(q["redirect_uri"], "http://127.0.0.1:54321/auth/callback")
+        XCTAssertEqual(q["scope"], ChatGPTPlan.scopes)
+        XCTAssertEqual(q["resource"], "https://api.openai.com/v1")
+        XCTAssertEqual(q["code_challenge_method"], "S256")
+        XCTAssertEqual(q["code_challenge"], "c1")
+        XCTAssertEqual(q["agent_name_hint"], "OwnVoice Meet")
+        let again = ChatGPTPlan.authorizeURL(endpoint: URL(string: "https://auth.openai.com/oauth/authorize")!, clientID: "app_1",
+                                             redirect: "r", state: "s", nonce: "n", challenge: "c")
+        XCTAssertEqual(ChatGPTPlan.formValues(again.query ?? "")["client_id"], "app_1")
+        XCTAssertNil(ChatGPTPlan.formValues(again.query ?? "")["agent_name_hint"])
+        let exchange = ChatGPTPlan.formValues(String(decoding: ChatGPTPlan.codeExchange(clientID: "app_1", code: "k", verifier: "v", redirect: "http://127.0.0.1:1/auth/callback"), as: UTF8.self))
+        XCTAssertEqual(exchange["grant_type"], "authorization_code")
+        XCTAssertEqual(exchange["code_verifier"], "v")
+        XCTAssertEqual(exchange["redirect_uri"], "http://127.0.0.1:1/auth/callback")
+    }
+
+    func testDiscoveryOnlyTrustsTheIssuer() throws {
+        let good = #"{"authorization_endpoint":"https://auth.openai.com/oauth/authorize","token_endpoint":"https://auth.openai.com/oauth/token"}"#
+        XCTAssertEqual(try ChatGPTPlan.endpoints(Data(good.utf8)).token.absoluteString, "https://auth.openai.com/oauth/token")
+        let bad = #"{"authorization_endpoint":"https://evil.example/a","token_endpoint":"https://auth.openai.com/oauth/token"}"#
+        XCTAssertThrowsError(try ChatGPTPlan.endpoints(Data(bad.utf8)))
+    }
+
+    func testTheBrowsersReturnIsChecked() {
+        XCTAssertEqual(ChatGPTPlan.callback(requestLine: "GET /auth/callback?code=abc&state=s1&client_id=app_9 HTTP/1.1", state: "s1"), .code("abc", clientID: "app_9"))
+        XCTAssertEqual(ChatGPTPlan.callback(requestLine: "GET /auth/callback?code=abc&state=s2 HTTP/1.1", state: "s1"), .mismatch)
+        XCTAssertEqual(ChatGPTPlan.callback(requestLine: "GET /favicon.ico HTTP/1.1", state: "s1"), .elsewhere)
+        XCTAssertEqual(ChatGPTPlan.callback(requestLine: "GET /auth/callback?error=access_denied&error_description=user+said+no&state=s1 HTTP/1.1", state: "s1"), .denied("access_denied user said no"))
+    }
+
+    func testTokensBecomeAConnection() throws {
+        let payload = ChatGPTPlan.base64URL(Data(#"{"email":"a@b.c","nonce":"n1"}"#.utf8))
+        let claims = ChatGPTPlan.idClaims("h." + payload + ".s")
+        XCTAssertEqual(claims["email"] as? String, "a@b.c")
+        XCTAssertEqual(claims["nonce"] as? String, "n1")
+        XCTAssertTrue(ChatGPTPlan.idClaims("garbage").isEmpty)
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let body = #"{"access_token":"A","refresh_token":"R","expires_in":3600,"scope":"openid chatgpt.tokens.use.direct","id_token":"h.\#(payload).s"}"#
+        let c = try ChatGPTPlan.connection(tokenResponse: Data(body.utf8), clientID: "app_1", now: now)
+        XCTAssertEqual(c, ChatGPTPlan.Connection(clientID: "app_1", access: "A", refresh: "R", expiresAt: now.addingTimeInterval(3600), scopes: ["openid", "chatgpt.tokens.use.direct"], email: "a@b.c"))
+        XCTAssertTrue(c.planAllowed)
+        XCTAssertFalse(c.isExpired(now: now))
+        XCTAssertTrue(c.isExpired(now: now.addingTimeInterval(3550)))
+        // A refresh that leaves out the refresh token, scopes and ID token keeps the old ones.
+        let fresh = try ChatGPTPlan.connection(tokenResponse: Data(#"{"access_token":"B","expires_in":60}"#.utf8), clientID: "app_1", previous: c, now: now)
+        XCTAssertEqual([fresh.access, fresh.refresh, fresh.email], ["B", "R", "a@b.c"])
+        XCTAssertEqual(fresh.scopes, c.scopes)
+        XCTAssertEqual(ChatGPTPlan.tokenError(Data(#"{"error":"invalid_grant","error_description":"expired"}"#.utf8), status: 400), "400: expired")
+        XCTAssertEqual(Pricing.price("chatgpt-luna"), .free)
+    }
+}

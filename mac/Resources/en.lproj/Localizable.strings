@@ -33,6 +33,12 @@
 "Captions" = "Captions";
 "Captions appear here: what is said, and its Chinese under it." = "Captions appear here: what is said, and its Chinese under it.";
 "Captions do not use the translation model with this recognition; replies and the summary still do." = "Captions do not use the translation model with this recognition; replies and the summary still do.";
+"ChatGPT did not complete the sign-in; try again." = "ChatGPT did not complete the sign-in; try again.";
+"ChatGPT did not finish this line." = "ChatGPT did not finish this line.";
+"ChatGPT plan" = "ChatGPT plan";
+"ChatGPT plan (gpt-6-luna)" = "ChatGPT plan (gpt-6-luna)";
+"ChatGPT plan (gpt-6-luna, no API key)" = "ChatGPT plan (gpt-6-luna, no API key)";
+"ChatGPT sent no identity data; sign in again." = "ChatGPT sent no identity data; sign in again.";
 "Check Again" = "Check Again";
 "Check Apple Translation" = "Check Apple Translation";
 "Check for Updates" = "Check for Updates";
@@ -46,6 +52,10 @@
 "Claude Sonnet 5.5 (about US$0.66 an hour)" = "Claude Sonnet 5.5 (about US$0.66 an hour)";
 "Clear Captions" = "Clear Captions";
 "Colors" = "Colors";
+"Connected to ChatGPT as %@." = "Connected to ChatGPT as %@.";
+"Connected to ChatGPT." = "Connected to ChatGPT.";
+"Connected to ChatGPT. You can close this tab and go back to OwnVoice Meet." = "Connected to ChatGPT. You can close this tab and go back to OwnVoice Meet.";
+"Continue with ChatGPT" = "Continue with ChatGPT";
 "Copy" = "Copy";
 "Could not listen to the Mac's sound (error %@): allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "Could not listen to the Mac's sound (error %@): allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
 "Could not make the session folder: %@" = "Could not make the session folder: %@";
@@ -76,6 +86,7 @@
 "Fill In Missing Halves" = "Fill In Missing Halves";
 "Filled in %@ lines." = "Filled in %@ lines.";
 "Filling in %@ lines with %@…" = "Filling in %@ lines with %@…";
+"Finish signing in in the browser…" = "Finish signing in in the browser…";
 "Folder" = "Folder";
 "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated." = "For a room with bad internet: the sound is kept in full on the Mac (turn on saving with the recording), nothing is recognized or translated.";
 "French" = "French";
@@ -146,6 +157,7 @@
 "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other." = "No script yet. Press Edit to write one, Open… to read a .md file, or Insert Template to start from an example. Write only one language: Fill In Missing Halves adds the other.";
 "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it." = "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.";
 "No sound output device found." = "No sound output device found.";
+"Not connected to ChatGPT yet: press Continue with ChatGPT in Settings → Listen & Translate." = "Not connected to ChatGPT yet: press Continue with ChatGPT in Settings → Listen & Translate.";
 "Not downloaded yet: open Language & Region → Translation Languages and download both languages." = "Not downloaded yet: open Language & Region → Translation Languages and download both languages.";
 "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops." = "Nothing is summarized until you press Update Now in the Summary window, not even when listening stops.";
 "Nothing to summarize yet." = "Nothing to summarize yet.";
@@ -170,6 +182,7 @@
 "OpenAI gpt-6.1-sol (about US$0.66 an hour)" = "OpenAI gpt-6.1-sol (about US$0.66 an hour)";
 "OpenAI gpt-live-transcribe (about US$1.02 an hour)" = "OpenAI gpt-live-transcribe (about US$1.02 an hour)";
 "OpenAI refused the connection: %@" = "OpenAI refused the connection: %@";
+"OpenAI's Sign in with ChatGPT, still in preview. Text only: recognition still needs its own option. It shares your plan's quota with ChatGPT and Codex (see chatgpt.com → Settings → Usage); free accounts can't use it, and a Business account needs its admin to allow it. Each line comes about 1 second later than with an API key." = "OpenAI's Sign in with ChatGPT, still in preview. Text only: recognition still needs its own option. It shares your plan's quota with ChatGPT and Codex (see chatgpt.com → Settings → Usage); free accounts can't use it, and a Business account needs its admin to allow it. Each line comes about 1 second later than with an API key.";
 "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key." = "OpenAI's live transcription, gray text while someone speaks; only speech is sent. Needs an OpenAI API key.";
 "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key." = "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key.";
 "Open…" = "Open…";
@@ -206,6 +219,12 @@
 "Set Up a Local Model (Free, Offline)…" = "Set Up a Local Model (Free, Offline)…";
 "Settings" = "Settings";
 "Show in Finder" = "Show in Finder";
+"Sign Out of ChatGPT" = "Sign Out of ChatGPT";
+"Sign-in failed: the reply did not match. Go back to OwnVoice Meet and try again." = "Sign-in failed: the reply did not match. Go back to OwnVoice Meet and try again.";
+"Sign-in was not completed (%@)." = "Sign-in was not completed (%@).";
+"Sign-in was not completed. You can close this tab." = "Sign-in was not completed. You can close this tab.";
+"Sign-in was not finished within 5 minutes." = "Sign-in was not finished within 5 minutes.";
+"Signing out forgets the connection on this Mac; to disconnect the app itself, go to ChatGPT → Settings → Security → Sign in with ChatGPT." = "Signing out forgets the connection on this Mac; to disconnect the app itself, go to ChatGPT → Settings → Security → Sign in with ChatGPT.";
 "Solarized" = "Solarized";
 "Someone is speaking: recognition is back on." = "Someone is speaking: recognition is back on.";
 "Sound" = "Sound";
@@ -241,6 +260,10 @@
 "Terminal (green)" = "Terminal (green)";
 "Text size" = "Text size";
 "Thai" = "Thai";
+"The ChatGPT plan's usage limit is reached: see chatgpt.com/settings/usage, or use an API key for now." = "The ChatGPT plan's usage limit is reached: see chatgpt.com/settings/usage, or use an API key for now.";
+"The ChatGPT sign-in has expired; sign in again in Settings (%@)." = "The ChatGPT sign-in has expired; sign in again in Settings (%@).";
+"The ChatGPT sign-in has expired; sign in again in Settings." = "The ChatGPT sign-in has expired; sign in again in Settings.";
+"The ChatGPT sign-in reply did not match; sign in again." = "The ChatGPT sign-in reply did not match; sign in again.";
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
@@ -259,9 +282,11 @@
 "The voice models could not be downloaded." = "The voice models could not be downloaded.";
 "The voice models could not be loaded; speakers are not told apart." = "The voice models could not be loaded; speakers are not told apart.";
 "Theme" = "Theme";
+"This ChatGPT account can't use its plan here (it needs Go, Plus, Pro or Business; a company account needs its admin to allow it). Use an API key instead." = "This ChatGPT account can't use its plan here (it needs Go, Plus, Pro or Business; a company account needs its admin to allow it). Use an API key instead.";
 "This fork: randyh0329/ownvoice-meet" = "This fork: randyh0329/ownvoice-meet";
 "This month" = "This month";
 "This session" = "This session";
+"This sign-in did not allow using your ChatGPT plan; sign in again in Settings." = "This sign-in did not allow using your ChatGPT plan; sign in again in Settings.";
 "Total" = "Total";
 "Transcript" = "Transcript";
 "Transcript and summary" = "Transcript and summary";
@@ -290,6 +315,7 @@
 "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving." = "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.";
 "Who is speaking now: new lines get this name. Right-click a line to change its speaker." = "Who is speaking now: new lines get this name. Right-click a line to change its speaker.";
 "Writing the meeting summary with %@…" = "Writing the meeting summary with %@…";
+"Your ChatGPT plan (Go, Plus, Pro or Business) pays instead of an API key: press Continue with ChatGPT below and agree in the browser. Captions, replies, the summary and 補對照 then use it. About 1 second slower than an API key." = "Your ChatGPT plan (Go, Plus, Pro or Business) pays instead of an API key: press Continue with ChatGPT below and agree in the browser. Captions, replies, the summary and 補對照 then use it. About 1 second slower than an API key.";
 "Your Whisper server: fill in its address in Settings first." = "Your Whisper server: fill in its address in Settings first.";
 "Your own Whisper server (OpenAI-compatible, free)" = "Your own Whisper server (OpenAI-compatible, free)";
 "Your own server" = "Your own server";

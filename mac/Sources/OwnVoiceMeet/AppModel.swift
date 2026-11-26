@@ -29,6 +29,7 @@ final class AppModel {
     // Settings window
     var settingsTab: SettingsTab = .listen
     let gemma = GemmaSetup()
+    let chatGPT = ChatGPTSignIn()
     var appleCheck = ""
     var geminiKeyDraft = Keychain.get("gemini") ?? ""
     var anthropicKeyDraft = Keychain.get("anthropic") ?? ""

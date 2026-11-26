@@ -1,6 +1,6 @@
 // The text models behind captions, replies, the summary and 補對照, streamed: Claude through
 // Anthropic's Messages API; OpenAI, Gemini (its OpenAI-compatible endpoint), Ollama on this Mac and
-// the user's own server through Chat Completions. `onText` gets the whole text so far as it grows;
+// the user's own server through Chat Completions; the ChatGPT plan through the Responses API. `onText` gets the whole text so far as it grows;
 // the reply carries the tokens used.
 
 import Foundation
@@ -21,6 +21,8 @@ protocol TextModel: Sendable {
 
 enum Provider {
     case anthropic, openai, gemini, ollama, local
+    /// Sign in with ChatGPT: the user's plan, no key (ChatGPTSignIn.swift).
+    case chatgpt
 }
 
 /// One text model: who serves it, its name there, the lowest thinking setting it takes.
@@ -49,6 +51,8 @@ struct ModelSpec {
     static let gemma = ModelSpec(id: "gemma4-e4b", name: "Gemma 4 E4B", provider: .ollama, apiModel: "gemma4:e4b", effort: "none")
     static let gemma12 = ModelSpec(id: "gemma4-12b", name: "Gemma 4 12B", provider: .ollama, apiModel: "gemma4:12b", effort: "none")
     static let translateGemma = ModelSpec(id: "translategemma-4b", name: "TranslateGemma 4B", provider: .ollama, apiModel: "translategemma:4b", effort: "")
+    // gpt-6-luna on the user's ChatGPT plan; the pricing id counts it as free (the plan pays).
+    static let chatgpt = ModelSpec(id: "chatgpt-luna", name: String(localized: "ChatGPT plan (gpt-6-luna)"), provider: .chatgpt, apiModel: "gpt-6-luna", effort: "none")
 }
 
 extension TranslateOption {
@@ -59,6 +63,7 @@ extension TranslateOption {
         case .haiku: .haiku
         case .sonnet: .sonnet
         case .luna: .luna
+        case .chatgpt: .chatgpt
         case .sol: .sol
         case .geminiFlashLite: .flashLite
         case .geminiFlash: .flash
@@ -78,12 +83,13 @@ func makeSummaryModel(_ choice: SummaryModelChoice, _ s: AppSettings) throws -> 
 
 /// The model for text jobs (replies, the summary, 補對照, and captions with a text model). Under 翻,
 /// a text model is itself; with Apple Translation or TranslateGemma (which only translate caption
-/// lines) it is the first model there is a key for, else Gemma 4 E4B in Ollama.
+/// lines) it is the first model there is a key (or a ChatGPT sign-in) for, else Gemma 4 E4B in Ollama.
 func makeTextModel(_ s: AppSettings) throws -> TextModel {
     if let spec = s.translate.textModel { return try makeModel(spec, s) }
     if Keychain.get("anthropic") != nil { return try makeModel(.haiku, s) }
     if Keychain.get("gemini") != nil { return try makeModel(.flashLite, s) }
     if Keychain.get("openai") != nil { return try makeModel(.luna, s) }
+    if ChatGPTStore.load() != nil { return try makeModel(.chatgpt, s) }
     return try makeModel(.gemma, s)
 }
 
@@ -107,6 +113,9 @@ func makeModel(_ spec: ModelSpec, _ s: AppSettings) throws -> TextModel {
             throw AppError(String(localized: "Your own server: fill in its address and model name in Settings first."))
         }
         return ChatModel(id: spec.id, url: url, key: Keychain.get("local"), model: s.localServerModel.trimmingCharacters(in: .whitespaces), effort: "", name: spec.name)
+    case .chatgpt:
+        guard ChatGPTStore.load() != nil else { throw AppError(ChatGPTPlan.Failure.notConnectedMessage) }
+        return ChatGPTPlanModel(id: spec.id, model: spec.apiModel, effort: spec.effort, name: spec.name)
     }
 }
 
@@ -148,6 +157,31 @@ struct ChatModel: TextModel {
             return try await read(req, format: .chat, failure: Requests.chatText, onText: onText)
         } catch let error as URLError where url == Requests.ollamaURL && error.code == .cannotConnectToHost {
             throw AppError(String(localized: "Gemma 4 is not set up yet: Settings → Listen & Translate → Set Up Gemma 4."))
+        }
+    }
+}
+
+/// The ChatGPT plan through the Responses API (Sign in with ChatGPT): the access token is fetched,
+/// and refreshed when it is about to expire, for each request. The plan takes no output limit, so
+/// `maxTokens` is not sent; a refusal is put into words the user can act on.
+struct ChatGPTPlanModel: TextModel {
+    let id: String
+    let model: String
+    let effort: String
+    let name: String
+
+    func stream(system: String, user: String, script: String, maxTokens: Int, onText: @escaping @Sendable (String) -> Void) async throws -> ModelReply {
+        let token = try await ChatGPTTokens.shared.access()
+        var req = URLRequest(url: ChatGPTPlan.responsesURL, timeoutInterval: 120)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "content-type")
+        req.setValue("text/event-stream", forHTTPHeaderField: "accept")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "authorization")
+        req.httpBody = try ChatGPTPlan.requestBody(model: model, effort: effort, system: system, user: user, script: script)
+        do {
+            return try await read(req, format: .responses, failure: { data, status in throw ChatGPTPlan.failure(status: status, body: data) }, onText: onText)
+        } catch let failure as ChatGPTPlan.Failure {
+            throw AppError(failure.message)
         }
     }
 }

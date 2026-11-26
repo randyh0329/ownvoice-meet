@@ -46,6 +46,8 @@ public enum Pricing {
         case "gpt-6.1-sol": .perMillionTokens(input: 2.00, cached: 0.10, output: 10.00)
         case "gemini-3.5-flash-lite": .perMillionTokens(input: 0.30, cached: 0.03, output: 2.50)
         case "gemini-3.8-flash": .perMillionTokens(input: 0.75, cached: 0.075, output: 3.75)
+        // Sign in with ChatGPT: counted in the user's ChatGPT plan, nothing billed through the app.
+        case "chatgpt-luna": .free
         default: .free
         }
     }

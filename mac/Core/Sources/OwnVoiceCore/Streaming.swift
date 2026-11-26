@@ -2,7 +2,9 @@
 // (content_block_delta text) and Chat Completions (choices[0].delta.content, ending with [DONE]),
 // which Gemini's OpenAI-compatible endpoint, Ollama and OpenAI all send. Gemini puts its usage in
 // the chunk with the last text, so one line can carry two events; Gemini's own format
-// (candidates, usageMetadata) is read too.
+// (candidates, usageMetadata) is read too. The Responses API (the ChatGPT plan, ChatGPTPlan.swift)
+// sends response.output_text.delta, then response.completed with the usage; its failures are thrown
+// as ChatGPTPlan.Failure.
 //
 // Usage: Anthropic's cache writes (cache_creation_input_tokens) count as input, since the prices
 // have no rate of their own for them (a write costs a little more than input, so the total runs
@@ -24,6 +26,7 @@ public enum Streaming {
     public enum Format: Sendable {
         case anthropic
         case chat
+        case responses
     }
 
     /// The first event of a Messages API line (see `events` for all of them).
@@ -42,6 +45,7 @@ public enum Streaming {
         switch format {
         case .anthropic: anthropicEvents(line)
         case .chat: chatEvents(line)
+        case .responses: responsesEvents(line)
         }
     }
 
@@ -56,6 +60,9 @@ public enum Streaming {
         case .chat:
             if let r = (v["choices"] as? [[String: Any]])?.first?["finish_reason"] as? String { return r }
             return (v["candidates"] as? [[String: Any]])?.first?["finishReason"] as? String
+        case .responses:
+            // An unfinished reply is a failure of its own (ChatGPTPlan.streamFailure).
+            return nil
         }
     }
 
@@ -122,6 +129,23 @@ public enum Streaming {
         return events
     }
 
+    /// The Responses API: text deltas, and the usage once the response is complete (its input
+    /// tokens include the cached ones). Failures are read by ChatGPTPlan.streamFailure.
+    static func responsesEvents(_ line: String) -> [StreamEvent] {
+        guard let v = object(line) else { return [] }
+        switch v["type"] as? String {
+        case "response.output_text.delta":
+            guard let d = v["delta"] as? String, !d.isEmpty else { return [] }
+            return [.text(d)]
+        case "response.completed":
+            let u = (v["response"] as? [String: Any])?["usage"] as? [String: Any]
+            let cached = n(u?["input_tokens_details"] as? [String: Any], "cached_tokens")
+            return [.usage(Tokens(input: max(0, n(u, "input_tokens") - cached), cached: cached, output: n(u, "output_tokens"))), .done]
+        default:
+            return []
+        }
+    }
+
     static func n(_ d: [String: Any]?, _ k: String) -> Int {
         (d?[k] as? NSNumber)?.intValue ?? 0
     }
@@ -151,9 +175,11 @@ public struct StreamedReply: Equatable, Sendable {
         self.format = format
     }
 
-    /// Reads one line. Returns whether the text grew; throws the service's error.
+    /// Reads one line. Returns whether the text grew; throws the service's error (a
+    /// ChatGPTPlan.Failure for the Responses API).
     @discardableResult
     public mutating func read(_ line: String) throws -> Bool {
+        if format == .responses, let failure = ChatGPTPlan.streamFailure(line) { throw failure }
         if let reason = Streaming.stopReason(line, format: format) { stopReason = reason }
         var grew = false
         for event in Streaming.events(line, format: format) {

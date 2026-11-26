@@ -56,6 +56,8 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
     case haiku = "claude-haiku-5-5"
     case sonnet = "claude-sonnet-5-5"
     case luna = "gpt-6-luna"
+    /// gpt-6-luna on the user's ChatGPT plan, no key (Sign in with ChatGPT, ChatGPTSignIn.swift).
+    case chatgpt = "chatgpt-luna"
     case sol = "gpt-6.1-sol"
     case geminiFlashLite = "gemini-3.5-flash-lite"
     case geminiFlash = "gemini-3.8-flash"
@@ -72,6 +74,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .haiku: String(localized: "Claude Haiku 5.5 (about US$0.03 an hour)")
         case .sonnet: String(localized: "Claude Sonnet 5.5 (about US$0.66 an hour)")
         case .luna: String(localized: "OpenAI gpt-6-luna (about US$0.03 an hour)")
+        case .chatgpt: String(localized: "ChatGPT plan (gpt-6-luna, no API key)")
         case .sol: String(localized: "OpenAI gpt-6.1-sol (about US$0.66 an hour)")
         case .geminiFlashLite: String(localized: "Gemini 3.5 Flash-Lite (about US$0.13 an hour)")
         case .geminiFlash: String(localized: "Gemini 3.8 Flash (about US$0.25 an hour, slow)")
@@ -88,6 +91,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .haiku: String(localized: "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key.")
         case .sonnet: String(localized: "Stronger wording and judgment than Haiku, slower, about 20 times the price; captions rarely need it. Needs an Anthropic API key.")
         case .luna: String(localized: "The same price as Haiku; its speed varies more. Needs an OpenAI API key.")
+        case .chatgpt: String(localized: "Your ChatGPT plan (Go, Plus, Pro or Business) pays instead of an API key: press Continue with ChatGPT below and agree in the browser. Captions, replies, the summary and 補對照 then use it. About 1 second slower than an API key.")
         case .sol: String(localized: "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key.")
         case .geminiFlashLite: String(localized: "Uses the earlier lines and the glossary; shares the key with Gemini recognition.")
         case .geminiFlash: String(localized: "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key.")
@@ -113,6 +117,8 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
 enum SummaryModelChoice: String, CaseIterable, Codable, Identifiable {
     case auto
     case haiku, sonnet, opus, fable, luna, sol, flashLite, flash, gemma, gemma12, local
+    /// The ChatGPT plan (Sign in with ChatGPT).
+    case chatgpt
 
     var id: String { rawValue }
 
@@ -130,6 +136,7 @@ enum SummaryModelChoice: String, CaseIterable, Codable, Identifiable {
         case .gemma: .gemma
         case .gemma12: .gemma12
         case .local: TranslateOption.localServer.textModel
+        case .chatgpt: .chatgpt
         }
     }
 
