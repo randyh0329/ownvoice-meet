@@ -33,6 +33,9 @@ public struct CaptionBook: Sendable {
 
     public init() {}
 
+    /// The line of the sentence still going on (partial), if any.
+    public var speakingLine: Int? { openID }
+
     /// What has been heard of the sentence still going on. Returns its line.
     @discardableResult
     public mutating func partial(_ text: String) -> Int? {

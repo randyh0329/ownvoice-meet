@@ -21,6 +21,7 @@ func makeTranslator(_ s: AppSettings, script: String, onUsage: @escaping UsageRe
     case .translateGemma:
         return TranslateGemmaTranslator(model: try makeModel(.translateGemma, s), source: s.meetingLanguage, chinese: s.chinese)
     default:
+        // A text model; with Live Translate, the one for the lines it brings no Chinese for.
         return ModelTranslator(model: try makeTextModel(s), glossary: s.glossary, script: script, chinese: s.chinese, onUsage: onUsage)
     }
 }

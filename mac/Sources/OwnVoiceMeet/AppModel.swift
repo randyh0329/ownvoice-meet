@@ -101,6 +101,8 @@ final class AppModel {
     private var source: AudioSource?
     private var recognizer: Recognizer?
     private var translator: Translator?
+    /// Live Translate chosen under Translation: it hears the same sound and brings the lines' Chinese.
+    private var follower: LiveTranslateFollower?
     private(set) var record: SessionRecord?
     private var gate: QuietGate?
     /// When the live summary was last brought up to date (or the session started).
@@ -139,6 +141,7 @@ final class AppModel {
         }
         let s = settings
         let recognizer: Recognizer?
+        let follower: LiveTranslateFollower?
         do {
             // Live Translate translates itself; record-only translates nothing.
             let translatesItself = s.listen == .geminiLiveTranslate || s.listen == .recordOnly
@@ -146,6 +149,9 @@ final class AppModel {
                 Task { @MainActor in self.addTokens(model, tokens) }
             }
             recognizer = try makeRecognizer(s)
+            // Live Translate under Translation hears the same sound (not with a recognition that translates itself).
+            let follows = s.translate == .geminiLiveTranslate && !translatesItself
+            follower = follows ? try makeFollower(s) : nil
             record = try SessionRecord(settings: s, recognition: s.listen.label, translation: translatesItself ? s.listen.label : s.translate.label, keepSound: s.listen == .recordOnly)
             record?.speakerNames = s.speakerNames
         } catch {
@@ -153,6 +159,7 @@ final class AppModel {
             return
         }
         self.recognizer = recognizer
+        self.follower = follower
         sessionListen = s.listen
         isListening = true
         generation += 1
@@ -188,6 +195,7 @@ final class AppModel {
                 self.status = String(localized: "No sound from the Mac yet. Play something; if it stays silent, allow OwnVoice Meet in System Settings → Privacy & Security → Screen & System Audio Recording (System Audio Recording Only), then quit and reopen it.")
             }
         } : nil
+        follower?.start()
         Task {
             do {
                 try await recognizer?.start { event in
@@ -209,7 +217,10 @@ final class AppModel {
                 self.detector = detector
                 try await source.start { buffer in
                     silence?.feed(buffer)
-                    if gate.admit(buffer) { recognizer?.feed(buffer) }
+                    if gate.admit(buffer) {
+                        recognizer?.feed(buffer)
+                        follower?.feed(buffer)
+                    }
                     detector?.feed(buffer)
                     recorder?.write(buffer)
                 }
@@ -485,6 +496,9 @@ final class AppModel {
         source = nil
         await recognizer?.stop()
         recognizer = nil
+        // After the recognizer: its last line still gets Live Translate's Chinese.
+        await follower?.stop()
+        follower = nil
         // The stretch still going on is printed; lines waiting for their voice keep the detector.
         detector?.finish()
         detector = nil
@@ -532,7 +546,7 @@ final class AppModel {
                     status = String(localized: "Someone is speaking: recognition is back on.")
                 }
                 let quiet = gate.quietFor
-                if s.listen.isCloud, s.pauseWhenQuiet, quiet >= 60, !gate.isPaused {
+                if s.listen.isCloud || follower != nil, s.pauseWhenQuiet, quiet >= 60, !gate.isPaused {
                     gate.pause()
                     status = String(localized: "Quiet: recognition paused (nothing is billed); it comes back when someone speaks.")
                 }
@@ -560,13 +574,19 @@ final class AppModel {
             if let id = book.partial(text) {
                 record?.opened(id, speaker: book.line(id)?.speaker)
                 heardFrom(id)
+                FollowingState.shared.lineOpened(id)
             }
         case .final(let text):
+            let speaking = book.speakingLine
             if let id = book.finish(text) {
                 record?.opened(id, speaker: book.line(id)?.speaker)
                 record?.finished(id, heard: book.heard(id) ?? text)
                 heardTo(id)
-                translate(id)
+                // Live Translate, hearing the same sound, brings this line's Chinese when it heard all of it.
+                FollowingState.shared.lineOpened(id)
+                if !FollowingState.shared.lineEnded(id, book.heard(id) ?? text) { translate(id) }
+            } else if let speaking {
+                FollowingState.shared.lineDropped(speaking)
             }
         case .status(let message):
             status = message
@@ -596,6 +616,27 @@ final class AppModel {
             }
         case .lineDropped(let n):
             if let id = interpLines.removeValue(forKey: n) { book.removeLine(id) }
+        }
+    }
+
+    /// Live Translate following the captions (LiveTranslateFollower.swift): a line's Chinese, a line
+    /// it leaves to the text model, what it says of its connection, the sound it was sent.
+    func followed(_ event: FollowEvent) {
+        switch event {
+        case let .translated(id, text, done):
+            let zh = settings.chinese.fix(text)
+            // Kept after done: Chinese that comes after a line is complete still joins it.
+            book.setTranslation(zh, for: id)
+            if done {
+                translated.insert(id)
+                record?.translated(id, zh)
+            }
+        case .untranslated(let id):
+            translate(id)
+        case .status(let message):
+            if isListening { status = message }
+        case .audio(let seconds):
+            addAudio(TranslateOption.geminiLiveTranslate.rawValue, seconds)
         }
     }
 

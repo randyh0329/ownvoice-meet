@@ -59,6 +59,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
     case sol = "gpt-6.1-sol"
     case geminiFlashLite = "gemini-3.5-flash-lite"
     case geminiFlash = "gemini-3.8-flash"
+    case geminiLiveTranslate = "gemini-live-translate"
     case gemma = "gemma4-e4b"
     case gemma12 = "gemma4-12b"
     case translateGemma = "translategemma-4b"
@@ -75,6 +76,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .sol: String(localized: "OpenAI gpt-6.1-sol (about US$0.66 an hour)")
         case .geminiFlashLite: String(localized: "Gemini 3.5 Flash-Lite (about US$0.13 an hour)")
         case .geminiFlash: String(localized: "Gemini 3.8 Flash (about US$0.25 an hour, slow)")
+        case .geminiLiveTranslate: String(localized: "Gemini 3.5 Live Translate, follows the captions (about US$2.2 an hour)")
         case .gemma: String(localized: "Gemma 4 E4B (local Ollama, free)")
         case .gemma12: String(localized: "Gemma 4 12B (local Ollama, free, needs 16 GB)")
         case .translateGemma: String(localized: "TranslateGemma 4B (local Ollama, free, translation only)")
@@ -91,6 +93,7 @@ enum TranslateOption: String, CaseIterable, Codable, Identifiable {
         case .sol: String(localized: "OpenAI's mid tier: stronger, about 20 times the price of luna. Needs an OpenAI API key.")
         case .geminiFlashLite: String(localized: "Uses the earlier lines and the glossary; shares the key with Gemini recognition.")
         case .geminiFlash: String(localized: "Google's newest Flash; 4–7 seconds a sentence (its thinking cannot be turned off), too slow for live captions. Needs a Gemini API key.")
+        case .geminiLiveTranslate: String(localized: "Google's interpreter model hears the same sound as the recognition chosen above and gives the Chinese for its lines, as the speech goes. Lines it misses, replies and the summary use Gemini 3.5 Flash-Lite. A preview model. Needs a Gemini API key. Not used when recognition is Live Translate itself or record only.")
         case .gemma: String(localized: "Google's open model running on the Mac: free, text stays on the computer. Set it up with one click below (Gemma 4 on this Mac). A small model: wording is rougher than the cloud models.")
         case .gemma12: String(localized: "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.")
         case .translateGemma: String(localized: "Google's model made for translation (55 languages), smaller and faster than Gemma 4 E4B. Line by line, without the earlier lines or the glossary; replies and the summary use another model. Set it up below.")
