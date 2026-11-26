@@ -133,6 +133,10 @@ final class AppModel {
     private var sessionListen = ListenOption.appleSpeech
     /// Live Translate's own line numbers → caption lines.
     private var interpLines: [Int: Int] = [:]
+    /// Each line's translations, early and final, numbered so an older one never overwrites a newer.
+    private var lineTranslations = LineTranslations()
+    /// Early translations on their way: line → request number → task.
+    private var earlyTasks: [Int: [Int: Task<Void, Never>]] = [:]
 
     // MARK: Listening
 
@@ -173,6 +177,7 @@ final class AppModel {
         summaryRetryAt = nil
         interpLines.removeAll()
         inFlight.removeAll()
+        cancelEarlyTranslations()
         book.speaker = currentSpeaker
         voiceSpeaker.removeAll()
         lineVoice.removeAll()
@@ -224,7 +229,7 @@ final class AppModel {
                 try await source.start { buffer in
                     silence?.feed(buffer)
                     level.feed(buffer)
-                    if gate.admit(buffer) { recognizer?.feed(buffer) }
+                    for admitted in gate.admit(buffer) { recognizer?.feed(admitted) }
                     detector?.feed(buffer)
                     recorder?.write(buffer)
                 }
@@ -273,6 +278,7 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(50))
         }
         inFlight.removeAll()
+        cancelEarlyTranslations()
         // "Only when I press Update Now" means no summary at stop either. One already being written
         // (Update Now pressed just before) is waited for, up to a minute, so the last lines still go in.
         if let record, summaryInterval != nil {
@@ -518,14 +524,16 @@ final class AppModel {
         }
         let gemini = String(localized: "Add a Gemini API key in Settings first.")
         let openAI = String(localized: "Add an OpenAI API key in Settings first.")
+        // The glossary's names and terms help recognition too.
+        let terms = Prompts.recognitionTerms(glossary: s.glossary)
         switch s.listen {
-        case .appleSpeech: return AppleSpeechRecognizer(language: s.meetingLanguage)
-        case .geminiLive: return GeminiLiveRecognizer(key: try key("gemini", gemini), language: s.meetingLanguage)
+        case .appleSpeech: return AppleSpeechRecognizer(language: s.meetingLanguage, terms: terms)
+        case .geminiLive: return GeminiLiveRecognizer(key: try key("gemini", gemini), language: s.meetingLanguage, terms: terms)
         case .geminiLiveTranslate: return GeminiLiveTranslateRecognizer(key: try key("gemini", gemini), chinese: s.chinese, glossary: s.glossary)
-        case .geminiTranscribe: return SentenceRecognizer(service: .gemini(key: try key("gemini", gemini)), language: s.meetingLanguage)
-        case .openaiLive: return OpenAILiveRecognizer(key: try key("openai", openAI), language: s.meetingLanguage)
-        case .openaiMini: return SentenceRecognizer(service: .openAI(key: try key("openai", openAI)), language: s.meetingLanguage)
-        case .localWhisper: return SentenceRecognizer(service: .whisper(base: s.whisperURL, model: s.whisperModel, key: Keychain.get("local")), language: s.meetingLanguage)
+        case .geminiTranscribe: return SentenceRecognizer(service: .gemini(key: try key("gemini", gemini)), language: s.meetingLanguage, terms: terms)
+        case .openaiLive: return OpenAILiveRecognizer(key: try key("openai", openAI), language: s.meetingLanguage, terms: terms)
+        case .openaiMini: return SentenceRecognizer(service: .openAI(key: try key("openai", openAI)), language: s.meetingLanguage, terms: terms)
+        case .localWhisper: return SentenceRecognizer(service: .whisper(base: s.whisperURL, model: s.whisperModel, key: Keychain.get("local")), language: s.meetingLanguage, terms: terms)
         case .recordOnly: return nil
         }
     }
@@ -576,6 +584,7 @@ final class AppModel {
             if let id = book.partial(text) {
                 record?.opened(id, speaker: book.line(id)?.speaker)
                 heardFrom(id)
+                translateEarly(id)
             }
         case .final(let text):
             if let id = book.finish(text) {
@@ -583,6 +592,9 @@ final class AppModel {
                 record?.finished(id, heard: book.heard(id) ?? text)
                 heardTo(id)
                 translate(id)
+            } else {
+                // The sentence came to nothing: an early translation of it still running is cancelled.
+                for id in lineTranslations.dropUnfinished() { cancelEarly(id) }
             }
         case .status(let message):
             status = message
@@ -619,12 +631,19 @@ final class AppModel {
         guard let translator, let text = book.heard(id) else { return }
         let context = book.context(before: id)
         let record = self.record
+        // The final translation cancels the early ones still running; its streamed Chinese takes
+        // over the line once it is as long as the early Chinese shown.
+        let (seq, cancelled) = lineTranslations.start(id, text: text, early: false, now: Date())
+        cancelRequests(id, cancelled)
         inFlight[id] = Task {
-            defer { inFlight[id] = nil }
+            defer {
+                inFlight[id] = nil
+                requestEnded(id, seq: seq)
+            }
             do {
                 let zh = try await translator.translate(text, context: context) { soFar in
                     Task { @MainActor in
-                        if !self.translated.contains(id) { self.book.setTranslation(soFar, for: id) }
+                        if !self.translated.contains(id) { self.showTranslation(soFar, for: id, seq: seq, early: false) }
                     }
                 }
                 translated.insert(id)
@@ -636,6 +655,59 @@ final class AppModel {
                 record?.translated(id, "")
             }
         }
+    }
+
+    // MARK: Early translation
+
+    /// A long sentence still being spoken is translated as it stands (LineTranslations decides
+    /// when), so its Chinese starts to show before the speaker pauses. Only where there is a
+    /// translator (not Live Translate or record only) and only when turned on in Settings.
+    private func translateEarly(_ id: Int) {
+        guard settings.earlyTranslation, let translator, let text = book.heard(id) else { return }
+        let now = Date()
+        lineTranslations.opened(id, at: now)
+        guard lineTranslations.wantsEarly(id, text: text, now: now) else { return }
+        let (seq, cancelled) = lineTranslations.start(id, text: text, early: true, now: now)
+        cancelRequests(id, cancelled)
+        let context = book.context(before: id)
+        earlyTasks[id, default: [:]][seq] = Task {
+            defer { requestEnded(id, seq: seq) }
+            // One that fails shows nothing: the final translation will come.
+            guard let zh = try? await translator.translateUnfinished(text, context: context, partial: { soFar in
+                Task { @MainActor in self.showTranslation(soFar, for: id, seq: seq, early: true) }
+            }) else { return }
+            showTranslation(zh, for: id, seq: seq, early: true, complete: true)
+        }
+    }
+
+    /// Request `seq`'s Chinese goes under line `id` if it should be there (LineTranslations.accept);
+    /// an early one only if it reads as a subtitle.
+    private func showTranslation(_ zh: String, for id: Int, seq: Int, early: Bool, complete: Bool = false) {
+        if early && !LineTranslations.readsAsSubtitle(zh) { return }
+        let result = lineTranslations.accept(id, seq: seq, length: zh.count, complete: complete)
+        cancelRequests(id, result.cancelled)
+        if result.shown { book.setTranslation(zh, for: id) }
+    }
+
+    private func cancelRequests(_ id: Int, _ seqs: [Int]) {
+        for seq in seqs { earlyTasks[id]?.removeValue(forKey: seq)?.cancel() }
+    }
+
+    private func requestEnded(_ id: Int, seq: Int) {
+        lineTranslations.done(id, seq: seq)
+        earlyTasks[id]?[seq] = nil
+        if earlyTasks[id]?.isEmpty == true { earlyTasks[id] = nil }
+    }
+
+    private func cancelEarly(_ id: Int) {
+        earlyTasks.removeValue(forKey: id)?.values.forEach { $0.cancel() }
+    }
+
+    /// A new session, or the end of one: nothing early is still worth translating.
+    private func cancelEarlyTranslations() {
+        for tasks in earlyTasks.values { tasks.values.forEach { $0.cancel() } }
+        earlyTasks.removeAll()
+        lineTranslations = LineTranslations()
     }
 
     // MARK: Segments
@@ -979,19 +1051,27 @@ enum UsageStore {
 }
 
 /// Whether the room is quiet, from the sound itself (called on the audio thread): cloud recognition
-/// gets no sound while paused, and the first sound with any level brings it back.
+/// gets no sound while paused, and the first sound with any level brings it back. The last two
+/// seconds heard while paused go to the recognizer first, so the first words are not lost.
 final class QuietGate: @unchecked Sendable {
+    /// Sound kept while paused, sent first when recognition comes back.
+    static let prerollSeconds = 2.0
     private let lock = NSLock()
     private var lastSound = Date()
     private var paused = false
     private var resumed = false
+    /// Copies: the audio source's buffers are only valid during its callback.
+    private var preroll: [AVAudioPCMBuffer] = []
+    private var prerollLength = 0.0
     /// The room's own level (fans, air conditioning, the microphone's hiss), learned as it goes:
     /// it follows quieter sound at once and louder sound only slowly, so steady noise never
     /// counts as someone speaking.
     private var floor: Float?
     private var loudBuffers = 0
 
-    func admit(_ buffer: AVAudioPCMBuffer) -> Bool {
+    /// What to give the recognizer for `buffer`: nothing while paused (a copy is kept for the
+    /// preroll); the preroll, then `buffer`, when recognition has just come back; else `buffer`.
+    func admit(_ buffer: AVAudioPCMBuffer) -> [AVAudioPCMBuffer] {
         let level = buffer.rms
         lock.lock()
         defer { lock.unlock() }
@@ -1000,7 +1080,25 @@ final class QuietGate: @unchecked Sendable {
         // Sound well above the room's level, for a quarter of a second or so.
         loudBuffers = level > max(base * 4, 0.003) ? loudBuffers + 1 : 0
         if loudBuffers >= 3 { heard() }
-        return !paused
+        if paused {
+            keep(buffer)
+            return []
+        }
+        guard !preroll.isEmpty else { return [buffer] }
+        let out = preroll + [buffer]
+        preroll.removeAll()
+        prerollLength = 0
+        return out
+    }
+
+    /// Under `lock`: the newest two seconds are kept.
+    private func keep(_ buffer: AVAudioPCMBuffer) {
+        guard let copy = buffer.copied() else { return }
+        preroll.append(copy)
+        prerollLength += copy.soundSeconds
+        while preroll.count > 1, prerollLength - preroll[0].soundSeconds >= Self.prerollSeconds {
+            prerollLength -= preroll.removeFirst().soundSeconds
+        }
     }
 
     /// The recognizer heard words: someone is speaking, whatever the level.
@@ -1034,6 +1132,8 @@ final class QuietGate: @unchecked Sendable {
     func pause() {
         lock.lock()
         paused = true
+        preroll.removeAll()
+        prerollLength = 0
         lock.unlock()
     }
 
@@ -1045,6 +1145,24 @@ final class QuietGate: @unchecked Sendable {
         resumed = false
         return r
     }
+}
+
+extension AVAudioPCMBuffer {
+    /// A copy of the sound that stays valid after the audio source's callback returns.
+    func copied() -> AVAudioPCMBuffer? {
+        guard let copy = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: max(frameLength, 1)) else { return nil }
+        copy.frameLength = frameLength
+        let from = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: audioBufferList))
+        let to = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
+        for (src, dst) in zip(from, to) {
+            guard let s = src.mData, let d = dst.mData else { continue }
+            memcpy(d, s, Int(min(src.mDataByteSize, dst.mDataByteSize)))
+        }
+        return copy
+    }
+
+    /// Seconds of sound.
+    var soundSeconds: Double { format.sampleRate > 0 ? Double(frameLength) / format.sampleRate : 0 }
 }
 
 /// Waits for `task` to finish, but no longer than `seconds`; then cancels it and goes on.

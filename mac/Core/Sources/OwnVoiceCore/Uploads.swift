@@ -2,7 +2,8 @@
 // OpenAI-compatible /audio/transcriptions endpoint (OpenAI gpt-4o-mini-transcribe, or a Whisper
 // server the user runs) as multipart form data, or inline to Gemini's /interactions endpoint
 // (gemini-3.5-transcribe, per ai.google.dev/gemini-api/docs/transcribe: verbatim mode, the meeting
-// language as a BCP-47 hint, the text in steps[].content[].text).
+// language as a BCP-47 hint, the text in steps[].content[].text). The glossary's terms go along as
+// a prompt (OpenAI, Whisper) or as custom vocabulary (Gemini).
 
 import Foundation
 
@@ -11,7 +12,8 @@ public enum Uploads {
     public static let openAITranscriptions = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
 
     /// multipart/form-data for /audio/transcriptions; returns the body and its Content-Type.
-    public static func transcriptionForm(wav: Data, model: String, language: String, boundary: String = "ownvoice-\(UUID().uuidString)") -> (body: Data, contentType: String) {
+    /// `prompt` (Prompts.transcriptionPrompt) names the glossary's terms; empty sends none.
+    public static func transcriptionForm(wav: Data, model: String, language: String, prompt: String = "", boundary: String = "ownvoice-\(UUID().uuidString)") -> (body: Data, contentType: String) {
         var body = Data()
         func field(_ name: String, _ value: String) {
             body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
@@ -23,6 +25,7 @@ public enum Uploads {
         field("response_format", "json")
         let iso = language.split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map { $0.lowercased() } ?? ""
         if !iso.isEmpty { field("language", iso) }
+        if !prompt.isEmpty { field("prompt", prompt) }
         body.append(Data("--\(boundary)--\r\n".utf8))
         return (body, "multipart/form-data; boundary=\(boundary)")
     }
@@ -32,13 +35,16 @@ public enum Uploads {
         return (v["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    public static func geminiBody(model: String, language: String, wav: Data) throws -> Data {
+    /// `terms`: the glossary's names and product terms, as custom vocabulary.
+    public static func geminiBody(model: String, language: String, wav: Data, terms: [String] = []) throws -> Data {
         let lang = language.trimmingCharacters(in: .whitespaces)
+        var config: [String: Any] = ["language_codes": lang.isEmpty ? [] : [lang]]
+        if !terms.isEmpty { config["custom_vocabulary"] = terms }
         let body: [String: Any] = [
             "model": model,
             "input": [["type": "audio", "data": wav.base64EncodedString(), "mime_type": "audio/wav"]],
             // Verbatim: Smart mode would act on "actually no, …" in a meeting as an editing instruction.
-            "generation_config": ["transcription_config": ["language_codes": lang.isEmpty ? [] : [lang]]],
+            "generation_config": ["transcription_config": config],
             // The interaction is not kept on Google's side: the meeting's audio and its text stay private.
             "store": false,
         ]

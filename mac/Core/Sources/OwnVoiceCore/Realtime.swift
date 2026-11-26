@@ -31,9 +31,11 @@ public enum OpenAIRealtime {
         case failed(item: String)
     }
 
-    public static func sessionUpdate(model: String, language: String) -> String {
+    /// `terms`: the glossary's names and product terms, as keywords (hints, not required in the text).
+    public static func sessionUpdate(model: String, language: String, terms: [String] = []) -> String {
         var transcription: [String: Any] = ["model": model, "delay": "low"]
         if !language.isEmpty { transcription["languages"] = [language] }
+        if !terms.isEmpty { transcription["keywords"] = terms }
         let msg: [String: Any] = [
             "type": "session.update",
             "session": [

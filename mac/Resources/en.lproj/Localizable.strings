@@ -183,7 +183,7 @@
 "Ollama is running; %@ is not downloaded yet." = "Ollama is running; %@ is not downloaded yet.";
 "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time." = "Once, at the end: the whole transcript (with speakers and translations) goes to this model for minutes — key points, decisions, action items, open questions — shown in the Summary window and saved as minutes.md. A strong cloud model such as Claude Opus 5.5 does this well; an hour costs roughly US$0.10–0.50 with it. The transcript is sent to that service. You can also press Summarize Whole Meeting in the Summary window at any time.";
 "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac." = "One click installs what is missing: Ollama from ollama.com (about 230 MB, signature checked) and the chosen model. TranslateGemma only translates captions (replies and the summary then use another model); Gemma 4 also does replies and summaries. Text never leaves this Mac.";
-"One term per line: 中文 = English. Used by Claude, Gemini and Gemma." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma.";
+"One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right." = "One term per line: 中文 = English. Used by Claude, Gemini and Gemma, and also given to recognition, so names and product terms are heard right.";
 "Only When I Press Update Now" = "Only When I Press Update Now";
 "Only when asked" = "Only when asked";
 "Open Language & Region" = "Open Language & Region";
@@ -286,6 +286,7 @@
 "The Ollama download did not contain Ollama.app." = "The Ollama download did not contain Ollama.app.";
 "The Ollama download failed its signature check, so it was not installed." = "The Ollama download failed its signature check, so it was not installed.";
 "The check failed: %@" = "The check failed: %@";
+"The glossary could not be given to recognition; recognition goes on without it." = "The glossary could not be given to recognition; recognition goes on without it.";
 "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below." = "The larger Gemma 4: steadier translation, slower, and wants 16 GB of memory or more. Set it up below.";
 "The level is fine: you can start." = "The level is fine: you can start.";
 "The main points appear here every %@ minutes while listening." = "The main points appear here every %@ minutes while listening.";
@@ -317,6 +318,7 @@
 "Transcript and summary" = "Transcript and summary";
 "Transcript, summary and recording" = "Transcript, summary and recording";
 "Translate" = "Translate";
+"Translate long sentences before they end" = "Translate long sentences before they end";
 "TranslateGemma 4B (local Ollama, free, translation only)" = "TranslateGemma 4B (local Ollama, free, translation only)";
 "TranslateGemma 4B: translation only, about 3.3 GB" = "TranslateGemma 4B: translation only, about 3.3 GB";
 "Translation" = "Translation";
@@ -338,6 +340,7 @@
 "What do you want to say? (Chinese)" = "What do you want to say? (Chinese)";
 "What was said" = "What was said";
 "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving." = "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.";
+"While a long sentence is still being spoken, its Chinese starts to appear; the full translation takes over when the sentence ends. With a paid translation model this costs a few extra cents an hour." = "While a long sentence is still being spoken, its Chinese starts to appear; the full translation takes over when the sentence ends. With a paid translation model this costs a few extra cents an hour.";
 "Who is speaking now: new lines get this name. Right-click a line to change its speaker." = "Who is speaking now: new lines get this name. Right-click a line to change its speaker.";
 "Writing the meeting summary with %@…" = "Writing the meeting summary with %@…";
 "Your ChatGPT plan (Go, Plus, Pro or Business) pays instead of an API key: press Continue with ChatGPT below and agree in the browser. Captions, replies, the summary and 補對照 then use it. About 1 second slower than an API key." = "Your ChatGPT plan (Go, Plus, Pro or Business) pays instead of an API key: press Continue with ChatGPT below and agree in the browser. Captions, replies, the summary and 補對照 then use it. About 1 second slower than an API key.";
