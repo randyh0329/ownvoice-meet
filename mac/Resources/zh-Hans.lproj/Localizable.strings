@@ -334,7 +334,6 @@
 "Almost no sound. The microphone may be muted or the wrong one, or OwnVoice Meet may not be allowed to use it (System Settings → Privacy & Security → Microphone)." = "几乎没有声音。麦克风可能被静音或选错，或 OwnVoice Meet 没有使用麦克风的权限（系统设置 → 隐私与安全性 → 麦克风）。";
 "Check while the speaker or the room is talking: it uses the microphone and gain above. Raise the gain when you sit far from the speaker." = "检查时请让讲者或会场正在说话。检查使用上面选择的麦克风与增益。离讲者远、声音小就把增益调高。";
 "Checking: let the speaker or the room be talking…" = "检查中，请让现场有人说话…";
-"Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees." = "每次聆听会有一个文件夹，里面是 transcript.md 和 summary.md，每个段落还有自己的逐字稿（01-名称.md），选择后也有自己的录音（01-名称.m4a）。这会保存别人的声音，请先确认大家都同意。";
 "Gain" = "增益";
 "Input level" = "输入音量";
 "Microphone" = "麦克风";
@@ -407,3 +406,8 @@
 "Live Translate connection dropped; captions use the text model for now, trying again in %@ s…" = "Live Translate 连接中断，字幕先用文字模型翻译，%@ 秒后重试…";
 "Live Translate is connected again." = "Live Translate 已重新连上。";
 "Live Translate refused the connection (check the Gemini key); captions are translated by the text model." = "Live Translate 拒绝连接（请检查 Gemini 密钥），字幕改用文字模型翻译。";
+"Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.mp4 or .wav). Other people's voices are kept: check that everyone agrees." = "每次聆听会有一个文件夹，里面是 transcript.md 和 summary.md，每个段落还有自己的逐字稿（01-名称.md），选择后也有自己的录音（01-名称.mp4 或 .wav）。这会保存别人的声音，请先确认大家都同意。";
+"MP4 (AAC, about 30 MB an hour, plays almost anywhere)" = "MP4（AAC，一小时约 30 MB，几乎哪里都能播放）";
+"Recording format" = "录音格式";
+"The recording could not be written: %@" = "录音无法写入：%@";
+"WAV (uncompressed, about 115 MB an hour, plays on anything)" = "WAV（未压缩，一小时约 115 MB，任何设备都能播放）";

@@ -99,7 +99,7 @@
 "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key." = "Each sentence goes to Google once it ends: no gray text, half the price of Live. Needs a Gemini API key.";
 "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key." = "Each sentence goes to OpenAI once it ends: the cheapest cloud option, no gray text. Needs an OpenAI API key.";
 "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below." = "Each sentence goes to a Whisper server you run (faster-whisper, whisper.cpp server…): sound stays on your own machines. Fill in its address below.";
-"Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees.";
+"Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.mp4 or .wav). Other people's voices are kept: check that everyone agrees." = "Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.mp4 or .wav). Other people's voices are kept: check that everyone agrees.";
 "Each window has its own A− / A+ for the text size and a slider that fades its background (the text stays solid)." = "Each window has its own A− / A+ for the text size and a slider that fades its background (the text stays solid).";
 "Edit" = "Edit";
 "English" = "English";
@@ -168,6 +168,7 @@
 "Live summary" = "Live summary";
 "Loading the on-device recognition models…" = "Loading the on-device recognition models…";
 "Local model on this Mac (free, offline)" = "Local model on this Mac (free, offline)";
+"MP4 (AAC, about 30 MB an hour, plays almost anywhere)" = "MP4 (AAC, about 30 MB an hour, plays almost anywhere)";
 "Meeting language" = "Meeting language";
 "Meeting summary" = "Meeting summary";
 "Meeting summary failed: %@" = "Meeting summary failed: %@";
@@ -243,6 +244,7 @@
 "Recognition: %@" = "Recognition: %@";
 "Recognized on the Mac: NVIDIA Parakeet for English and other European languages, SenseVoice for Chinese, Japanese and Korean. With the meeting language on Detect automatically, each sentence is heard in its own language, so talks that mix Chinese and English work. No gray text: an ellipsis shows while someone speaks, and the line comes about a second after they stop. Download the models (about 910 MB) below first." = "Recognized on the Mac: NVIDIA Parakeet for English and other European languages, SenseVoice for Chinese, Japanese and Korean. With the meeting language on Detect automatically, each sentence is heard in its own language, so talks that mix Chinese and English work. No gray text: an ellipsis shows while someone speaks, and the line comes about a second after they stop. Download the models (about 910 MB) below first.";
 "Record only, no captions" = "Record only, no captions";
+"Recording format" = "Recording format";
 "Recording only, no captions" = "Recording only, no captions";
 "Recording this segment. Click to rename it." = "Recording this segment. Click to rename it.";
 "Remove" = "Remove";
@@ -339,6 +341,7 @@
 "The others in the meeting don't see what you are about to say. The captions window stays visible. On macOS 15 and later, apps that capture the screen with Apple's newer ScreenCaptureKit (as many recent meeting and recording apps do) may still show these windows: check with a test share before relying on it." = "The others in the meeting don't see what you are about to say. The captions window stays visible. On macOS 15 and later, apps that capture the screen with Apple's newer ScreenCaptureKit (as many recent meeting and recording apps do) may still show these windows: check with a test share before relying on it.";
 "The recognition models could not be downloaded: %@" = "The recognition models could not be downloaded: %@";
 "The recognition models were deleted." = "The recognition models were deleted.";
+"The recording could not be written: %@" = "The recording could not be written: %@";
 "The reply was cut off at its length limit; try again." = "The reply was cut off at its length limit; try again.";
 "The same price as Haiku; its speed varies more. Needs an OpenAI API key." = "The same price as Haiku; its speed varies more. Needs an OpenAI API key.";
 "The script changed while filling in; try again." = "The script changed while filling in; try again.";
@@ -386,6 +389,7 @@
 "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key." = "Uses the earlier lines and the glossary; steady wording. Needs an Anthropic API key.";
 "Version" = "Version";
 "Vietnamese" = "Vietnamese";
+"WAV (uncompressed, about 115 MB an hour, plays on anything)" = "WAV (uncompressed, about 115 MB an hour, plays on anything)";
 "What do you want to say? (Chinese)" = "What do you want to say? (Chinese)";
 "What was said" = "What was said";
 "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving." = "When the meeting is over, the whole transcript can go to a stronger model for minutes: key points, decisions, action items and open questions. Choose the model in Settings → Summary & Saving.";

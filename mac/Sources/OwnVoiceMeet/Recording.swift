@@ -1,7 +1,8 @@
 // A listening session as it is kept: every line with its time and final translation (for the
 // summary, and for transcript.md when saving is on), the summary in summary.md, and the sound when
 // the user chose to keep it. Each session gets a folder named by its start; each segment in it gets
-// its own transcript ("01-Keynote.md") and, with the sound kept, its own recording ("01-Keynote.m4a").
+// its own transcript ("01-Keynote.md") and, with the sound kept, its own recording ("01-Keynote.mp4"
+// or .wav, as chosen).
 
 import AVFoundation
 import Foundation
@@ -18,6 +19,8 @@ final class SessionRecord {
     /// Closed: a translation that still arrives is written at once (no ticker any more).
     private var closed = false
     private var audio: AudioRecorder?
+    /// "mp4" or "wav" (Settings → Summary & Saving).
+    private let soundExtension: String
     private var segments: [Segment]
     /// The agenda's segment names, taken in turn by New Segment.
     private let agenda: [String]
@@ -44,7 +47,8 @@ final class SessionRecord {
     }
 
     /// `keepSound`: record the sound even if saving is off (record only).
-    init(settings s: AppSettings, recognition: String, translation: String, keepSound: Bool = false) throws {
+    init(settings s: AppSettings, recognition: String, translation: String, keepSound: Bool = false, onRecordingProblem: @escaping @Sendable (String) -> Void = { _ in }) throws {
+        soundExtension = s.recordingFormat.fileExtension
         agenda = Agenda.names(s.agenda)
         segments = [Segment(name: Agenda.name(agenda, at: 0) ?? String(localized: "Start"), offset: 0)]
         let start = DateFormatter.localizedString(from: started, dateStyle: .medium, timeStyle: .short)
@@ -69,7 +73,7 @@ final class SessionRecord {
         folder = dir
         if s.saveMode == .transcriptAndAudio || keepSound {
             let url = soundURL(0, in: dir)
-            audio = try AudioRecorder(url: url)
+            audio = try AudioRecorder(url: url, format: s.recordingFormat, onProblem: onRecordingProblem)
             soundFile = url
         }
     }
@@ -172,7 +176,7 @@ final class SessionRecord {
 
     /// Where segment `i`'s recording goes, by its name now.
     private func soundURL(_ i: Int, in folder: URL) -> URL {
-        folder.appendingPathComponent(SessionFiles.segmentStem(i + 1, segments[i].name) + ".m4a")
+        folder.appendingPathComponent(SessionFiles.segmentStem(i + 1, segments[i].name) + "." + soundExtension)
     }
 
     /// The name the open recording closes under: its segment's name now, unless another file
@@ -245,27 +249,44 @@ final class SessionRecord {
     }
 }
 
-/// The session's sound as AAC in .m4a files (mono, 48 kHz), one per segment.
+/// The session's sound, one file per segment: AAC in an .mp4 file (mono, 48 kHz, 64 kbit/s), or
+/// uncompressed 16-bit .wav (mono, 16 kHz). The file type follows the file name's extension.
 final class AudioRecorder: @unchecked Sendable {
     /// The file written now and where it is: touched only on `queue` once recording has begun.
     private var file: AVAudioFile
     private var url: URL
+    private let format: RecordingFormat
     private let converter: BufferConverter
     private let queue = DispatchQueue(label: "recorder")
+    private let onProblem: @Sendable (String) -> Void
+    private var reported = false
 
-    init(url: URL) throws {
-        file = try Self.open(url)
+    init(url: URL, format: RecordingFormat, onProblem: @escaping @Sendable (String) -> Void = { _ in }) throws {
+        file = try Self.open(url, format)
         self.url = url
+        self.format = format
+        self.onProblem = onProblem
         converter = BufferConverter(to: file.processingFormat)
     }
 
-    private static func open(_ url: URL) throws -> AVAudioFile {
-        let settings: [String: Any] = [
+    private static func open(_ url: URL, _ format: RecordingFormat) throws -> AVAudioFile {
+        let settings: [String: Any] = switch format {
+        case .mp4: [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 48_000,
             AVNumberOfChannelsKey: 1,
             AVEncoderBitRateKey: 64_000,
         ]
+        case .wav: [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 16_000,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        }
         do {
             return try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
         } catch {
@@ -277,7 +298,16 @@ final class AudioRecorder: @unchecked Sendable {
     /// a queue of its own.
     func write(_ buffer: AVAudioPCMBuffer) {
         guard let converted = converter.convert(buffer) else { return }
-        queue.async { try? self.file.write(from: converted) }
+        queue.async {
+            do {
+                try self.file.write(from: converted)
+            } catch {
+                // Said once, not dropped: a recording that silently stays empty is found too late.
+                guard !self.reported else { return }
+                self.reported = true
+                self.onProblem(String(localized: "The recording could not be written: \(error.localizedDescription)"))
+            }
+        }
     }
 
     /// A segment ends (called on the main thread): the next file is made here, then swapped in on
@@ -285,7 +315,7 @@ final class AudioRecorder: @unchecked Sendable {
     /// that ends is closed and named `closingAs`. False, and the sound stays in the file open now,
     /// when the next one cannot be made.
     func split(closingAs: URL, next: URL) -> Bool {
-        guard let new = try? Self.open(next) else { return false }
+        guard let new = try? Self.open(next, format) else { return false }
         queue.async {
             let old = self.file
             let oldURL = self.url

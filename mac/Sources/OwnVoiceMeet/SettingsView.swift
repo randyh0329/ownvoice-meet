@@ -236,6 +236,11 @@ private struct SummarySavingTab: View {
                 Picker("Keep", selection: $model.settings.saveMode) {
                     ForEach(SaveMode.allCases) { Text(verbatim: $0.label).tag($0) }
                 }
+                if model.settings.saveMode == .transcriptAndAudio || model.settings.listen == .recordOnly {
+                    Picker("Recording format", selection: $model.settings.recordingFormat) {
+                        ForEach(RecordingFormat.allCases) { Text(verbatim: $0.label).tag($0) }
+                    }
+                }
                 LabeledContent("Folder") {
                     Text(verbatim: model.settings.saveFolderURL.path)
                         .lineLimit(1)
@@ -251,7 +256,7 @@ private struct SummarySavingTab: View {
                         Button("Use Documents") { model.settings.saveFolder = "" }
                     }
                 }
-                Text("Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.m4a). Other people's voices are kept: check that everyone agrees.")
+                Text("Each session gets a folder with transcript.md and summary.md, and for each segment its own transcript (01-name.md) and, if chosen, its own recording (01-name.mp4 or .wav). Other people's voices are kept: check that everyone agrees.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
