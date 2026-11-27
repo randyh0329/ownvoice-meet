@@ -25,6 +25,11 @@ struct CaptionsView: View {
                                 .font(style.font(size: 14))
                                 .foregroundStyle(style.partial)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                            if !model.isListening && !model.demoRunning {
+                                Button("Play Demo", systemImage: "play.circle") { model.startDemo() }
+                                    .disabled(model.finishing)
+                                    .help("A short sample exchange, to see what each window does: no sound, keys or network, nothing saved.")
+                            }
                         }
                         ForEach(model.book.lines) { line in
                             CaptionRow(line: line, fontSize: model.settings.fontSize, style: style, speaker: model.speakerName(line.speaker), translationOnly: model.settings.translationOnly)
@@ -55,6 +60,18 @@ struct CaptionsView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                if let tag = model.updateAvailable {
+                    Button {
+                        if let url = model.updateURL { NSWorkspace.shared.open(url) }
+                        model.dismissAvailableUpdate()
+                    } label: {
+                        Label(String(localized: "Update available: \(tag)"), systemImage: "arrow.down.circle")
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.link)
+                    .fixedSize()
+                    .help("Opens the release page on GitHub.")
+                }
                 Spacer()
                 LookControls(size: $model.settings.fontSize, opacity: $model.settings.captionsOpacity)
                 Toggle(isOn: $model.settings.translationOnly) {
@@ -70,6 +87,8 @@ struct CaptionsView: View {
                     SpeakerChoices(selected: model.currentSpeaker) { model.setCurrentSpeaker($0) }
                     Divider()
                     Button("Add Speaker…") { model.askAddSpeaker() }
+                    Button("Reset Speakers…") { model.speakerResetPrompt = true }
+                        .disabled(model.settings.speakerNames.isEmpty)
                 } label: {
                     Label(model.speakerName(model.currentSpeaker) ?? String(localized: "Speaker"), systemImage: "person.wave.2")
                 }
@@ -111,6 +130,12 @@ struct CaptionsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("New lines get this name until you choose another.")
+        }
+        .alert("Reset speakers?", isPresented: Bindable(model).speakerResetPrompt) {
+            Button("Reset Speakers", role: .destructive) { model.resetSpeakers() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every speaker name is removed, and no line keeps a speaker, in the captions or in this session's transcript. New voices start again from Speaker 1. Undo in the caption window brings the names back.")
         }
         .alert("New segment", isPresented: Bindable(model).segmentPrompt) {
             TextField("Name (optional)", text: Bindable(model).segmentDraft)

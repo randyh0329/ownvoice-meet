@@ -52,6 +52,7 @@ struct OwnVoiceMeetApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         GlobalHotKeys.registerAll()
+        Task { await AppModel.shared.checkForUpdatesAtLaunch() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -87,6 +88,12 @@ struct AppCommands: Commands {
                 .keyboardShortcut("l")
             Button("Clear Captions") { model.clear() }
                 .keyboardShortcut("k")
+            if model.demoRunning {
+                Button("Stop Demo") { model.stopDemo() }
+            } else {
+                Button("Play Demo") { model.startDemo() }
+                    .disabled(model.isListening || model.finishing)
+            }
             Button("New Segment…") { model.askNewSegment() }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(!model.isListening)
@@ -108,6 +115,12 @@ struct AppCommands: Commands {
                 .keyboardShortcut("0", modifiers: .option)
             Divider()
             Button("Add Speaker…") { model.askAddSpeaker() }
+            Button("Reset Speakers…") {
+                // Asked in the caption window, which is opened if it was closed.
+                openWindow(id: "captions")
+                model.speakerResetPrompt = true
+            }
+                .disabled(model.settings.speakerNames.isEmpty)
         }
         CommandGroup(before: .windowList) {
             Button("Captions") { openWindow(id: "captions") }

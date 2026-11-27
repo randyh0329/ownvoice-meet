@@ -60,6 +60,7 @@ private struct ListenTranslateTab: View {
                 if model.settings.listen == .localWhisper {
                     TextField("Server address (up to /v1)", text: $model.settings.whisperURL)
                     TextField("Model", text: $model.settings.whisperModel)
+                    ServerCheckRow(probe: model.whisperProbe, base: model.settings.whisperURL, model: $model.settings.whisperModel)
                 }
                 if model.settings.listen.isCloud || (model.settings.translate == .geminiLiveTranslate && canFollow) {
                     Toggle("Pause recognition while the room is quiet (nothing is billed)", isOn: $model.settings.pauseWhenQuiet)
@@ -105,6 +106,7 @@ private struct ListenTranslateTab: View {
                 if model.settings.translate == .localServer || model.settings.liveSummaryModel == .local || model.settings.meetingSummaryModel == .local {
                     TextField("Server address (up to /v1)", text: $model.settings.localServerURL)
                     TextField("Model", text: $model.settings.localServerModel)
+                    ServerCheckRow(probe: model.serverProbe, base: model.settings.localServerURL, model: $model.settings.localServerModel)
                 }
                 if model.settings.translate == .apple {
                     HStack {
@@ -141,6 +143,43 @@ private struct ListenTranslateTab: View {
         case .installed: model.appleCheck = String(localized: "✓ Ready: \(s.meetingLanguage) → \(target) is on this Mac.")
         case .supported: model.appleCheck = String(localized: "Not downloaded yet: open Language & Region → Translation Languages and download both languages.")
         default: model.appleCheck = String(localized: "Apple Translation does not offer this pair.")
+        }
+    }
+}
+
+/// Under a server's address and model: Test Connection, what the server said, and its models in a
+/// menu that fills in the model field.
+private struct ServerCheckRow: View {
+    let probe: ServerProbe
+    let base: String
+    let model: Binding<String>
+
+    var body: some View {
+        HStack {
+            Button("Test Connection") { Task { await probe.test(base: base) } }
+                .disabled(probe.working)
+            if !probe.models.isEmpty {
+                Menu {
+                    ForEach(probe.models, id: \.self) { id in
+                        Button {
+                            model.wrappedValue = id
+                        } label: {
+                            Text(verbatim: id)
+                        }
+                    }
+                } label: {
+                    Label("Choose a Model", systemImage: "list.bullet")
+                }
+                .fixedSize()
+                .help("The models the server listed: choosing one fills in the model name.")
+            }
+            if probe.working { ProgressView().controlSize(.small) }
+        }
+        .onChange(of: base) { _, _ in probe.reset() }
+        if !probe.message.isEmpty {
+            Text(verbatim: probe.message)
+                .font(.caption)
+                .foregroundStyle(probe.failed ? Color.red : Color.secondary)
         }
     }
 }
@@ -349,13 +388,16 @@ private struct KeysTab: View {
                 Text("Kept in your login Keychain, never in a file. Apple recognition, Apple Translation and Gemma need no key.")
             }
             HStack {
+                Button("Clear All Keys…", role: .destructive) { model.clearKeysPrompt = true }
                 Spacer()
                 if model.keysSaved { Text("Saved").foregroundStyle(.secondary) }
+                if model.keysCleared { Text("All keys removed.").foregroundStyle(.secondary) }
                 Button("Save Keys") {
                     Keychain.set("gemini", model.geminiKeyDraft)
                     Keychain.set("anthropic", model.anthropicKeyDraft)
                     Keychain.set("openai", model.openAIKeyDraft)
                     Keychain.set("local", model.localKeyDraft)
+                    model.keysCleared = false
                     model.keysSaved = true
                 }
                 .keyboardShortcut(.defaultAction)
@@ -363,8 +405,15 @@ private struct KeysTab: View {
         }
         .formStyle(.grouped)
         // "Saved" is about what the fields show: editing one takes it away.
-        .onChange(of: [model.geminiKeyDraft, model.anthropicKeyDraft, model.openAIKeyDraft, model.localKeyDraft]) { _, _ in
+        .onChange(of: [model.geminiKeyDraft, model.anthropicKeyDraft, model.openAIKeyDraft, model.localKeyDraft]) { _, drafts in
             model.keysSaved = false
+            if drafts.contains(where: { !$0.isEmpty }) { model.keysCleared = false }
+        }
+        .alert("Clear all keys?", isPresented: $model.clearKeysPrompt) {
+            Button("Clear All Keys", role: .destructive) { model.clearAllKeys() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The Gemini, Anthropic, OpenAI and your own server's keys are deleted from your Keychain, and this Mac signs out of the ChatGPT plan. This cannot be undone: you would have to paste the keys again.")
         }
     }
 }
@@ -528,6 +577,7 @@ private struct AboutTab: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         Form {
             Section {
@@ -539,8 +589,9 @@ private struct AboutTab: View {
                     }
                 }
                 if !model.updateMessage.isEmpty { Text(verbatim: model.updateMessage) }
+                Toggle("Check for updates when the app starts", isOn: $model.settings.checkUpdatesAtLaunch)
             } footer: {
-                Text("Checking asks GitHub (api.github.com) for this fork's latest release, only when you press the button.")
+                Text("Checking asks GitHub (api.github.com) for this fork's latest release: when you press the button, and, if turned on, once about 20 seconds after the app starts (a newer version then shows in the caption window's bar).")
             }
             Section("Sources") {
                 Link("This fork: randyh0329/ownvoice-meet", destination: URL(string: "https://github.com/randyh0329/ownvoice-meet")!)
@@ -590,7 +641,17 @@ private struct SpeakersSection: View {
                         .buttonStyle(.borderless)
                 }
             }
-            Button("Add Speaker…") { model.askAddSpeaker() }
+            HStack {
+                Button("Add Speaker…") { model.askAddSpeaker() }
+                Button("Reset Speakers…", role: .destructive) { model.settingsSpeakerResetPrompt = true }
+                    .disabled(model.settings.speakerNames.isEmpty)
+            }
+            .alert("Reset speakers?", isPresented: $model.settingsSpeakerResetPrompt) {
+                Button("Reset Speakers", role: .destructive) { model.resetSpeakers() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every speaker name is removed, and no line keeps a speaker, in the captions or in this session's transcript. New voices start again from Speaker 1. Undo in the caption window brings the names back.")
+            }
             Text("Name the people in the meeting; pick who is speaking from the caption bar or the Speaker menu (⌥1…⌥9), and right-click a line to change its speaker. Names go into the transcript and the summary. Renaming updates every line.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -4,6 +4,7 @@
 // the reply carries the tokens used.
 
 import Foundation
+import Observation
 import OwnVoiceCore
 
 /// A model's answer and what it used (for the usage record).
@@ -218,4 +219,55 @@ private func read(
         throw AppError(String(localized: "The reply was cut off at its length limit; try again."))
     }
     return ModelReply(text: reply.text.trimmingCharacters(in: .whitespacesAndNewlines), tokens: reply.tokens)
+}
+
+/// Settings' Test Connection for one of the user's own servers: asks it for its models (with the
+/// "Your own server's key" if one is saved) and says whether it answered, and with which models.
+@MainActor
+@Observable
+final class ServerProbe {
+    private(set) var working = false
+    private(set) var message = ""
+    private(set) var failed = false
+    /// The model names the server listed, offered in a menu to fill in the model field.
+    private(set) var models: [String] = []
+
+    func test(base: String) async {
+        guard !working else { return }
+        reset()
+        guard let url = ServerModels.url(base: base) else {
+            show(String(localized: "Fill in the server's address first, such as http://localhost:8000/v1."), failed: true)
+            return
+        }
+        working = true
+        defer { working = false }
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        if let key = Keychain.get("local") { req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization") }
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let found = try ServerModels.ids(data, status: (response as? HTTPURLResponse)?.statusCode ?? 0)
+            models = found
+            switch found.count {
+            case 0: show(String(localized: "✓ Connected, but the server lists no models."), failed: false)
+            case 1: show(String(localized: "✓ Connected: 1 model"), failed: false)
+            default: show(String(localized: "✓ Connected: \(String(found.count)) models"), failed: false)
+            }
+        } catch is ServerModels.NotAList {
+            show(String(localized: "The server answered, but not with a list of models: check the address (it usually ends in /v1)."), failed: true)
+        } catch {
+            show(error.localizedDescription, failed: true)
+        }
+    }
+
+    /// The address changed: what was found no longer applies.
+    func reset() {
+        message = ""
+        failed = false
+        models = []
+    }
+
+    private func show(_ text: String, failed: Bool) {
+        message = text
+        self.failed = failed
+    }
 }
