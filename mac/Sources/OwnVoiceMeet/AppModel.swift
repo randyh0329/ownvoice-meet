@@ -39,6 +39,11 @@ final class AppModel {
     var openAIKeyDraft = Keychain.get("openai") ?? ""
     var localKeyDraft = Keychain.get("local") ?? ""
     var keysSaved = false
+    var clearKeysPrompt = false
+    var keysCleared = false
+    /// Test Connection for your own text server and your own Whisper server.
+    let serverProbe = ServerProbe()
+    let whisperProbe = ServerProbe()
     var interfaceLanguage = InterfaceLanguage.current {
         didSet {
             interfaceLanguage.apply()
@@ -92,9 +97,12 @@ final class AppModel {
 
     // Script window
     var script = ScriptFile.load() {
-        didSet { ScriptFile.save(script) }
+        didSet { if !scriptShownOnly { ScriptFile.save(script) } }
     }
+    /// The demo's example script is only shown, not saved (until the user edits it).
+    @ObservationIgnored private var scriptShownOnly = false
     var scriptEditing = false
+    var scriptFormatHelp = false
     private(set) var scriptWorking = false
     private(set) var scriptMessage = ""
 
@@ -155,6 +163,7 @@ final class AppModel {
             status = String(localized: "Still finishing the last session; try again in a moment.")
             return
         }
+        stopDemo()
         let s = settings
         let recognizer: Recognizer?
         let follower: LiveTranslateFollower?
@@ -326,7 +335,77 @@ final class AppModel {
         record?.close()
     }
 
+    // MARK: Demo
+
+    /// The demo is playing: captions come from Demo.lines, not from listening.
+    private(set) var demoRunning = false
+    private var demoTask: Task<Void, Never>?
+    /// The demo line still being "said", taken away if the demo stops halfway through it.
+    private var demoOpenLine: Int?
+
+    /// Plays a short exchange into the captions as recognition would (gray words, the line, its
+    /// Chinese coming in), with no sound, keys or network; fills the Reply window with a sample and
+    /// an empty Script window with the template. Nothing is saved and no usage is counted.
+    func startDemo() {
+        guard !isListening, !finishing else { return }
+        stopDemo()
+        let variant = settings.chinese
+        replyChinese = Demo.reply.chinese(variant)
+        replyText = Demo.reply.english
+        if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            scriptShownOnly = true
+            script = variant.fix(Script.template)
+            scriptShownOnly = false
+        }
+        demoRunning = true
+        status = String(localized: "Demo: sample captions, with no sound, keys or network.")
+        demoTask = Task {
+            do {
+                for line in Demo.lines {
+                    for words in Demo.partials(line.english) {
+                        demoOpenLine = book.partial(words)
+                        try await Self.demoPause(350)
+                    }
+                    let id = book.finish(line.english)
+                    demoOpenLine = nil
+                    if let id {
+                        for chinese in Demo.translationSteps(line.chinese(variant)) {
+                            book.setTranslation(chinese, for: id)
+                            try await Self.demoPause(60)
+                        }
+                    }
+                    try await Self.demoPause(1200)
+                }
+                demoRunning = false
+                demoTask = nil
+                status = String(localized: "Demo finished. Press Start to listen.")
+            } catch {
+                // Stopped (Clear Captions, Start, Stop Demo): stopDemo has tidied up.
+            }
+        }
+    }
+
+    /// A pause between the demo's steps; throws once the demo is stopped.
+    private static func demoPause(_ milliseconds: Int) async throws {
+        try await Task.sleep(for: .milliseconds(milliseconds))
+        try Task.checkCancellation()
+    }
+
+    /// Stops the demo; a line it left half said is taken away.
+    func stopDemo() {
+        guard demoRunning else { return }
+        demoTask?.cancel()
+        demoTask = nil
+        demoRunning = false
+        if let id = demoOpenLine {
+            book.removeLine(id)
+            demoOpenLine = nil
+        }
+        if !isListening { status = String(localized: "Press Start to listen.") }
+    }
+
     func clear() {
+        stopDemo()
         let before = captionsState
         book.clear()
         book.speaker = currentSpeaker
@@ -510,6 +589,25 @@ final class AppModel {
         record?.removeSpeaker(at: i)
         record?.adoptSpeakers(book.lines)
         registerCaptionsUndo(before, String(localized: "Remove Speaker"))
+    }
+
+    /// Asked before Reset Speakers, in the caption window and in Settings.
+    var speakerResetPrompt = false
+    var settingsSpeakerResetPrompt = false
+
+    /// Forgets every speaker: the list empties, no line keeps a speaker (on screen and in this
+    /// session's transcript), and voices told apart from here on start again from Speaker 1.
+    /// Undo brings the names back, with the lines still on screen.
+    func resetSpeakers() {
+        let before = captionsState
+        for line in book.lines where line.speaker != nil { book.setSpeaker(nil, for: line.id) }
+        setCurrentSpeaker(nil)
+        voiceSpeaker.removeAll()
+        // The transcript's lines all lose their speaker: each removal moves the later ones up.
+        for _ in settings.speakerNames.indices { record?.removeSpeaker(at: 0) }
+        settings.speakerNames = []
+        record?.adoptSpeakers(book.lines)
+        registerCaptionsUndo(before, String(localized: "Reset Speakers"))
     }
 
     private func teardown() async {
@@ -831,6 +929,18 @@ final class AppModel {
         UsageStore.save(monthUsage)
     }
 
+    /// Deletes every API key from the Keychain, empties the fields and signs out of the ChatGPT plan.
+    func clearAllKeys() {
+        for provider in Keychain.providers { Keychain.remove(provider) }
+        geminiKeyDraft = ""
+        anthropicKeyDraft = ""
+        openAIKeyDraft = ""
+        localKeyDraft = ""
+        chatGPT.signOut()
+        keysSaved = false
+        keysCleared = true
+    }
+
     func resetUsage() {
         sessionUsage = UsageBook()
         monthUsage = UsageBook()
@@ -839,34 +949,70 @@ final class AppModel {
 
     // MARK: Updates
 
-    /// Asks GitHub (only when the user presses the button) for this fork's latest release.
+    /// Asks GitHub (when the user presses the button) for this fork's latest release.
     func checkForUpdates() async {
         updateMessage = String(localized: "Checking…")
         updateURL = nil
-        let local = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        // The newest release of this app (mac-v…), not of the cross-platform one in the same repo.
-        var req = URLRequest(url: URL(string: "https://api.github.com/repos/randyh0329/ownvoice-meet/releases?per_page=30")!, timeoutInterval: 15)
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "accept")
+        let local = Self.appVersion
         do {
-            let (data, response) = try await URLSession.shared.data(for: req)
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let releases = (status == 200 ? try JSONSerialization.jsonObject(with: data) as? [[String: Any]] : nil) ?? []
-            let mac = releases.first { r in
-                (r["tag_name"] as? String)?.hasPrefix("mac-v") == true && r["draft"] as? Bool != true && r["prerelease"] as? Bool != true
-            }
-            guard let v = mac, let tag = v["tag_name"] as? String else {
+            guard let latest = try await Self.latestRelease() else {
                 updateMessage = String(localized: "No release found on GitHub.")
                 return
             }
+            let tag = latest.tag
             if Version.isNewer(tag, than: local) {
                 updateMessage = String(localized: "\(tag) is available (this is \(local)).")
-                updateURL = (v["html_url"] as? String).flatMap(URL.init(string:))
+                updateURL = latest.url
             } else {
                 updateMessage = String(localized: "Up to date (\(local)).")
             }
         } catch {
             updateMessage = error.localizedDescription
         }
+    }
+
+    /// A newer version found by the check at launch: shown in the caption window's bar until clicked.
+    private(set) var updateAvailable: String?
+    @ObservationIgnored private var launchCheckDone = false
+
+    /// Once per launch, about 20 seconds in (if Settings allow it): a newer version is mentioned in
+    /// the caption window's bar and in Settings → About. Nothing is said when there is none or the
+    /// network fails.
+    func checkForUpdatesAtLaunch() async {
+        guard !launchCheckDone else { return }
+        launchCheckDone = true
+        try? await Task.sleep(for: .seconds(20))
+        guard settings.checkUpdatesAtLaunch,
+              let found = try? await Self.latestRelease(),
+              Version.isNewer(found.tag, than: Self.appVersion) else { return }
+        let tag = found.tag, local = Self.appVersion
+        updateAvailable = tag
+        updateURL = found.url
+        updateMessage = String(localized: "\(tag) is available (this is \(local)).")
+    }
+
+    /// The update note in the caption window was clicked (the release page opened): it goes.
+    func dismissAvailableUpdate() {
+        updateAvailable = nil
+    }
+
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+    }
+
+    /// The newest release of this app (mac-v…, not the cross-platform one in the same repo; no
+    /// drafts or pre-releases), nil when GitHub lists none.
+    private static func latestRelease() async throws -> (tag: String, url: URL?)? {
+        var req = URLRequest(url: URL(string: "https://api.github.com/repos/randyh0329/ownvoice-meet/releases?per_page=30")!, timeoutInterval: 15)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "accept")
+        let (data, response) = try await URLSession.shared.data(for: req)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let releases = (status == 200 ? try JSONSerialization.jsonObject(with: data) as? [[String: Any]] : nil) ?? []
+        let mac = releases.first { r in
+            (r["tag_name"] as? String)?.hasPrefix("mac-v") == true && r["draft"] as? Bool != true && r["prerelease"] as? Bool != true
+        }
+        guard let v = mac, let tag = v["tag_name"] as? String else { return nil }
+        return (tag, (v["html_url"] as? String).flatMap(URL.init(string:)))
     }
 
     /// The finished lines before the newest, for replies.

@@ -76,6 +76,10 @@ struct ScriptView: View {
                     .disabled(model.scriptWorking || model.script.isEmpty)
                     .help("補對照: a line without its meaning gets its Chinese; a line written in Chinese gets the words to read aloud.")
                 if model.scriptWorking { ProgressView().controlSize(.small) }
+                if model.scriptEditing {
+                    Button("Format Help", systemImage: "questionmark.circle") { model.scriptFormatHelp = true }
+                        .popover(isPresented: $model.scriptFormatHelp, arrowEdge: .bottom) { ScriptFormatHelp() }
+                }
                 Spacer()
                 LookControls(size: $model.settings.scriptFontSize, opacity: $model.settings.scriptOpacity)
             }
@@ -89,10 +93,28 @@ struct ScriptView: View {
             }
             Divider()
             if model.scriptEditing {
-                TextEditor(text: $model.script)
-                    .font(.body.monospaced())
-                    .scrollContentBackground(.hidden)
-                    .padding(6)
+                // The text and, beside it, the script as it will look, updated as you type.
+                HSplitView {
+                    TextEditor(text: $model.script)
+                        .font(.body.monospaced())
+                        .scrollContentBackground(.hidden)
+                        .padding(6)
+                        .frame(minWidth: 220)
+                    ScriptPreview(items: Script.parse(model.script), fontSize: model.settings.scriptFontSize * 0.8)
+                        .frame(minWidth: 200)
+                }
+                let missing = Script.plan(model.script).count
+                if missing > 0 {
+                    Divider()
+                    Text(verbatim: missing == 1
+                        ? String(localized: "1 line has no translation yet — Fill In Missing Halves adds it.")
+                        : String(localized: "\(String(missing)) lines have no translation yet — Fill In Missing Halves adds them."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                }
             } else {
                 ScriptPreview(items: Script.parse(model.script), fontSize: model.settings.scriptFontSize)
             }
@@ -111,6 +133,37 @@ struct ScriptView: View {
         guard panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) else { return }
         model.setScript(text, action: String(localized: "Open Script"))
         model.scriptEditing = false
+    }
+}
+
+/// Format Help: what each kind of line in a script means.
+private struct ScriptFormatHelp: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Script format").font(.headline)
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 6) {
+                row(Text(String(localized: "# Title")), Text("A tab (Opening, Demo, Q&A: name them as you like)"))
+                row(Text(String(localized: "## Subheading")), Text("A small heading inside a tab"))
+                row(Text(String(localized: "! Cue")), Text("A gray cue, not read aloud (such as “switch to slide 2”)"))
+                row(Text(String(localized: "Q: Question")), Text("A question prepared in advance"))
+                row(Text(String(localized: "A plain line")), Text("A line to read aloud (Chinese works too: Fill In Missing Halves turns it into the language you speak)"))
+                row(Text(String(localized: "> Chinese")), Text("The Chinese meaning of the line above"))
+                row(Text(String(localized: "```copy:name … ```")), Text("A block to copy with one click (links, commands)"))
+            }
+            Text("A line written another way still shows. While you edit, the bottom of the window counts the lines that have no translation yet.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(width: 460)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func row(_ example: Text, _ meaning: Text) -> some View {
+        GridRow {
+            example.font(.body.monospaced())
+            meaning.fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

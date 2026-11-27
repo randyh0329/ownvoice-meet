@@ -389,6 +389,8 @@ struct AppSettings: Codable, Equatable {
     var micGain = 1.0
     /// One segment name per line (optional): New Segment takes them in turn.
     var agenda = ""
+    /// About 20 seconds after launch, GitHub is asked once whether a newer version is out.
+    var checkUpdatesAtLaunch = true
 
     init() {}
 
@@ -447,6 +449,7 @@ struct AppSettings: Codable, Equatable {
         scriptFontSize = (try? c.decodeIfPresent(Double.self, forKey: .scriptFontSize)) ?? fontSize
         summaryFontSize = (try? c.decodeIfPresent(Double.self, forKey: .summaryFontSize)) ?? fontSize
         translationOnly = (try? c.decodeIfPresent(Bool.self, forKey: .translationOnly)) ?? d.translationOnly
+        checkUpdatesAtLaunch = (try? c.decodeIfPresent(Bool.self, forKey: .checkUpdatesAtLaunch)) ?? d.checkUpdatesAtLaunch
     }
 
     /// Where sessions are saved.
@@ -499,6 +502,18 @@ enum Keychain {
         var add = base
         add[kSecValueData as String] = Data(trimmed.utf8)
         SecItemAdd(add as CFDictionary, nil)
+    }
+
+    /// Every key this app keeps: Gemini, Anthropic, OpenAI and the user's own servers.
+    static let providers = ["gemini", "anthropic", "openai", "local"]
+
+    static func remove(_ provider: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: provider,
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 }
 
