@@ -168,7 +168,9 @@ final class AppModel {
             // Live Translate under Translation hears the same sound (not with a recognition that translates itself).
             let follows = s.translate == .geminiLiveTranslate && !translatesItself
             follower = follows ? try makeFollower(s) : nil
-            record = try SessionRecord(settings: s, recognition: s.listen.label, translation: translatesItself ? s.listen.label : s.translate.label, keepSound: s.listen == .recordOnly)
+            record = try SessionRecord(settings: s, recognition: s.listen.label, translation: translatesItself ? s.listen.label : s.translate.label, keepSound: s.listen == .recordOnly) { message in
+                Task { @MainActor in self.status = message }
+            }
             record?.speakerNames = s.speakerNames
         } catch {
             status = error.localizedDescription

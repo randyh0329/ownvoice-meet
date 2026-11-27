@@ -220,6 +220,25 @@ enum SaveMode: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+/// The file the kept sound is written to.
+enum RecordingFormat: String, CaseIterable, Codable, Identifiable {
+    /// AAC in an MP4 file: small, and plays on Windows, Android, in browsers and in VLC.
+    case mp4
+    /// Uncompressed, 16 kHz mono (as in the first version): plays on practically anything.
+    case wav
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .mp4: String(localized: "MP4 (AAC, about 30 MB an hour, plays almost anywhere)")
+        case .wav: String(localized: "WAV (uncompressed, about 115 MB an hour, plays on anything)")
+        }
+    }
+
+    var fileExtension: String { rawValue }
+}
+
 /// The language the user speaks in the meeting: replies and 補對照 write in it.
 struct SpeakLanguage: Identifiable {
     let code: String
@@ -321,6 +340,7 @@ struct AppSettings: Codable, Equatable {
     var meetingSummaryOnStop = false
     var meetingSummaryModel: SummaryModelChoice = .auto
     var saveMode: SaveMode = .off
+    var recordingFormat: RecordingFormat = .mp4
     /// Empty: Documents/OwnVoice Meet.
     var saveFolder = ""
     var localServerURL = "http://localhost:8000/v1"
@@ -393,6 +413,7 @@ struct AppSettings: Codable, Equatable {
         meetingSummaryOnStop = (try? c.decodeIfPresent(Bool.self, forKey: .meetingSummaryOnStop)) ?? d.meetingSummaryOnStop
         meetingSummaryModel = (try? c.decodeIfPresent(SummaryModelChoice.self, forKey: .meetingSummaryModel)) ?? d.meetingSummaryModel
         saveMode = (try? c.decodeIfPresent(SaveMode.self, forKey: .saveMode)) ?? d.saveMode
+        recordingFormat = (try? c.decodeIfPresent(RecordingFormat.self, forKey: .recordingFormat)) ?? d.recordingFormat
         saveFolder = (try? c.decodeIfPresent(String.self, forKey: .saveFolder)) ?? d.saveFolder
         localServerURL = (try? c.decodeIfPresent(String.self, forKey: .localServerURL)) ?? d.localServerURL
         localServerModel = (try? c.decodeIfPresent(String.self, forKey: .localServerModel)) ?? d.localServerModel
